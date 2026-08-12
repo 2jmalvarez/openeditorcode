@@ -15,6 +15,8 @@ export function useEditor(props: Props) {
   const [content, setContent] = createSignal("")
   const [wrapMode, setWrapMode] = createSignal<"none" | "word">("none")
   const [cursor, setCursor] = createSignal({ line: 1, column: 1 })
+  const [findOpen, setFindOpen] = createSignal(false)
+  const [findQuery, setFindQuery] = createSignal("")
   let renderable: TextareaRenderable | undefined
   const metrics = useEditorMetrics({ editor: () => renderable, filePath: props.filePath, content })
 
@@ -108,13 +110,29 @@ export function useEditor(props: Props) {
     return true
   }
 
+  function openFind() {
+    if (!props.filePath()) return
+    setFindQuery("")
+    setFindOpen(true)
+  }
+
+  function updateFindQuery(value: string) {
+    setFindQuery(value)
+    if (value) findText(value)
+  }
+
+  function closeFind() {
+    setFindOpen(false)
+    setFindQuery("")
+  }
+
   function gotoLine(line: number) { renderable?.gotoLine(line) }
   function currentText() { return renderable?.plainText ?? content() }
 
   createEffect(() => {
-    if (props.overlay() || props.active() !== "editor") renderable?.blur()
+    if (props.overlay() || findOpen() || props.active() !== "editor") renderable?.blur()
     else renderable?.focus()
   })
 
-  return { content, setText, clear, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, findText, gotoLine }
+  return { content, setText, clear, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, findText, openFind, findOpen, findQuery, updateFindQuery, closeFind, gotoLine }
 }

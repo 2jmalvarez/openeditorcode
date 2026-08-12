@@ -33,7 +33,7 @@ export function useWorkbench(root: string) {
   const explorer = useExplorer({ root, setStatus, openFile: documents.openFile })
   const search = useSearch({ root, setStatus })
 
-  function openOverlay(kind: "command-palette" | "text-search" | "project-search" | "new-file") {
+  function openOverlay(kind: "command-palette" | "project-search" | "new-file") {
     overlays.open(kind)
     search.reset()
   }
@@ -94,7 +94,7 @@ export function useWorkbench(root: string) {
     { title: "Abrir explorador", shortcut: "Ctrl+B", run: focusExplorer },
     { title: "Actualizar explorador", shortcut: "F5", run: () => void explorer.refreshExplorer() },
     { title: "Crear archivo en carpeta seleccionada", shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
-    { title: "Buscar texto", shortcut: "Ctrl+F", run: () => openOverlay("text-search") },
+    { title: "Buscar texto", shortcut: "Ctrl+F", run: editor.openFind },
     { title: "Buscar en todo el proyecto", shortcut: "Ctrl+Alt+F", run: () => openOverlay("project-search") },
     { title: "Guardar archivo", shortcut: "Ctrl+S", run: () => void documents.save() },
     { title: "Cerrar archivo", shortcut: "Ctrl+W", run: requestClose },
@@ -113,10 +113,6 @@ export function useWorkbench(root: string) {
     if (!command) return
     overlays.close()
     command.run()
-  }
-
-  function findText() {
-    if (editor.findText(search.query())) overlays.close()
   }
 
   async function openProjectResult() {
@@ -148,9 +144,9 @@ export function useWorkbench(root: string) {
   useKeyboardShortcuts({
     active, setActive, overlay: overlays.overlay, pendingDeletion: overlays.pendingDeletion, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
     closeOverlay: overlays.close, acceptConfirm, acceptDeletion, quit, refreshExplorer: explorer.refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
-    openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: () => openOverlay("text-search"),
+    openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: editor.openFind, editorFindOpen: editor.findOpen, closeEditorFind: editor.closeFind,
     focusExplorer, changeTab: () => documents.changeTab(1), toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
-    paletteLength: () => search.paletteResults(commands()).length, acceptCommand, findText, createNewFile, projectResultsLength: () => search.projectResults().length,
+    paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
     moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion,
   })

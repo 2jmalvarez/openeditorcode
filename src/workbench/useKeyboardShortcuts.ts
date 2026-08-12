@@ -22,6 +22,8 @@ type Props = {
   openNewFile: () => void
   openProjectSearch: () => void
   openTextSearch: () => void
+  editorFindOpen: () => boolean
+  closeEditorFind: () => void
   focusExplorer: () => void
   changeTab: () => void
   toggleWrap: () => void
@@ -30,7 +32,6 @@ type Props = {
   paste: () => Promise<void>
   paletteLength: () => number
   acceptCommand: () => void
-  findText: () => void
   createNewFile: () => Promise<void>
   projectResultsLength: () => number
   openProjectResult: () => Promise<void>
@@ -76,6 +77,7 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && keyName === "w") return props.requestClose()
     if (ctrl && keyName === "c") return props.copy()
     if (ctrl && keyName === "v") return void props.paste()
+    if (key.name === "escape" && props.editorFindOpen()) return props.closeEditorFind()
     if (key.name === "escape" && props.overlay()) return props.closeOverlay()
     if (props.overlay() === "command-palette") {
       if (key.name === "down") props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.paletteLength() - 1)))
@@ -83,7 +85,6 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) props.acceptCommand()
       return
     }
-    if (props.overlay() === "text-search" && isEnter) return props.findText()
     if (props.overlay() === "new-file" && isEnter) return void props.createNewFile()
     if (props.overlay() === "project-search") {
       if (key.name === "down") props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.projectResultsLength() - 1)))
