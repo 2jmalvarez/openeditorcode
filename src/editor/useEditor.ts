@@ -21,6 +21,7 @@ export function useEditor(props: Props) {
   const [findResults, setFindResults] = createSignal<FindResult[]>([])
   const [findIndex, setFindIndex] = createSignal(0)
   let renderable: TextareaRenderable | undefined
+  let replacingText = false
   const metrics = useEditorMetrics({ editor: () => renderable, filePath: props.filePath, content })
 
   function setEditor(value: TextareaRenderable) {
@@ -38,7 +39,12 @@ export function useEditor(props: Props) {
   function setText(text: string) {
     resetFind()
     setContent(text)
-    renderable?.setText(text)
+    if (renderable) {
+      renderable.blur()
+      replacingText = true
+      renderable.setText(text)
+      replacingText = false
+    }
     metrics.scheduleHighlight(props.filePath(), text, 0)
     metrics.refresh()
   }
@@ -47,11 +53,17 @@ export function useEditor(props: Props) {
     metrics.reset()
     resetFind()
     setContent("")
-    renderable?.setText("")
+    if (renderable) {
+      renderable.blur()
+      replacingText = true
+      renderable.setText("")
+      replacingText = false
+    }
     renderable = undefined
   }
 
   function onContentChange() {
+    if (replacingText) return
     const text = renderable?.plainText ?? ""
     setContent(text)
     metrics.scheduleHighlight(props.filePath(), text)
@@ -143,6 +155,7 @@ export function useEditor(props: Props) {
   }
 
   function resetFind() {
+    setFindOpen(false)
     setFindQuery("")
     setFindResults([])
     setFindIndex(0)
@@ -150,11 +163,12 @@ export function useEditor(props: Props) {
 
   function gotoLine(line: number) { renderable?.gotoLine(line) }
   function currentText() { return renderable?.plainText ?? content() }
+  function blur() { renderable?.blur() }
 
   createEffect(() => {
     if (props.overlay() || findOpen() || props.active() !== "editor") renderable?.blur()
     else renderable?.focus()
   })
 
-  return { content, setText, clear, detachEditor, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
+  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
 }

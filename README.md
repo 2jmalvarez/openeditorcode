@@ -10,18 +10,19 @@ Al iniciar sin documentos abiertos, OEC muestra una portada con los atajos organ
 
 ## Características
 
-- Explorador de carpetas con iconos por tipo de archivo, selección por teclado y scroll vertical que sigue la selección.
+- Explorador virtualizado con iconos por tipo de archivo, selección por teclado y scroll vertical que sigue la selección incluso en proyectos grandes.
 - Explorador operable con ratón: clic para seleccionar, expandir carpetas o abrir archivos.
 - Creación de archivos en la carpeta seleccionada, sin sobrescribir archivos existentes.
 - Varias pestañas abiertas, cambio circular y pestañas clicables con cierre mediante `×`, incluidos diffs Git identificados con `Δ`.
 - Editor multilinea con números de línea, resaltado básico para archivos de código, ajuste de línea, deshacer y rehacer.
-- Copia mediante OSC 52 y pegado desde el portapapeles de Windows.
-- Búsqueda local con resultados, navegación por flechas y aplicación con `Enter`.
-- Búsqueda global persistente agrupada por archivo, con resultados navegables y scroll sincronizado.
+- Copia mediante OSC 52 y pegado desde el portapapeles de Windows, Wayland o X11.
+- Búsqueda local lineal con resultados, navegación por flechas y aplicación con `Enter`.
+- Búsqueda global concurrente, persistente y agrupada por archivo, con índice reutilizable de hasta 50.000 entradas.
 - Conteo de líneas por archivo y total del proyecto.
 - Confirmación modal para cambios sin guardar.
 - Eliminación confirmada de archivos y carpetas desde el explorador.
-- Panel de cambios Git en árbol, con actualización automática y vista diff de solo lectura.
+- Panel de cambios Git virtualizado, con procesos asíncronos, actualización automática local y vista diff de solo lectura.
+- Navegación y atajos globales aislados del textarea para evitar modificaciones involuntarias al abrir, cerrar o cambiar archivos.
 - Protección contra rutas externas, binarios y archivos de más de 2 MB.
 
 ## Requisitos
@@ -51,6 +52,8 @@ openeditorcode /ruta/del/proyecto
 `oec` y `openeditorcode` son comandos equivalentes.
 
 OEC comprueba actualizaciones en segundo plano después de iniciar. Si hay una versión nueva, la muestra junto a la versión actual y añade **Actualizar OEC** a `Ctrl+P`. La actualización cierra el editor antes de reemplazar el ejecutable y vuelve a abrir el mismo proyecto al finalizar.
+
+La instalación npm incluye únicamente el lanzador y el binario de la plataforma actual; las dependencias de compilación no se instalan globalmente.
 
 ## Ejecutar
 
@@ -83,7 +86,7 @@ Sin argumento, abre el directorio actual. Tras compilar para Windows, el ejecuta
 
 Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y cerrar** y **Cerrar sin guardar** (opción predeterminada). Usa flechas arriba/abajo y confirma con `Enter`.
 
-La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Esc` para cerrarla y limpiarla. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, y se limpia con `Esc` desde el modal.
+La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Esc` para cerrarla y limpiarla. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
 
 ## Atajos
 
@@ -117,7 +120,7 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 ## Búsqueda y conteo
 
 - `Ctrl+F`: escribe el texto para ver todas las coincidencias locales. Usa flechas para elegir una y `Enter` para llevar el cursor a su inicio.
-- `Ctrl+Alt+F`: escribe el texto y pulsa `Enter` para buscar en todo el proyecto. Tras obtener resultados, usa flechas para elegir uno y `Enter` para abrir el archivo en la línea coincidente.
+- `Ctrl+Alt+F`: escribe el texto y pulsa `Enter` para buscar en todo el proyecto. El primer uso construye un índice en memoria; los siguientes lo reutilizan. Tras obtener resultados, usa flechas para elegir uno y `Enter` para abrir el archivo en la línea coincidente.
 - `Ctrl+P`: ejecuta **Calcular líneas del proyecto**. El explorador mostrará el conteo a la derecha de cada archivo y el pie mostrará el total final.
 
 ## Cambios Git

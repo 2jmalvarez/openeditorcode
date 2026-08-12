@@ -1,6 +1,6 @@
 {
   "name": "@2jmalvarez/oec-linux-x64",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Linux x64 glibc binary for openeditorcode.",
   "license": "MIT",
   "os": ["linux"],

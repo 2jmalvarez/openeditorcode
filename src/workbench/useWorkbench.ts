@@ -32,6 +32,7 @@ export function useWorkbench(root: string) {
     getText: editor.currentText,
     setText: editor.setText,
     clearEditor: editor.clear,
+    blurEditor: editor.blur,
     focusEditor: () => setActive("editor"),
     focusExplorer: () => { setExplorerVisible(true); setActive("explorer") },
     setStatus,

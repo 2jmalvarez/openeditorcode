@@ -15,7 +15,15 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  await rm(root, { recursive: true, force: true })
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      await rm(root, { recursive: true, force: true })
+      return
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EBUSY" || attempt === 9) throw error
+      await Bun.sleep(50)
+    }
+  }
 })
 
 test("renders the explorer and opens its selected file", async () => {
@@ -87,6 +95,32 @@ test("opens another file after closing the current tab without a stale save dial
     await Bun.sleep(60)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("contenido de prueba")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("does not edit a file with navigation and global shortcuts", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(60)
+    setup.mockInput.pressEnter()
+    await Bun.sleep(60)
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.renderOnce()
+    setup.mockInput.pressKey("escape")
+    await setup.renderOnce()
+    setup.mockInput.pressKey("tab")
+    await setup.renderOnce()
+    setup.mockInput.pressArrow("left", { ctrl: true, shift: true })
+    await setup.renderOnce()
+    setup.mockInput.pressKey("w", { ctrl: true })
+    await setup.renderOnce()
+
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("OpenEditorCode")
+    expect(frame).toContain("Archivo cerrado")
+    expect(frame).not.toContain("Hay cambios sin guardar")
   } finally {
     setup.renderer.destroy()
   }

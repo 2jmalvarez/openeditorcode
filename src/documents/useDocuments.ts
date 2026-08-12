@@ -10,6 +10,7 @@ type Props = {
   getText: () => string
   setText: (text: string) => void
   clearEditor: () => void
+  blurEditor: () => void
   focusEditor: () => void
   focusExplorer: () => void
   setStatus: (status: string) => void
@@ -39,6 +40,7 @@ export function useDocuments(props: Props) {
   function loadTab(index: number, nextTabs = tabs()) {
     const tab = nextTabs[index]
     if (!tab) return
+    props.blurEditor()
     setActiveTab(index)
     setFilePath(tab.kind === "file" ? tab.path : undefined)
     setSavedContent(tab.kind === "file" ? tab.savedContent : "")
@@ -49,6 +51,7 @@ export function useDocuments(props: Props) {
 
   async function openFile(path: string) {
     try {
+      props.blurEditor()
       syncActiveTab()
       const existing = tabs().findIndex((tab) => tab.kind === "file" && tab.path === path)
       if (existing >= 0) return loadTab(existing)
@@ -62,6 +65,7 @@ export function useDocuments(props: Props) {
   }
 
   function openDiff(diff: GitDiff) {
+    props.blurEditor()
     syncActiveTab()
     const existing = tabs().findIndex((tab) => tab.kind === "diff" && tab.path === diff.file.path)
     if (existing >= 0) {
@@ -93,6 +97,7 @@ export function useDocuments(props: Props) {
   }
 
   function closeFile() {
+    props.blurEditor()
     const closing = activeTab()
     const nextTabs = tabs().filter((_, index) => index !== closing)
     setTabs(nextTabs)
@@ -110,12 +115,14 @@ export function useDocuments(props: Props) {
 
   function changeTab(direction: number) {
     if (tabs().length < 2) return
+    props.blurEditor()
     syncActiveTab()
     loadTab((activeTab() + direction + tabs().length) % tabs().length)
   }
 
   function activateTab(index: number) {
     if (index === activeTab()) return
+    props.blurEditor()
     syncActiveTab()
     loadTab(index)
   }
