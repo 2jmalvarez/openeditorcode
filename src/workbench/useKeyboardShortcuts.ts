@@ -23,6 +23,8 @@ type Props = {
   openProjectSearch: () => void
   openTextSearch: () => void
   editorFindOpen: () => boolean
+  moveEditorFindResult: (direction: number) => void
+  acceptEditorFind: () => void
   closeEditorFind: () => void
   focusExplorer: () => void
   changeTab: () => void
@@ -78,6 +80,12 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && keyName === "c") return props.copy()
     if (ctrl && keyName === "v") return void props.paste()
     if (key.name === "escape" && props.editorFindOpen()) return props.closeEditorFind()
+    if (props.editorFindOpen()) {
+      if (key.name === "down") { key.preventDefault(); key.stopPropagation(); return props.moveEditorFindResult(1) }
+      if (key.name === "up") { key.preventDefault(); key.stopPropagation(); return props.moveEditorFindResult(-1) }
+      if (isEnter) { key.preventDefault(); key.stopPropagation(); return props.acceptEditorFind() }
+      return
+    }
     if (key.name === "escape" && props.overlay()) return props.closeOverlay()
     if (props.overlay() === "command-palette") {
       if (key.name === "down") props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.paletteLength() - 1)))

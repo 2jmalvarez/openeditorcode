@@ -3,6 +3,7 @@ import { Show } from "solid-js"
 import { DocumentTabs } from "../documents/DocumentTabs"
 import { Overlays } from "../dialogs/Overlays"
 import { EditorPane } from "../editor/EditorPane"
+import { FindPanel } from "../editor/FindPanel"
 import { ExplorerPane } from "../explorer/ExplorerPane"
 import type { useWorkbench } from "./useWorkbench"
 
@@ -20,13 +21,11 @@ export function AppLayout(props: Props) {
       </Show>
       <box style={{ flexGrow: 1, minWidth: 0, flexDirection: "column" }}>
         <DocumentTabs tabs={props.documents.tabs} activeTab={props.documents.activeTab} dirty={props.documents.dirty} />
-        <box style={{ height: 2, paddingX: 1, flexDirection: "row", alignItems: "center", backgroundColor: "#151c23" }}>
-          <text fg="#f2c66d">{props.title()}</text>
-          <Show when={props.editor.findOpen()}>
-            <input focused value={props.editor.findQuery()} onInput={props.editor.updateFindQuery} placeholder="Buscar..." style={{ width: 30, marginLeft: "auto", backgroundColor: "#101419" }} />
-          </Show>
+        <box style={{ height: 2, paddingX: 1, backgroundColor: "#151c23" }}><text fg="#f2c66d">{props.title()}</text></box>
+        <box style={{ position: "relative", flexGrow: 1, minHeight: 0 }}>
+          <EditorPane filePath={props.documents.filePath} content={props.editor.content} active={props.active} wrapMode={props.editor.wrapMode} lineLabels={props.editor.metrics.lineLabels} scrollbar={props.editor.metrics.scrollbar} setEditor={props.editor.setEditor} setLineNumberScroll={props.editor.metrics.setLineNumberScroll} onContentChange={props.editor.onContentChange} onCursorChange={props.editor.onCursorChange} />
+          <FindPanel open={props.editor.findOpen} query={props.editor.findQuery} results={props.editor.findResults} index={props.editor.findIndex} onQuery={props.editor.updateFindQuery} />
         </box>
-        <EditorPane filePath={props.documents.filePath} content={props.editor.content} active={props.active} wrapMode={props.editor.wrapMode} lineLabels={props.editor.metrics.lineLabels} scrollbar={props.editor.metrics.scrollbar} setEditor={props.editor.setEditor} setLineNumberScroll={props.editor.metrics.setLineNumberScroll} onContentChange={props.editor.onContentChange} onCursorChange={props.editor.onCursorChange} />
       </box>
     </box>
     <box style={{ height: 3, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>

@@ -31,9 +31,7 @@ export function Overlays(props: Props) {
     if (props.overlay() !== "project-search") return
     const index = props.searchIndex()
     props.projectResults().length
-    queueMicrotask(() => {
-      if (projectResultsScroll) projectResultsScroll.scrollTo({ x: 0, y: Math.max(0, index - 4) })
-    })
+    queueMicrotask(() => projectResultsScroll?.scrollChildIntoView(`project-result-${index}`))
   })
 
   return <>

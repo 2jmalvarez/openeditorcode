@@ -1,6 +1,7 @@
 import type { TextareaRenderable } from "@opentui/core"
 import { createEffect, createSignal } from "solid-js"
 import { readClipboard, selectedText } from "./clipboard"
+import { findMatches, type FindResult } from "./find"
 import { useEditorMetrics } from "./useEditorMetrics"
 import type { FocusTarget } from "../workbench/types"
 
@@ -17,6 +18,8 @@ export function useEditor(props: Props) {
   const [cursor, setCursor] = createSignal({ line: 1, column: 1 })
   const [findOpen, setFindOpen] = createSignal(false)
   const [findQuery, setFindQuery] = createSignal("")
+  const [findResults, setFindResults] = createSignal<FindResult[]>([])
+  const [findIndex, setFindIndex] = createSignal(0)
   let renderable: TextareaRenderable | undefined
   const metrics = useEditorMetrics({ editor: () => renderable, filePath: props.filePath, content })
 
@@ -94,36 +97,39 @@ export function useEditor(props: Props) {
     }
   }
 
-  function findText(needle: string): boolean {
-    if (!needle || !renderable) return false
-    const start = renderable.cursorOffset + 1
-    const text = renderable.plainText
-    const at = text.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase(), start)
-    const match = at === -1 ? text.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase()) : at
-    if (match === -1) {
-      props.setStatus(`No se encontró “${needle}”.`)
-      return false
-    }
-    renderable.setSelection(match, match + needle.length)
-    renderable.cursorOffset = match
-    props.setStatus(`Coincidencia encontrada: ${needle}`)
-    return true
-  }
-
   function openFind() {
     if (!props.filePath()) return
     setFindQuery("")
+    setFindResults([])
+    setFindIndex(0)
     setFindOpen(true)
   }
 
   function updateFindQuery(value: string) {
     setFindQuery(value)
-    if (value) findText(value)
+    setFindResults(findMatches(currentText(), value))
+    setFindIndex(0)
+  }
+
+  function moveFindResult(direction: number) {
+    setFindIndex((index) => Math.max(0, Math.min(index + direction, findResults().length - 1)))
+  }
+
+  function acceptFind() {
+    const result = findResults()[findIndex()]
+    if (!result || !renderable) return
+    renderable.setSelection(result.offset, result.offset + findQuery().length)
+    renderable.cursorOffset = result.offset
+    renderable.gotoLine(result.line - 1)
+    props.setStatus(`Coincidencia ${findIndex() + 1} de ${findResults().length}.`)
+    closeFind()
   }
 
   function closeFind() {
     setFindOpen(false)
     setFindQuery("")
+    setFindResults([])
+    setFindIndex(0)
   }
 
   function gotoLine(line: number) { renderable?.gotoLine(line) }
@@ -134,5 +140,5 @@ export function useEditor(props: Props) {
     else renderable?.focus()
   })
 
-  return { content, setText, clear, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, findText, openFind, findOpen, findQuery, updateFindQuery, closeFind, gotoLine }
+  return { content, setText, clear, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, gotoLine }
 }

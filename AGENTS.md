@@ -46,6 +46,8 @@ src/
     gitignore.ts             Reglas de .gitignore.
   editor/
     EditorPane.tsx           Textarea, líneas y scrollbar del editor.
+    FindPanel.tsx            Búsqueda local y lista de coincidencias.
+    find.ts                  Cálculo puro de coincidencias locales.
     useEditor.ts             Contenido, foco, portapapeles, wrap y deshacer/rehacer.
     useEditorMetrics.ts      Métricas, scroll y resaltado diferido del editor.
     clipboard.ts            Lectura del portapapeles de Windows.
