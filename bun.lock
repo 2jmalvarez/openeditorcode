@@ -15,8 +15,8 @@
         "typescript": "^5.8.3",
       },
       "optionalDependencies": {
-        "@2jmalvarez/oec-linux-x64": "0.2.1",
-        "@2jmalvarez/oec-win32-x64": "0.2.1",
+        "@2jmalvarez/oec-linux-x64": "0.2.2",
+        "@2jmalvarez/oec-win32-x64": "0.2.2",
       },
     },
   },

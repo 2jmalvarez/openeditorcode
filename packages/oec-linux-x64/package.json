@@ -1,12 +1,11 @@
 {
   "name": "@2jmalvarez/oec-linux-x64",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Linux x64 glibc binary for openeditorcode.",
   "license": "MIT",
   "os": ["linux"],
   "cpu": ["x64"],
   "files": ["bin/", "README.md", "LICENSE"],
-  "bin": { "oec": "./bin/oec" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/2jmalvarez/openeditorcode.git"
