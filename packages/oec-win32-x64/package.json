@@ -1,0 +1,14 @@
+{
+  "name": "@2jmalvarez/oec-win32-x64",
+  "version": "0.2.0",
+  "description": "Windows x64 binary for openeditorcode.",
+  "license": "MIT",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "files": ["bin/", "README.md", "LICENSE"],
+  "bin": { "oec": "./bin/oec.exe" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2jmalvarez/openeditorcode.git"
+  }
+}

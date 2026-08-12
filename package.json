@@ -1,17 +1,38 @@
 {
   "name": "openeditorcode",
   "version": "0.2.0",
-  "private": true,
+  "description": "Editor de proyectos para la terminal, escrito con Bun y OpenTUI.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2jmalvarez/openeditorcode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/2jmalvarez/openeditorcode/issues"
+  },
+  "homepage": "https://github.com/2jmalvarez/openeditorcode#readme",
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
   "bin": {
-    "oec": "./src/index.tsx"
+    "oec": "./bin/oec.js"
+  },
+  "optionalDependencies": {
+    "@2jmalvarez/oec-linux-x64": "0.2.0",
+    "@2jmalvarez/oec-win32-x64": "0.2.0"
   },
   "scripts": {
     "dev": "bun --preload @opentui/solid/preload ./src/index.tsx",
     "start": "bun --preload @opentui/solid/preload ./src/index.tsx",
     "test": "bun test --preload @opentui/solid/preload",
     "typecheck": "bun x tsc --noEmit",
-    "build": "bun run build.ts"
+    "build": "bun run build.ts",
+    "build:linux": "bun run build.ts linux-x64",
+    "build:windows": "bun run build.ts win32-x64",
+    "pack:check": "npm pack --dry-run"
   },
   "engines": {
     "bun": ">=1.3.0"

@@ -26,8 +26,25 @@ Al iniciar sin documentos abiertos, OEC muestra una portada con los atajos organ
 
 ## Requisitos
 
-- Windows Terminal recomendado.
-- Bun 1.3 o posterior.
+- Windows x64 o Linux x64 con glibc (Ubuntu, Debian, Fedora y derivados).
+- Bun 1.3 o posterior para desarrollo.
+- Git instalado para el panel de cambios Git.
+- En Linux, `wl-paste` (Wayland), `xclip` o `xsel` para pegar desde el portapapeles.
+
+## Instalación
+
+Instala OEC globalmente desde npm:
+
+```bash
+npm install -g openeditorcode
+```
+
+Después, abre el editor en el directorio actual o indica la carpeta del proyecto:
+
+```bash
+oec
+oec /ruta/del/proyecto
+```
 
 ## Ejecutar
 
@@ -38,16 +55,16 @@ bun install
 bun run dev
 ```
 
-Para abrir otro proyecto:
+Para abrir otro proyecto durante el desarrollo:
 
 ```powershell
 bun run dev -- C:\ruta\del\proyecto
 ```
 
-Sin argumento, abre el directorio actual. Si se ejecuta desde la carpeta padre, usa la ruta completa del ejecutable:
+Sin argumento, abre el directorio actual. Tras compilar para Windows, el ejecutable queda en `packages\oec-win32-x64\bin\oec.exe`:
 
 ```powershell
-.\openeditorcode\dist\oec.exe
+.\openeditorcode\packages\oec-win32-x64\bin\oec.exe
 ```
 
 ## Uso básico
@@ -119,4 +136,4 @@ bun run test
 bun run build
 ```
 
-`bun run build` genera `dist\oec.exe` para Windows x64. Consulta `AGENTS.md` para la arquitectura y pautas de mantenimiento.
+`bun run build` genera el binario de la plataforma actual. También puedes ejecutar `bun run build:windows` o `bun run build:linux`. La publicación de npm compila los binarios en GitHub Actions y los distribuye automáticamente según el sistema operativo. Consulta `AGENTS.md` para la arquitectura y pautas de mantenimiento.

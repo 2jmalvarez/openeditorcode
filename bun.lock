@@ -14,6 +14,10 @@
         "@types/bun": "latest",
         "typescript": "^5.8.3",
       },
+      "optionalDependencies": {
+        "@2jmalvarez/oec-linux-x64": "0.2.0",
+        "@2jmalvarez/oec-win32-x64": "0.2.0",
+      },
     },
   },
   "packages": {
