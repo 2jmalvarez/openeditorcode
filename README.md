@@ -86,7 +86,7 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 - No se abren ni procesan archivos binarios.
 - El límite de lectura y análisis es 2 MB por archivo.
 - Los guardados usan un archivo temporal antes de reemplazar el original.
-- El conteo y búsqueda global ignoran `.git` y `node_modules`.
+- Los archivos y carpetas definidos en `.gitignore` se muestran en gris y se excluyen del conteo y de la búsqueda global. La carpeta `.git` permanece oculta.
 
 ## Desarrollo, pruebas y distribución
 

@@ -49,7 +49,7 @@ tests/                      Pruebas Bun y renderer de OpenTUI.
 - Usa los helpers de `filesystem/files.ts` para accesos de archivos. No escribas directamente fuera de esos helpers.
 - Las rutas siempre deben permanecer dentro de la raíz del proyecto mediante `ensureInsideRoot`.
 - No sobrescribas un archivo al crearlo; `createTextFile` usa el flag exclusivo `wx`.
-- Mantén los límites de 2 MB, el rechazo de binarios y las exclusiones `.git` y `node_modules`.
+- Mantén los límites de 2 MB, el rechazo de binarios, la exclusión de `.git` y el respeto de `.gitignore` para el conteo y la búsqueda global.
 
 ## Atajos reservados
 

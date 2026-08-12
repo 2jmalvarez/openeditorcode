@@ -1,8 +1,8 @@
 import { readdir } from "node:fs/promises"
 import { join, relative } from "node:path"
+import { isIgnoredPath, readGitignore } from "./gitignore"
 import { displayPath, type TreeItem } from "./tree"
 
-const IGNORED = new Set([".git", "node_modules"])
 export const SEARCH_LIMIT = 2000
 
 export function fuzzyScore(query: string, candidate: string): number | undefined {
@@ -32,14 +32,16 @@ export function filterItems(root: string, items: TreeItem[], query: string, limi
 
 export async function indexFiles(root: string): Promise<TreeItem[]> {
   const output: TreeItem[] = []
+  const rules = await readGitignore(root)
   const visit = async (directory: string, depth: number): Promise<void> => {
     if (output.length >= SEARCH_LIMIT) return
     const entries = await readdir(directory, { withFileTypes: true })
     for (const entry of entries) {
-      if (output.length >= SEARCH_LIMIT || IGNORED.has(entry.name)) continue
+      if (output.length >= SEARCH_LIMIT || entry.name === ".git") continue
       const path = join(directory, entry.name)
       const directoryEntry = entry.isDirectory()
-      output.push({ path, name: entry.name, depth, directory: directoryEntry })
+      if (isIgnoredPath(root, path, directoryEntry, rules)) continue
+      output.push({ path, name: entry.name, depth, directory: directoryEntry, ignored: false })
       if (directoryEntry) await visit(path, depth + 1)
     }
   }

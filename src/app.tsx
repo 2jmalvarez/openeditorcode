@@ -621,7 +621,7 @@ export function App(props: { root: string }) {
           <scrollbox ref={(value) => { explorerScroll = value }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1 }}>
             <For each={tree()}>{(item, itemIndex) => (
               <box id={`tree-${itemIndex()}`} style={{ paddingLeft: item.depth + 1, flexDirection: "row", alignItems: "center", backgroundColor: itemIndex() === selected() ? "#28404a" : undefined }}>
-                <text fg={item.directory ? "#8ed1ff" : item.path === filePath() ? "#f2c66d" : "#d6e5dc"}>{fileIcon(item)} {item.name}</text>
+                <text fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === filePath() ? "#f2c66d" : "#d6e5dc"}>{fileIcon(item)} {item.name}</text>
                 <Show when={!item.directory && lineCounts()[item.path] !== undefined} fallback={<box />}>
                   <text style={{ marginLeft: "auto" }} fg="#71808b">{lineCounts()[item.path]}</text>
                 </Show>

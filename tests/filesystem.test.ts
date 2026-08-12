@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { createTextFile, ensureInsideRoot, FileAccessError, readTextFile, writeTextFile } from "../src/filesystem/files"
 import { fuzzyScore, filterItems } from "../src/filesystem/search"
 import { countProjectLines, searchProjectText } from "../src/filesystem/project"
+import { createTree } from "../src/filesystem/tree"
 
 let root = ""
 
@@ -52,8 +53,8 @@ describe("fuzzy search", () => {
 
   test("returns ranked and limited tree items", () => {
     const items = [
-      { path: join(root, "src", "app.tsx"), name: "app.tsx", depth: 1, directory: false },
-      { path: join(root, "src", "api.ts"), name: "api.ts", depth: 1, directory: false },
+      { path: join(root, "src", "app.tsx"), name: "app.tsx", depth: 1, directory: false, ignored: false },
+      { path: join(root, "src", "api.ts"), name: "api.ts", depth: 1, directory: false, ignored: false },
     ]
     expect(filterItems(root, items, "app")).toEqual([items[0]])
   })
@@ -76,6 +77,31 @@ describe("project search", () => {
       { path: join(root, "first.ts"), line: 1, preview: "const target = 1" },
       { path: join(root, "first.ts"), line: 2, preview: "console.log(target)" },
       { path: join(root, "second.txt"), line: 1, preview: "target appears here" },
+    ])
+  })
+
+  test("shows .gitignore entries as ignored and excludes them from counts and search", async () => {
+    const modules = join(root, "node_modules")
+    await mkdir(modules)
+    await writeFile(join(root, ".gitignore"), "node_modules/\n*.generated.ts\n", "utf8")
+    await writeFile(join(root, "included.ts"), "const needle = true\n", "utf8")
+    await writeFile(join(root, "ignored.generated.ts"), "const needle = true\n", "utf8")
+    await writeFile(join(modules, "package.js"), "const needle = true\n", "utf8")
+
+    const tree = await createTree(root, new Set([root, modules]))
+    expect(tree.find((item) => item.name === "node_modules")?.ignored).toBe(true)
+    expect(tree.find((item) => item.name === "ignored.generated.ts")?.ignored).toBe(true)
+    expect(tree.find((item) => item.name === "package.js")?.ignored).toBe(true)
+    expect(await countProjectLines(root)).toEqual({
+      files: 2,
+      lines: 3,
+      byPath: {
+        [join(root, ".gitignore")]: 2,
+        [join(root, "included.ts")]: 1,
+      },
+    })
+    expect(await searchProjectText(root, "needle")).toEqual([
+      { path: join(root, "included.ts"), line: 1, preview: "const needle = true" },
     ])
   })
 })
