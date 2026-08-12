@@ -36,6 +36,7 @@ export async function indexFiles(root: string): Promise<TreeItem[]> {
   const visit = async (directory: string, depth: number): Promise<void> => {
     if (output.length >= SEARCH_LIMIT) return
     const entries = await readdir(directory, { withFileTypes: true })
+    entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
     for (const entry of entries) {
       if (output.length >= SEARCH_LIMIT || entry.name === ".git") continue
       const path = join(directory, entry.name)
