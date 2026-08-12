@@ -1,6 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import type { ScrollBoxRenderable } from "@opentui/core"
-import { createEffect, For, Show, type Accessor } from "solid-js"
+import { createEffect, onCleanup, For, Show, type Accessor } from "solid-js"
+import { useRenderer } from "@opentui/solid"
 import type { FindResult } from "./find"
 
 type Props = {
@@ -12,13 +13,28 @@ type Props = {
 }
 
 export function FindPanel(props: Props) {
+  const renderer = useRenderer()
   let resultsScroll: ScrollBoxRenderable | undefined
+  let pendingScroll: (() => void) | undefined
+
+  function scrollToSelectedResult() {
+    const index = props.index()
+    if (pendingScroll) renderer.off("frame", pendingScroll)
+    pendingScroll = () => {
+      renderer.off("frame", pendingScroll!)
+      pendingScroll = undefined
+      resultsScroll?.scrollChildIntoView(`find-result-${index}`)
+    }
+    renderer.on("frame", pendingScroll)
+  }
 
   createEffect(() => {
     if (!props.open() || !props.results().length) return
-    const index = props.index()
-    queueMicrotask(() => resultsScroll?.scrollChildIntoView(`find-result-${index}`))
+    props.index()
+    scrollToSelectedResult()
   })
+
+  onCleanup(() => { if (pendingScroll) renderer.off("frame", pendingScroll) })
 
   return <Show when={props.open()}>
     <box style={{ position: "absolute", top: 1, right: 2, width: 48, maxHeight: "65%", padding: 1, flexDirection: "column", backgroundColor: "#1b252e", border: true, borderColor: "#70d6a7", zIndex: 1 }}>
@@ -26,7 +42,7 @@ export function FindPanel(props: Props) {
       <input focused value={props.query()} onInput={props.onQuery} placeholder="Escribe para buscar..." style={{ marginTop: 1, backgroundColor: "#101419" }} />
       <Show when={props.query()} fallback={<text style={{ marginTop: 1 }} fg="#8ca0ae">Escribe un texto para buscar.</text>}>
         <Show when={props.results().length} fallback={<text style={{ marginTop: 1 }} fg="#8ca0ae">Sin coincidencias.</text>}>
-          <scrollbox ref={(value) => { resultsScroll = value; value.verticalScrollBar.visible = true }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}>
+          <scrollbox ref={(value) => { resultsScroll = value; value.verticalScrollBar.visible = true; scrollToSelectedResult() }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}>
             <For each={props.results()}>{(result, index) => <box id={`find-result-${index()}`} style={{ backgroundColor: index() === props.index() ? "#28404a" : undefined }}><text fg="#f2c66d">{result.line}:{result.column}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box>}</For>
           </scrollbox>
         </Show>

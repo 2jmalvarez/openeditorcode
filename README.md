@@ -48,7 +48,7 @@ Sin argumento, abre el directorio actual. Si se ejecuta desde la carpeta padre, 
 4. Usa `Tab` para alternar entre explorador y editor.
 5. Guarda con `Ctrl+S`.
 
-Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y cerrar** (opción predeterminada) y **Cerrar sin guardar**. Usa flechas arriba/abajo y confirma con `Enter`.
+Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y cerrar** y **Cerrar sin guardar** (opción predeterminada). Usa flechas arriba/abajo y confirma con `Enter`.
 
 ## Atajos
 

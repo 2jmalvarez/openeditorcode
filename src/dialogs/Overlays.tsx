@@ -1,6 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import type { ScrollBoxRenderable } from "@opentui/core"
-import { createEffect, For, Show, type Accessor } from "solid-js"
+import { createEffect, onCleanup, For, Show, type Accessor } from "solid-js"
+import { useRenderer } from "@opentui/solid"
 import { displayPath } from "../explorer/tree"
 import type { ProjectSearchResult } from "../search/project-search"
 import type { Overlay } from "../workbench/types"
@@ -25,14 +26,29 @@ type Props = {
 }
 
 export function Overlays(props: Props) {
+  const renderer = useRenderer()
   let projectResultsScroll: ScrollBoxRenderable | undefined
+  let pendingScroll: (() => void) | undefined
+
+  function scrollToSelectedProjectResult() {
+    const index = props.searchIndex()
+    if (pendingScroll) renderer.off("frame", pendingScroll)
+    pendingScroll = () => {
+      renderer.off("frame", pendingScroll!)
+      pendingScroll = undefined
+      projectResultsScroll?.scrollChildIntoView(`project-result-${index}`)
+    }
+    renderer.on("frame", pendingScroll)
+  }
 
   createEffect(() => {
     if (props.overlay() !== "project-search") return
-    const index = props.searchIndex()
+    props.searchIndex()
     props.projectResults().length
-    queueMicrotask(() => projectResultsScroll?.scrollChildIntoView(`project-result-${index}`))
+    scrollToSelectedProjectResult()
   })
+
+  onCleanup(() => { if (pendingScroll) renderer.off("frame", pendingScroll) })
 
   return <>
     <Show when={props.overlay() === "command-palette" || props.overlay() === "project-search" || props.overlay() === "new-file"} fallback={<box />}>
@@ -45,7 +61,7 @@ export function Overlays(props: Props) {
           <scrollbox scrollY style={{ flexGrow: 1, marginTop: 1 }}><For each={props.paletteResults()}>{(command, index) => <box style={{ flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#d6e5dc">{command.title}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{command.shortcut}</text></box>}</For></scrollbox>
         </Show>
         <Show when={props.overlay() === "project-search"} fallback={<box />}>
-          <scrollbox ref={(value) => { projectResultsScroll = value; value.verticalScrollBar.visible = true }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><Show when={!props.projectSearching()} fallback={<box><text fg="#8ca0ae">Buscando...</text></box>}><For each={props.projectResults()}>{(result, index) => <box id={`project-result-${index()}`} style={{ backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">{displayPath(props.root, result.path)}:{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box>}</For></Show></scrollbox>
+          <scrollbox ref={(value) => { projectResultsScroll = value; value.verticalScrollBar.visible = true; scrollToSelectedProjectResult() }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><Show when={!props.projectSearching()} fallback={<box><text fg="#8ca0ae">Buscando...</text></box>}><For each={props.projectResults()}>{(result, index) => <box id={`project-result-${index()}`} style={{ backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">{displayPath(props.root, result.path)}:{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box>}</For></Show></scrollbox>
         </Show>
         <text fg="#8ca0ae">{props.overlay() === "command-palette" ? "Flechas seleccionar | Enter ejecutar | Esc cerrar" : props.overlay() === "project-search" ? "Enter buscar | Flechas resultado | Enter abrir | Esc cerrar" : props.overlay() === "new-file" ? "Enter crear | Esc cancelar" : "Enter buscar siguiente | Esc cerrar"}</text>
       </box>

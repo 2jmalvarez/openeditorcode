@@ -5,6 +5,7 @@ import type { OpenTab } from "./types"
 
 type Props = {
   root: string
+  content: () => string
   getText: () => string
   setText: (text: string) => void
   clearEditor: () => void
@@ -18,7 +19,7 @@ export function useDocuments(props: Props) {
   const [tabs, setTabs] = createSignal<OpenTab[]>([])
   const [activeTab, setActiveTab] = createSignal(-1)
   const [savedContent, setSavedContent] = createSignal("")
-  const dirty = () => Boolean(filePath()) && props.getText() !== savedContent()
+  const dirty = () => Boolean(filePath()) && props.content() !== savedContent()
   const title = () => filePath() ?? ""
 
   function syncActiveTab() {

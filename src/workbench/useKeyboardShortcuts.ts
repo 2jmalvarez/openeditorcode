@@ -80,26 +80,28 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && keyName === "w") return props.requestClose()
     if (ctrl && keyName === "c") return props.copy()
     if (ctrl && keyName === "v") return void props.paste()
-    if (key.name === "escape" && props.editorFindOpen()) return props.closeEditorFind()
+    if (key.name === "escape" && props.editorFindOpen()) { key.preventDefault(); key.stopPropagation(); return props.closeEditorFind() }
     if (props.editorFindOpen()) {
       if (key.name === "down") { key.preventDefault(); key.stopPropagation(); return props.moveEditorFindResult(1) }
       if (key.name === "up") { key.preventDefault(); key.stopPropagation(); return props.moveEditorFindResult(-1) }
       if (isEnter) { key.preventDefault(); key.stopPropagation(); return props.acceptEditorFind() }
+      key.preventDefault()
+      key.stopPropagation()
       return
     }
-    if (key.name === "escape" && props.overlay() === "project-search") return props.cancelProjectSearch()
-    if (key.name === "escape" && props.overlay()) return props.closeOverlay()
+    if (key.name === "escape" && props.overlay() === "project-search") { key.preventDefault(); key.stopPropagation(); return props.cancelProjectSearch() }
+    if (key.name === "escape" && props.overlay()) { key.preventDefault(); key.stopPropagation(); return props.closeOverlay() }
     if (props.overlay() === "command-palette") {
       if (key.name === "down") props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.paletteLength() - 1)))
       if (key.name === "up") props.setSearchIndex((value) => Math.max(0, value - 1))
-      if (isEnter) props.acceptCommand()
+      if (isEnter) { key.preventDefault(); key.stopPropagation(); props.acceptCommand() }
       return
     }
-    if (props.overlay() === "new-file" && isEnter) return void props.createNewFile()
+    if (props.overlay() === "new-file" && isEnter) { key.preventDefault(); key.stopPropagation(); return void props.createNewFile() }
     if (props.overlay() === "project-search") {
       if (key.name === "down") props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.projectResultsLength() - 1)))
       if (key.name === "up") props.setSearchIndex((value) => Math.max(0, value - 1))
-      if (isEnter) return void (props.projectResultsLength() ? props.openProjectResult() : props.findInProject())
+      if (isEnter) { key.preventDefault(); key.stopPropagation(); return void (props.projectResultsLength() ? props.openProjectResult() : props.findInProject()) }
       return
     }
     if (key.name === "tab") return props.setActive((value) => value === "explorer" ? "editor" : "explorer")

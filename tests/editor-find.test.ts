@@ -18,3 +18,8 @@ test("returns a match offset at the first letter of the query", () => {
   const [match] = findMatches("antes palabra despues", "palabra")
   expect(match).toMatchObject({ offset: 6, line: 1, column: 7 })
 })
+
+test("keeps the offset and column for a later match", () => {
+  const [match] = findMatches("primera\nsegunda palabra", "palabra")
+  expect(match).toMatchObject({ offset: 16, line: 2, column: 9 })
+})

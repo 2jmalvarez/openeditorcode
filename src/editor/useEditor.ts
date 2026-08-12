@@ -30,6 +30,7 @@ export function useEditor(props: Props) {
   }
 
   function setText(text: string) {
+    resetFind()
     setContent(text)
     renderable?.setText(text)
     metrics.scheduleHighlight(props.filePath(), text, 0)
@@ -38,6 +39,7 @@ export function useEditor(props: Props) {
 
   function clear() {
     metrics.reset()
+    resetFind()
     setContent("")
     renderable?.setText("")
     renderable = undefined
@@ -50,8 +52,15 @@ export function useEditor(props: Props) {
     metrics.schedule()
   }
 
-  function onCursorChange(line: number, visualColumn: number) {
-    setCursor({ line: line + 1, column: visualColumn + 1 })
+  function updateCursor() {
+    const text = currentText()
+    const offset = Math.max(0, Math.min(renderable?.cursorOffset ?? 0, text.length))
+    const lineStart = text.lastIndexOf("\n", offset - 1) + 1
+    setCursor({ line: text.slice(0, offset).split("\n").length, column: offset - lineStart + 1 })
+  }
+
+  function onCursorChange() {
+    updateCursor()
     metrics.schedule()
   }
 
@@ -99,9 +108,6 @@ export function useEditor(props: Props) {
 
   function openFind() {
     if (!props.filePath()) return
-    setFindQuery("")
-    setFindResults([])
-    setFindIndex(0)
     setFindOpen(true)
   }
 
@@ -119,14 +125,21 @@ export function useEditor(props: Props) {
     const result = findResults()[findIndex()]
     if (!result || !renderable) return
     renderable.gotoLine(result.line - 1)
-    renderable.setSelection(result.offset, result.offset)
-    renderable.cursorOffset = result.offset
+    renderable.setCursor(result.line - 1, result.column - 1)
+    updateCursor()
+    metrics.schedule()
     props.setStatus(`Coincidencia ${findIndex() + 1} de ${findResults().length}.`)
-    closeFind()
+    setFindOpen(false)
   }
 
   function closeFind() {
     setFindOpen(false)
+    setFindQuery("")
+    setFindResults([])
+    setFindIndex(0)
+  }
+
+  function resetFind() {
     setFindQuery("")
     setFindResults([])
     setFindIndex(0)
@@ -140,5 +153,5 @@ export function useEditor(props: Props) {
     else renderable?.focus()
   })
 
-  return { content, setText, clear, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, gotoLine }
+  return { content, setText, clear, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
 }

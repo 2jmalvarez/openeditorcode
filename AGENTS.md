@@ -115,3 +115,8 @@ Antes de finalizar una modificación de código:
 4. Cuando arregles un defecto, añade una prueba de regresión cuando resulte práctico.
 
 Las pruebas TUI usan `@opentui/solid` con preload. El renderer de pruebas no distingue todos los modificadores de teclas de terminal; cubre esa lógica con funciones de filesystem o estado cuando sea necesario.
+
+## Commits y publicación
+
+- Tras implementar una feature, ejecuta las verificaciones requeridas pero no crees commits ni publiques cambios automáticamente.
+- Espera la validación explícita del usuario; solo crea commit o ejecuta `git push` cuando lo solicite expresamente.

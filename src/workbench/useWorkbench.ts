@@ -1,7 +1,7 @@
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import { useRenderer } from "@opentui/solid"
-import { basename, dirname } from "node:path"
+import { basename } from "node:path"
 import { type Command } from "../dialogs/Overlays"
 import { useOverlays } from "../dialogs/useOverlays"
 import { useDocuments } from "../documents/useDocuments"
@@ -23,6 +23,7 @@ export function useWorkbench(root: string) {
   const editor = useEditor({ active, overlay: overlays.overlay, filePath: () => documents.filePath(), setStatus })
   const documents = useDocuments({
     root,
+    content: editor.content,
     getText: editor.currentText,
     setText: editor.setText,
     clearEditor: editor.clear,
@@ -35,7 +36,7 @@ export function useWorkbench(root: string) {
 
   function openOverlay(kind: "command-palette" | "project-search" | "new-file") {
     overlays.open(kind)
-    search.reset()
+    if (kind !== "project-search") search.reset()
   }
 
   function requestClose() {
@@ -101,7 +102,7 @@ export function useWorkbench(root: string) {
     { title: "Pestaña siguiente", shortcut: "Shift+Tab", run: () => documents.changeTab(1) },
     { title: "Copiar selección", shortcut: "Ctrl+C", run: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)) },
     { title: "Pegar portapapeles", shortcut: "Ctrl+V", run: () => void editor.paste() },
-    { title: "Alternar línea completa", shortcut: "Ctrl+L", run: toggleWrap },
+    { title: "Alternar ajuste de línea", shortcut: "Ctrl+L", run: toggleWrap },
     { title: "Deshacer último cambio", shortcut: "Ctrl+Z", run: editor.undo },
     { title: "Rehacer último cambio", shortcut: "Ctrl+Shift+Z", run: editor.redo },
     { title: "Calcular líneas del proyecto", shortcut: "Paleta", run: () => void search.showProjectLineCount() },
@@ -160,7 +161,7 @@ export function useWorkbench(root: string) {
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
 
   return {
-    root, rootName: () => basename(root) || root, rootParent: () => dirname(root), active, explorerVisible, status, explorer, documents, editor, overlays, search,
+    root, rootName: () => basename(root) || root, active, explorerVisible, status, explorer, documents, editor, overlays, search,
     title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : "Sin archivo abierto",
     paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value },
   }
