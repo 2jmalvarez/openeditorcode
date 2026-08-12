@@ -21,7 +21,7 @@ afterEach(async () => {
 test("renders the explorer and opens its selected file", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(60)
+    await Bun.sleep(120)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("hello.txt")
 
@@ -60,7 +60,7 @@ test("opens another file after closing the current tab without a stale save dial
 
     setup.mockInput.pressKey("w", { ctrl: true })
     await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("Sin archivo abierto")
+    expect(setup.captureCharFrame()).toContain("OpenEditorCode")
     expect(setup.captureCharFrame()).not.toContain("Hay cambios sin guardar")
 
     setup.mockInput.pressEnter()

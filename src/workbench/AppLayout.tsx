@@ -11,9 +11,9 @@ type Props = ReturnType<typeof useWorkbench>
 
 export function AppLayout(props: Props) {
   return <box style={{ flexDirection: "column", height: "100%", backgroundColor: "#101419" }}>
-    <box style={{ height: 2, paddingX: 1, flexDirection: "row", alignItems: "center", backgroundColor: "#17202a" }}>
-      <box style={{ flexDirection: "column" }}><text fg="#70d6a7"><strong>{props.rootName()}</strong></text><text fg="#71808b">{props.rootParent()}</text></box>
-      <text style={{ marginLeft: "auto" }} fg="#d6e5dc"><strong>OEC</strong></text>
+    <box style={{ height: 1, paddingX: 1, flexDirection: "row", alignItems: "center", backgroundColor: "#17202a" }}>
+      <text fg="#70d6a7"><strong>{props.rootName()}</strong></text>
+      <text style={{ marginLeft: "auto" }} fg="#71808b">{props.root}</text>
     </box>
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
       <Show when={props.explorerVisible()} fallback={<box />}>
@@ -28,9 +28,8 @@ export function AppLayout(props: Props) {
         </box>
       </box>
     </box>
-    <box style={{ height: 3, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
-      <text fg="#8ca0ae">{props.status()}</text>
-      <text fg="#8ca0ae">Ln {props.editor.cursor().line}:{props.editor.cursor().column} | P menú | B archivos | F buscar | Alt+F global | Shift+Tab pestañas</text>
+    <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
+      <box style={{ flexDirection: "row" }}><text fg="#8ca0ae">{props.status()}</text><text style={{ marginLeft: "auto" }} fg="#8ca0ae">Ln {props.editor.cursor().line}:{props.editor.cursor().column}</text></box>
     </box>
     <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.explorer.newFileDirectory} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} />
   </box>
