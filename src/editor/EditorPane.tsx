@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { defaultTextareaKeyBindings, type ScrollBoxRenderable, type TextareaRenderable } from "@opentui/core"
+import { defaultTextareaKeyBindings, type TextareaRenderable } from "@opentui/core"
 import { onCleanup, Show, type Accessor } from "solid-js"
 import { syntaxStyle } from "./syntax"
 import type { FocusTarget } from "../workbench/types"
@@ -12,7 +12,6 @@ type Props = {
   lineLabels: Accessor<string>
   scrollbar: Accessor<string>
   setEditor: (editor: TextareaRenderable) => void
-  setLineNumberScroll: (scroll: ScrollBoxRenderable) => void
   onContentChange: () => void
   onCursorChange: () => void
   onUnmount: () => void
@@ -57,9 +56,9 @@ export function EditorPane(props: Props) {
     </box>}
   >
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
-      <scrollbox ref={(value) => { props.setLineNumberScroll(value); value.verticalScrollBar.visible = false }} style={{ width: 5, flexShrink: 0, paddingRight: 1, backgroundColor: "#151c23" }}>
+      <box style={{ width: 5, flexShrink: 0, paddingRight: 1, backgroundColor: "#151c23" }}>
         <text fg="#60717f">{props.lineLabels()}</text>
-      </scrollbox>
+      </box>
       <textarea
         ref={props.setEditor}
         initialValue={props.content()}

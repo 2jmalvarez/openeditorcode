@@ -1,5 +1,5 @@
 import { watch } from "node:fs"
-import { createSignal, onCleanup, onMount } from "solid-js"
+import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { fetchGit, readGitDiff, readGitState, type GitDiff, type GitFile } from "./status"
 import { createGitTree } from "./tree"
 
@@ -47,7 +47,7 @@ export function useGit(props: Props) {
     setSelected((index) => Math.max(0, Math.min(index + direction, tree().length - 1)))
   }
 
-  const tree = () => createGitTree(state().files, expanded())
+  const tree = createMemo(() => createGitTree(state().files, expanded()))
 
   function toggleSelectedFolder() {
     const item = tree()[selected()]

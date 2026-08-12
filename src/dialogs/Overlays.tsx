@@ -4,7 +4,7 @@ import { createEffect, onCleanup, For, Show, type Accessor } from "solid-js"
 import { useRenderer } from "@opentui/solid"
 import { displayPath } from "../explorer/tree"
 import type { ProjectSearchResult } from "../search/project-search"
-import type { Overlay } from "../workbench/types"
+import type { Overlay, PendingAction } from "../workbench/types"
 import type { TreeItem } from "../explorer/tree"
 
 export type Command = { title: string; shortcut: string; run: () => void }
@@ -29,6 +29,7 @@ type Props = {
   projectSearching: Accessor<boolean>
   confirmChoice: Accessor<number>
   pendingDeletion: Accessor<TreeItem | undefined>
+  pendingAction: Accessor<PendingAction | undefined>
 }
 
 export function Overlays(props: Props) {
@@ -75,7 +76,7 @@ export function Overlays(props: Props) {
     <Show when={props.overlay() === "confirm"} fallback={<box />}>
       <box style={{ position: "absolute", top: "28%", left: "25%", width: "50%", height: 13, padding: 1, flexDirection: "column", backgroundColor: "#2a2020", border: true, borderColor: "#f2c66d" }}>
         <text fg="#f2c66d">Hay cambios sin guardar.</text><text style={{ marginTop: 1 }} fg="#b8c7d1">Elige qué hacer con el archivo actual.</text>
-        <box style={{ marginTop: 1, flexDirection: "column" }}><For each={["Guardar", "Guardar y cerrar", "Cerrar sin guardar"]}>{(label, index) => <box style={{ paddingX: 1, backgroundColor: index() === props.confirmChoice() ? "#6b5224" : undefined }}><text fg={index() === props.confirmChoice() ? "#ffffff" : "#d6e5dc"}>{index() === props.confirmChoice() ? "› " : "  "}{label}</text></box>}</For></box>
+        <box style={{ marginTop: 1, flexDirection: "column" }}><For each={props.pendingAction() === "update" ? ["Guardar", "Guardar y actualizar", "Actualizar sin guardar"] : ["Guardar", "Guardar y cerrar", "Cerrar sin guardar"]}>{(label, index) => <box style={{ paddingX: 1, backgroundColor: index() === props.confirmChoice() ? "#6b5224" : undefined }}><text fg={index() === props.confirmChoice() ? "#ffffff" : "#d6e5dc"}>{index() === props.confirmChoice() ? "› " : "  "}{label}</text></box>}</For></box>
         <text fg="#8ca0ae">Flechas arriba/abajo | Enter confirmar | Esc cancelar</text>
       </box>
     </Show>

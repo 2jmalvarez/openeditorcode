@@ -50,6 +50,8 @@ openeditorcode /ruta/del/proyecto
 
 `oec` y `openeditorcode` son comandos equivalentes.
 
+OEC comprueba actualizaciones en segundo plano después de iniciar. Si hay una versión nueva, la muestra junto a la versión actual y añade **Actualizar OEC** a `Ctrl+P`. La actualización cierra el editor antes de reemplazar el ejecutable y vuelve a abrir el mismo proyecto al finalizar.
+
 ## Ejecutar
 
 Desde la carpeta del proyecto `openeditorcode`:

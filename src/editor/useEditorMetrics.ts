@@ -1,4 +1,4 @@
-import type { ScrollBoxRenderable, TextareaRenderable } from "@opentui/core"
+import type { TextareaRenderable } from "@opentui/core"
 import { createSignal, onCleanup } from "solid-js"
 import { highlightEditor } from "./syntax"
 
@@ -8,14 +8,22 @@ type Props = {
   content: () => string
 }
 
+export function visibleLineLabels(sources: number[], wraps: number[], scrollY: number, height: number): string {
+  const firstRow = Math.max(0, scrollY)
+  return sources.slice(firstRow, firstRow + Math.max(1, height))
+    .map((source, index) => wraps[firstRow + index] === 0 ? String(source + 1) : "")
+    .join("\n")
+}
+
 export function useEditorMetrics(props: Props) {
   const [lineLabels, setLineLabels] = createSignal("1")
   const [scrollbar, setScrollbar] = createSignal("")
-  let lineNumberScroll: ScrollBoxRenderable | undefined
   let highlightTimer: ReturnType<typeof setTimeout> | undefined
   let lineLabelTimer: ReturnType<typeof setTimeout> | undefined
   let generation = 0
   let lastScrollY = -1
+  let lastWidth = -1
+  let lastHeight = -1
 
   function refresh() {
     const editor = props.editor()
@@ -25,20 +33,24 @@ export function useEditorMetrics(props: Props) {
     }
     const sources = editor.lineInfo.lineSources
     if (!sources.length) {
-      setLineLabels(props.content().split("\n").map((_, index) => String(index + 1)).join("\n"))
+      setLineLabels("1")
       return
     }
     const wraps = editor.lineInfo.lineWraps
-    setLineLabels(sources.map((source, index) => wraps[index] === 0 ? String(source + 1) : "").join("\n"))
-    lineNumberScroll?.scrollTo({ x: 0, y: editor.scrollY })
-    lastScrollY = editor.scrollY
+    const firstRow = Math.max(0, editor.scrollY)
     const visibleRows = Math.max(1, editor.height)
-    const totalRows = Math.max(visibleRows, editor.lineCount)
+    const labels = visibleLineLabels(sources, wraps, firstRow, visibleRows)
+    setLineLabels((current) => current === labels ? current : labels)
+    lastScrollY = editor.scrollY
+    lastWidth = editor.width
+    lastHeight = editor.height
+    const totalRows = Math.max(visibleRows, sources.length)
     const maxScroll = totalRows - visibleRows
     const thumbRows = Math.max(1, Math.ceil((visibleRows / totalRows) * visibleRows))
     const maxThumbStart = visibleRows - thumbRows
     const thumbStart = maxScroll === 0 ? 0 : Math.round((editor.scrollY / maxScroll) * maxThumbStart)
-    setScrollbar(Array.from({ length: visibleRows }, (_, index) => index >= thumbStart && index < thumbStart + thumbRows ? "█" : "│").join("\n"))
+    const nextScrollbar = Array.from({ length: visibleRows }, (_, index) => index >= thumbStart && index < thumbStart + thumbRows ? "█" : "│").join("\n")
+    setScrollbar((current) => current === nextScrollbar ? current : nextScrollbar)
   }
 
   function schedule() {
@@ -64,13 +76,16 @@ export function useEditorMetrics(props: Props) {
     if (lineLabelTimer) clearTimeout(lineLabelTimer)
     setLineLabels("1")
     setScrollbar("")
+    lastScrollY = -1
+    lastWidth = -1
+    lastHeight = -1
   }
 
   function syncScroll() {
     const editor = props.editor()
-    if (editor && editor.scrollY !== lastScrollY) refresh()
+    if (editor && (editor.scrollY !== lastScrollY || editor.width !== lastWidth || editor.height !== lastHeight)) refresh()
   }
 
   onCleanup(reset)
-  return { lineLabels, scrollbar, setLineNumberScroll: (value: ScrollBoxRenderable) => { lineNumberScroll = value }, refresh, schedule, scheduleHighlight, reset, syncScroll }
+  return { lineLabels, scrollbar, refresh, schedule, scheduleHighlight, reset, syncScroll }
 }

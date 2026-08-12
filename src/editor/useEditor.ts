@@ -65,7 +65,6 @@ export function useEditor(props: Props) {
 
   function onCursorChange() {
     updateCursor()
-    metrics.schedule()
   }
 
   function setLineWrap(mode: "none" | "word") {

@@ -17,15 +17,15 @@ const labels: Record<GitFile["status"], string> = { modified: "M", added: "A", d
 const colors: Record<GitFile["status"], string> = { modified: "#f2c66d", added: "#70d6a7", deleted: "#ef7b7b", renamed: "#8ed1ff", untracked: "#b39ddb" }
 
 export function GitPane(props: Props) {
-  return <box style={{ width: 34, flexShrink: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
-    <box style={{ paddingX: 1, paddingY: 1, flexDirection: "column" }}>
+  return <box style={{ width: 36, flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
+    <box style={{ height: 5, flexShrink: 0, paddingX: 1, paddingTop: 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
       <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>CAMBIOS</text>
       <Show when={props.state().available} fallback={<text fg="#71808b">{props.state().message}</text>}>
-        <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch}</text>
+        <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch.slice(0, 31)}</text>
         <text fg="#71808b">{props.state().remoteStatus}</text>
       </Show>
     </box>
-    <scrollbox ref={props.setScroll} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1 }}>
+    <scrollbox ref={props.setScroll} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0 }}>
       <For each={props.tree()}>{(item, index) => (
         <box onMouseDown={() => props.onActivate(index())} style={{ paddingLeft: item.depth + 1, paddingRight: 1, flexDirection: "row", backgroundColor: index() === props.selected() ? "#28404a" : undefined }}>
           <text fg={item.directory ? "#8ed1ff" : colors[item.file!.status]}>{item.directory ? item.expanded ? "▾" : "▸" : labels[item.file!.status]}</text>

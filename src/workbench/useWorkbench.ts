@@ -14,6 +14,7 @@ import { removeProjectEntry } from "../documents/files"
 import { useSearch } from "../search/useSearch"
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts"
 import type { FocusTarget } from "./types"
+import { useUpdates } from "../updates/useUpdates"
 
 export function useWorkbench(root: string) {
   const renderer = useRenderer()
@@ -38,6 +39,7 @@ export function useWorkbench(root: string) {
   const explorer = useExplorer({ root, setStatus, openFile: documents.openFile })
   const search = useSearch({ root, setStatus })
   const git = useGit({ root, setStatus })
+  const updates = useUpdates()
 
   function openOverlay(kind: "command-palette" | "project-search" | "new-file") {
     overlays.open(kind)
@@ -67,6 +69,20 @@ export function useWorkbench(root: string) {
     renderer.destroy()
   }
 
+  function performUpdate() {
+    process.exitCode = 42
+    renderer.destroy()
+  }
+
+  function requestUpdate() {
+    if (documents.dirty()) {
+      overlays.requestConfirm("update")
+      setStatus("Guarda o descarta los cambios antes de actualizar OEC.")
+      return
+    }
+    performUpdate()
+  }
+
   async function acceptConfirm() {
     const choice = overlays.confirmChoice()
     const action = overlays.pendingAction()
@@ -76,6 +92,7 @@ export function useWorkbench(root: string) {
     if (choice === 2) setStatus("Cambios descartados.")
     if (action === "close") documents.closeFile()
     if (action === "quit") renderer.destroy()
+    if (action === "update") performUpdate()
   }
 
   async function createNewFile() {
@@ -120,6 +137,7 @@ export function useWorkbench(root: string) {
     { title: "Rehacer último cambio", shortcut: "Ctrl+Shift+Z", run: editor.redo },
     { title: "Calcular líneas del proyecto", shortcut: "Paleta", run: () => void search.showProjectLineCount() },
     { title: `Configuración: ajuste de línea ${editor.wrapMode() === "word" ? "activado" : "desactivado"}`, shortcut: "Ctrl+Alt+W", run: toggleWrap },
+    ...(updates.canUpdate() ? [{ title: `Actualizar OEC a v${updates.latestVersion()}`, shortcut: "Actualización", run: requestUpdate }] : []),
   ]
 
   function acceptCommand() {
@@ -241,7 +259,7 @@ export function useWorkbench(root: string) {
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
 
   return {
-    root, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, explorer, git, documents, editor, overlays, search,
+    root, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, explorer, git, documents, editor, overlays, search, updates,
     title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? `Cambios: ${documents.activeDiff()!.file.path}` : "Sin archivo abierto", activateExplorerAt, activateGitAt, requestCloseTab,
     paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value }, setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value },
   }

@@ -4,19 +4,17 @@
   "workspaces": {
     "": {
       "name": "openeditorcode",
-      "dependencies": {
+      "devDependencies": {
         "@opentui/core": "^0.5.1",
         "@opentui/solid": "^0.5.1",
+        "@types/bun": "latest",
         "ignore": "^7.0.5",
         "solid-js": "^1.9.9",
-      },
-      "devDependencies": {
-        "@types/bun": "latest",
         "typescript": "^5.8.3",
       },
       "optionalDependencies": {
-        "@2jmalvarez/oec-linux-x64": "0.2.3",
-        "@2jmalvarez/oec-win32-x64": "0.2.3",
+        "@2jmalvarez/oec-linux-x64": "0.2.4",
+        "@2jmalvarez/oec-win32-x64": "0.2.4",
       },
     },
   },
