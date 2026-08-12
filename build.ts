@@ -16,7 +16,10 @@ if (!target) {
 const result = await Bun.build({
   entrypoints: ["./src/index.tsx"],
   target: "bun",
+  format: "esm",
   plugins: [solidPlugin],
+  minify: true,
+  bytecode: true,
   compile: {
     target: target.target,
     outfile: target.outfile,

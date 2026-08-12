@@ -90,7 +90,6 @@ export function useGit(props: Props) {
       if (disposed || !state().available) return
       watcher = watch(props.root, { recursive: true }, scheduleRefresh)
       watcher.on("error", () => undefined)
-      void fetch()
     })
     onCleanup(() => {
       disposed = true

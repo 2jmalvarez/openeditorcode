@@ -24,6 +24,9 @@ const patterns = {
   property: /\b[A-Za-z_$][\w$-]*(?=\s*:)/g,
 }
 
+// Regex highlighting scales with the whole document; preserve editor responsiveness for large files.
+const MAX_HIGHLIGHTED_CHARACTERS = 200_000
+
 function addMatches(editor: TextareaRenderable, text: string, expression: RegExp, styleId: number) {
   for (const [lineIndex, line] of text.split("\n").entries()) {
     expression.lastIndex = 0
@@ -37,7 +40,7 @@ export function highlightEditor(editor: TextareaRenderable | undefined, path: st
   if (!editor) return
   editor.clearAllHighlights()
   const extension = extname(path || "").toLocaleLowerCase()
-  if (!new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".html", ".md", ".py", ".yml", ".yaml", ".sh"]).has(extension)) return
+  if (text.length > MAX_HIGHLIGHTED_CHARACTERS || !new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".html", ".md", ".py", ".yml", ".yaml", ".sh"]).has(extension)) return
 
   addMatches(editor, text, patterns.comment, styleIds.comment)
   addMatches(editor, text, patterns.string, styleIds.string)

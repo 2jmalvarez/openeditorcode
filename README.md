@@ -21,7 +21,7 @@ Al iniciar sin documentos abiertos, OEC muestra una portada con los atajos organ
 - Conteo de líneas por archivo y total del proyecto.
 - Confirmación modal para cambios sin guardar.
 - Eliminación confirmada de archivos y carpetas desde el explorador.
-- Panel de cambios Git en árbol, con actualización automática, `fetch` inicial asíncrono y vista diff de solo lectura.
+- Panel de cambios Git en árbol, con actualización automática y vista diff de solo lectura.
 - Protección contra rutas externas, binarios y archivos de más de 2 MB.
 
 ## Requisitos
@@ -44,7 +44,11 @@ Después, abre el editor en el directorio actual o indica la carpeta del proyect
 ```bash
 oec
 oec /ruta/del/proyecto
+openeditorcode
+openeditorcode /ruta/del/proyecto
 ```
+
+`oec` y `openeditorcode` son comandos equivalentes.
 
 ## Ejecutar
 
@@ -117,7 +121,7 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 ## Cambios Git
 
 - `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Sus archivos se organizan en un árbol y usan las mismas flechas, `Enter` y `Shift+Enter` que el explorador.
-- OEC ejecuta `git fetch --quiet` de forma asíncrona al iniciar y muestra el estado remoto de la rama. La paleta incluye **Actualizar referencias remotas de Git** para repetirlo manualmente.
+- OEC muestra el estado remoto de la rama disponible localmente. La paleta incluye **Actualizar referencias remotas de Git** para ejecutar `git fetch --quiet` manualmente.
 - Abrir un archivo del panel crea una pestaña `Δ` con el diff anterior/nuevo. Los diffs son de solo lectura, se pueden cerrar normalmente y conviven con el archivo editable.
 
 ## Límites de seguridad

@@ -59,10 +59,8 @@ export function useEditor(props: Props) {
   }
 
   function updateCursor() {
-    const text = currentText()
-    const offset = Math.max(0, Math.min(renderable?.cursorOffset ?? 0, text.length))
-    const lineStart = text.lastIndexOf("\n", offset - 1) + 1
-    setCursor({ line: text.slice(0, offset).split("\n").length, column: offset - lineStart + 1 })
+    const position = renderable?.logicalCursor
+    if (position) setCursor({ line: position.row + 1, column: position.col + 1 })
   }
 
   function onCursorChange() {
