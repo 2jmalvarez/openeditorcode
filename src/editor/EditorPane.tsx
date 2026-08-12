@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { defaultTextareaKeyBindings, type ScrollBoxRenderable, type TextareaRenderable } from "@opentui/core"
-import { Show, type Accessor } from "solid-js"
+import { onCleanup, Show, type Accessor } from "solid-js"
 import { syntaxStyle } from "./syntax"
 import type { FocusTarget } from "../workbench/types"
 
@@ -15,9 +15,11 @@ type Props = {
   setLineNumberScroll: (scroll: ScrollBoxRenderable) => void
   onContentChange: () => void
   onCursorChange: () => void
+  onUnmount: () => void
 }
 
 export function EditorPane(props: Props) {
+  onCleanup(props.onUnmount)
   return <Show
     when={props.filePath()}
     fallback={<box style={{ flexGrow: 1, paddingX: 4, justifyContent: "center", alignItems: "center", flexDirection: "column", backgroundColor: "#101419" }}>
@@ -29,9 +31,10 @@ export function EditorPane(props: Props) {
       <box style={{ marginTop: 3, width: "92%", flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
         <box style={{ flexGrow: 1, flexBasis: 34, minWidth: 34, margin: 1, padding: 1, flexDirection: "column", border: true, borderColor: "#30404d", backgroundColor: "#151c23" }}>
           <text fg="#70d6a7"><strong>ARCHIVOS Y NAVEGACION</strong></text>
-          <box style={{ marginTop: 1, flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+←</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Explorador</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+→</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Editor</text></box>
+          <box style={{ marginTop: 1, flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+←</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Foco a la izquierda</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+→</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Foco a la derecha</text></box>
           <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+B</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Mostrar / ocultar explorador</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Alt+B</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Control de cambios</text></box>
           <box style={{ flexDirection: "row" }}><text fg="#f2c66d">F5</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Actualizar archivos</text></box>
           <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+N</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Nuevo archivo</text></box>
           <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Supr</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Eliminar selección</text></box>

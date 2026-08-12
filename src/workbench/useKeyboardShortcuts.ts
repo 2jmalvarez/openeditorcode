@@ -27,10 +27,12 @@ type Props = {
   moveEditorFindResult: (direction: number) => void
   acceptEditorFind: () => void
   closeEditorFind: () => void
-  focusExplorer: () => void
-  focusEditor: () => void
+  focusLeft: () => void
+  focusRight: () => void
   toggleExplorer: () => void
+  toggleGit: () => void
   changeTab: () => void
+  cycleFocus: () => void
   toggleWrap: () => void
   requestClose: () => void
   copy: () => void
@@ -47,6 +49,10 @@ type Props = {
   activateExplorerItem: () => Promise<void>
   collapseExplorerItem: () => Promise<void>
   requestDeletion: () => void
+  moveGitSelection: (direction: number) => void
+  activateGitItem: () => Promise<void>
+  collapseGitItem: () => void
+  collapseAllGitFolders: () => void
 }
 
 export function useKeyboardShortcuts(props: Props) {
@@ -76,8 +82,9 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && keyName === "n") return props.openNewFile()
     if (ctrl && (key.option || key.meta) && keyName === "f") return props.openProjectSearch()
     if (ctrl && keyName === "f") return props.openTextSearch()
-    if (ctrl && shift && keyName === "left") return props.focusExplorer()
-    if (ctrl && shift && keyName === "right") return props.focusEditor()
+    if (ctrl && shift && keyName === "left") return props.focusLeft()
+    if (ctrl && shift && keyName === "right") return props.focusRight()
+    if (ctrl && (key.option || key.meta) && keyName === "b") return props.toggleGit()
     if (ctrl && keyName === "b") return props.toggleExplorer()
     if (shift && keyName === "tab") return props.changeTab()
     if (ctrl && ((key.option || key.meta) && keyName === "w" || keyName === "l")) return props.toggleWrap()
@@ -108,7 +115,15 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) { key.preventDefault(); key.stopPropagation(); return void (props.projectResultsLength() ? props.openProjectResult() : props.findInProject()) }
       return
     }
-    if (key.name === "tab") return props.setActive((value) => value === "explorer" ? "editor" : "explorer")
+    if (key.name === "tab") return props.cycleFocus()
+    if (props.active() === "git") {
+      if (ctrl && shift && isEnter) return props.collapseAllGitFolders()
+      if (shift && isEnter) return props.collapseGitItem()
+      if (key.name === "down") return props.moveGitSelection(1)
+      if (key.name === "up") return props.moveGitSelection(-1)
+      if (isEnter) return void props.activateGitItem()
+      return
+    }
     if (props.active() !== "explorer") return
     if (ctrl && shift && isEnter) { key.preventDefault(); key.stopPropagation(); return void props.collapseAllFolders() }
     if (shift && isEnter) { key.preventDefault(); key.stopPropagation(); return void props.collapseSelectedFolder() }

@@ -9,6 +9,12 @@ import type { TreeItem } from "../explorer/tree"
 
 export type Command = { title: string; shortcut: string; run: () => void }
 
+function groupedProjectResults(results: ProjectSearchResult[]) {
+  const groups = new Map<string, ProjectSearchResult[]>()
+  for (const result of results) groups.set(result.path, [...(groups.get(result.path) ?? []), result])
+  return [...groups.entries()]
+}
+
 type Props = {
   root: string
   overlay: Accessor<Overlay>
@@ -61,7 +67,7 @@ export function Overlays(props: Props) {
           <scrollbox scrollY style={{ flexGrow: 1, marginTop: 1 }}><For each={props.paletteResults()}>{(command, index) => <box style={{ flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#d6e5dc">{command.title}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{command.shortcut}</text></box>}</For></scrollbox>
         </Show>
         <Show when={props.overlay() === "project-search"} fallback={<box />}>
-          <scrollbox ref={(value) => { projectResultsScroll = value; value.verticalScrollBar.visible = true; scrollToSelectedProjectResult() }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><Show when={!props.projectSearching()} fallback={<box><text fg="#8ca0ae">Buscando...</text></box>}><For each={props.projectResults()}>{(result, index) => <box id={`project-result-${index()}`} style={{ backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">{displayPath(props.root, result.path)}:{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box>}</For></Show></scrollbox>
+          <scrollbox ref={(value) => { projectResultsScroll = value; value.verticalScrollBar.visible = true; scrollToSelectedProjectResult() }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><Show when={!props.projectSearching()} fallback={<box><text fg="#8ca0ae">Buscando...</text></box>}><For each={groupedProjectResults(props.projectResults())}>{([path, results]) => <box style={{ flexDirection: "column", marginBottom: 1 }}><text fg="#8ed1ff">▾ {displayPath(props.root, path)}</text><For each={results}>{(result) => { const index = () => props.projectResults().indexOf(result); return <box id={`project-result-${index()}`} style={{ paddingLeft: 2, flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">L{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box> }}</For></box>}</For></Show></scrollbox>
         </Show>
         <text fg="#8ca0ae">{props.overlay() === "command-palette" ? "Flechas seleccionar | Enter ejecutar | Esc cerrar" : props.overlay() === "project-search" ? "Enter buscar | Flechas resultado | Enter abrir | Esc cerrar" : props.overlay() === "new-file" ? "Enter crear | Esc cancelar" : "Enter buscar siguiente | Esc cerrar"}</text>
       </box>

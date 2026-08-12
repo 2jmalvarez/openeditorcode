@@ -29,6 +29,12 @@ export function useEditor(props: Props) {
     metrics.scheduleHighlight(props.filePath(), content(), 0)
   }
 
+  function detachEditor() {
+    if (!renderable) return
+    renderable = undefined
+    metrics.reset()
+  }
+
   function setText(text: string) {
     resetFind()
     setContent(text)
@@ -153,5 +159,5 @@ export function useEditor(props: Props) {
     else renderable?.focus()
   })
 
-  return { content, setText, clear, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
+  return { content, setText, clear, detachEditor, currentText, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
 }

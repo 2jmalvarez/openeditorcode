@@ -8,6 +8,7 @@ import { useOverlays } from "../dialogs/useOverlays"
 import { useDocuments } from "../documents/useDocuments"
 import { useEditor } from "../editor/useEditor"
 import { useExplorer } from "../explorer/useExplorer"
+import { useGit } from "../git/useGit"
 import { displayPath } from "../explorer/tree"
 import { removeProjectEntry } from "../documents/files"
 import { useSearch } from "../search/useSearch"
@@ -18,8 +19,10 @@ export function useWorkbench(root: string) {
   const renderer = useRenderer()
   const [active, setActive] = createSignal<FocusTarget>("explorer")
   const [explorerVisible, setExplorerVisible] = createSignal(true)
+  const [gitVisible, setGitVisible] = createSignal(false)
   const [status, setStatus] = createSignal("Explorador listo")
   let explorerScroll: ScrollBoxRenderable | undefined
+  let gitScroll: ScrollBoxRenderable | undefined
   const overlays = useOverlays()
   const editor = useEditor({ active, overlay: overlays.overlay, filePath: () => documents.filePath(), setStatus })
   const documents = useDocuments({
@@ -34,6 +37,7 @@ export function useWorkbench(root: string) {
   })
   const explorer = useExplorer({ root, setStatus, openFile: documents.openFile })
   const search = useSearch({ root, setStatus })
+  const git = useGit({ root, setStatus })
 
   function openOverlay(kind: "command-palette" | "project-search" | "new-file") {
     overlays.open(kind)
@@ -41,7 +45,6 @@ export function useWorkbench(root: string) {
   }
 
   function requestClose() {
-    if (!documents.filePath()) return
     if (documents.dirty()) {
       overlays.requestConfirm("close")
       setStatus("Hay cambios sin guardar.")
@@ -98,9 +101,11 @@ export function useWorkbench(root: string) {
   }
 
   const commands = (): Command[] => [
-    { title: "Enfocar explorador", shortcut: "Ctrl+Shift+←", run: focusExplorer },
-    { title: "Enfocar editor", shortcut: "Ctrl+Shift+→", run: focusEditor },
+    { title: "Mover foco a la izquierda", shortcut: "Ctrl+Shift+←", run: focusLeft },
+    { title: "Mover foco a la derecha", shortcut: "Ctrl+Shift+→", run: focusRight },
     { title: "Mostrar u ocultar explorador", shortcut: "Ctrl+B", run: toggleExplorer },
+    { title: "Mostrar u ocultar control de cambios", shortcut: "Ctrl+Alt+B", run: toggleGit },
+    { title: "Actualizar referencias remotas de Git", shortcut: "Paleta", run: () => void git.fetch() },
     { title: "Actualizar explorador", shortcut: "F5", run: () => void explorer.refreshExplorer() },
     { title: "Crear archivo en carpeta seleccionada", shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
     { title: "Buscar texto", shortcut: "Ctrl+F", run: editor.openFind },
@@ -149,9 +154,22 @@ export function useWorkbench(root: string) {
   }
 
   function focusEditor() {
-    if (!documents.filePath()) return
     setActive("editor")
     setStatus("Editor activo.")
+  }
+
+  function focusLeft() {
+    if (active() === "git") return focusEditor()
+    if (active() === "editor") return focusExplorer()
+  }
+
+  function focusRight() {
+    if (active() === "explorer") return focusEditor()
+    if (active() === "editor") {
+      setGitVisible(true)
+      setActive("git")
+      setStatus("Control de cambios activo. Flechas para seleccionar, Enter para ver el diff.")
+    }
   }
 
   function toggleExplorer() {
@@ -165,11 +183,40 @@ export function useWorkbench(root: string) {
     }
   }
 
+  function toggleGit() {
+    setGitVisible((visible) => !visible)
+    if (gitVisible()) {
+      setActive("git")
+      setStatus("Control de cambios visible.")
+    } else {
+      setActive("editor")
+      setStatus("Control de cambios oculto.")
+    }
+  }
+
+  function cycleFocus() {
+    if (active() === "explorer") return focusEditor()
+    if (active() === "editor") return focusRight()
+    return focusExplorer()
+  }
+
   function activateExplorerAt(index: number) {
     setExplorerVisible(true)
     setActive("explorer")
     setStatus("Explorador activo. Flechas para seleccionar, Enter para abrir, Shift+Enter para contraer.")
     void explorer.activateAt(index)
+  }
+
+  async function activateGitAt(index: number) {
+    setGitVisible(true)
+    setActive("git")
+    git.selected() !== index && git.moveSelection(index - git.selected())
+    if (git.toggleSelectedFolder()) return
+    const diff = await git.openSelected()
+    if (diff) {
+      documents.openDiff(diff)
+      setActive("git")
+    }
   }
 
   function toggleWrap() { editor.setLineWrap(editor.wrapMode() === "none" ? "word" : "none") }
@@ -183,18 +230,19 @@ export function useWorkbench(root: string) {
     active, setActive, overlay: overlays.overlay, pendingDeletion: overlays.pendingDeletion, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
     closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshExplorer: explorer.refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
     openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: editor.openFind, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
-    focusExplorer, focusEditor, toggleExplorer, changeTab: () => documents.changeTab(1), toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
+    focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
-    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion,
+    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders,
   })
 
   createEffect(() => explorerScroll?.scrollTo({ x: explorerScroll.scrollLeft, y: Math.max(0, explorer.selected() - 4) }))
+  createEffect(() => gitScroll?.scrollTo({ x: gitScroll.scrollLeft, y: Math.max(0, git.selected() - 4) }))
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
 
   return {
-    root, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, status, explorer, documents, editor, overlays, search,
-    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : "Sin archivo abierto", activateExplorerAt, requestCloseTab,
-    paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value },
+    root, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, explorer, git, documents, editor, overlays, search,
+    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? `Cambios: ${documents.activeDiff()!.file.path}` : "Sin archivo abierto", activateExplorerAt, activateGitAt, requestCloseTab,
+    paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value }, setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value },
   }
 }
