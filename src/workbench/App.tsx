@@ -1,19 +1,21 @@
 /** @jsxImportSource @opentui/solid */
-import { defaultTextareaKeyBindings, type ScrollBoxRenderable, type TextareaRenderable } from "@opentui/core"
-import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js"
+import { type ScrollBoxRenderable, type TextareaRenderable } from "@opentui/core"
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { useKeyboard, useRenderer } from "@opentui/solid"
-import { basename, dirname, extname, join, relative, resolve } from "node:path"
-import { readClipboard, selectedText } from "./editor/clipboard"
-import { isControlPressed, isShiftPressed } from "./editor/keyboard"
-import { highlightEditor, syntaxStyle } from "./editor/syntax"
-import { createTextFile, readTextFile, writeTextFile } from "./filesystem/files"
-import { countProjectLines, searchProjectText, type ProjectSearchResult } from "./filesystem/project"
-import { createTree, displayPath, type TreeItem } from "./filesystem/tree"
+import { basename, dirname, join } from "node:path"
+import { readClipboard, selectedText } from "../editor/clipboard"
+import { EditorPane } from "../editor/EditorPane"
+import { isControlPressed, isShiftPressed } from "../editor/keyboard"
+import { useEditorMetrics } from "../editor/useEditorMetrics"
+import { DocumentTabs, type OpenTab } from "../documents/DocumentTabs"
+import { createTextFile, readTextFile, writeTextFile } from "../documents/files"
+import { Overlays, type Command } from "../dialogs/Overlays"
+import { ExplorerPane } from "../explorer/ExplorerPane"
+import { displayPath } from "../explorer/tree"
+import { useExplorer } from "../explorer/useExplorer"
+import { countProjectLines, searchProjectText, type ProjectSearchResult } from "../search/project-search"
 
-type FocusTarget = "explorer" | "editor"
-type Overlay = "command-palette" | "text-search" | "project-search" | "new-file" | "confirm" | undefined
-type PendingAction = "open" | "close" | "quit"
-type OpenTab = { path: string; content: string; savedContent: string }
+import type { FocusTarget, Overlay, PendingAction } from "./types"
 
 function normalizeForSearch(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase()
@@ -21,9 +23,6 @@ function normalizeForSearch(value: string): string {
 
 export function App(props: { root: string }) {
   const renderer = useRenderer()
-  const [tree, setTree] = createSignal<TreeItem[]>([])
-  const [expanded, setExpanded] = createSignal<Set<string>>(new Set([props.root]))
-  const [selected, setSelected] = createSignal(0)
   const [active, setActive] = createSignal<FocusTarget>("explorer")
   const [explorerVisible, setExplorerVisible] = createSignal(true)
   const [filePath, setFilePath] = createSignal<string>()
@@ -44,29 +43,17 @@ export function App(props: { root: string }) {
   const [lineCounts, setLineCounts] = createSignal<Record<string, number>>({})
   const [wrapMode, setWrapMode] = createSignal<"none" | "word">("none")
   const [cursor, setCursor] = createSignal({ line: 1, column: 1 })
-  const [lineLabels, setLineLabels] = createSignal("1")
-  const [editorScrollbar, setEditorScrollbar] = createSignal("")
   let editor: TextareaRenderable | undefined
   let explorerScroll: ScrollBoxRenderable | undefined
-  let lineNumberScroll: ScrollBoxRenderable | undefined
-  let highlightTimer: ReturnType<typeof setTimeout> | undefined
-  let lineLabelTimer: ReturnType<typeof setTimeout> | undefined
-  let editorGeneration = 0
-  let lastEditorScrollY = -1
 
   // A cleared editor can receive a delayed textarea change event. Without a path,
   // that buffer is not a document and must never trigger a save confirmation.
   const dirty = () => Boolean(filePath()) && content() !== savedContent()
-  const selectedItem = () => tree()[selected()]
   const title = () => filePath() ? displayPath(props.root, filePath()!) : "Sin archivo abierto"
   const rootName = () => basename(props.root) || props.root
   const rootParent = () => dirname(props.root)
 
-  const newFileDirectory = () => {
-    const item = selectedItem()
-    if (!item) return props.root
-    return item.directory ? item.path : dirname(item.path)
-  }
+  const metrics = useEditorMetrics({ editor: () => editor, filePath, content })
 
   function syncActiveTab() {
     const tabIndex = activeTab()
@@ -83,60 +70,11 @@ export function App(props: { root: string }) {
     setContent(tab.content)
     setSavedContent(tab.savedContent)
     editor?.setText(tab.content)
-    scheduleHighlight(tab.path, tab.content, 0)
-    refreshLineLabels()
+    metrics.scheduleHighlight(tab.path, tab.content, 0)
+    metrics.refresh()
     setCursor({ line: 1, column: 1 })
     setActive("editor")
     setStatus(`Abierto: ${displayPath(props.root, tab.path)}`)
-  }
-
-  function fileIcon(item: TreeItem): string {
-    if (item.directory) return item.expanded ? "📂" : "📁"
-    const extension = extname(item.name).toLocaleLowerCase()
-    if ([".ts", ".tsx"].includes(extension)) return "🔷"
-    if ([".js", ".jsx"].includes(extension)) return "🟨"
-    if ([".json", ".yml", ".yaml", ".toml"].includes(extension)) return "⚙"
-    if ([".css", ".scss", ".html"].includes(extension)) return "🎨"
-    if ([".md", ".txt"].includes(extension)) return "📝"
-    if ([".py", ".sh", ".ps1", ".bat"].includes(extension)) return "⚡"
-    return "📄"
-  }
-
-  async function refreshTree() {
-    try {
-      const nextTree = await createTree(props.root, expanded())
-      setTree(nextTree)
-      setSelected((current) => Math.min(current, Math.max(0, nextTree.length - 1)))
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo leer la carpeta.")
-    }
-  }
-
-  async function collapseAllFolders() {
-    setExpanded(new Set<string>())
-    setSelected(0)
-    await refreshTree()
-    setStatus("Todas las carpetas fueron contraídas.")
-  }
-
-  async function collapseSelectedFolder() {
-    const item = selectedItem()
-    if (!item?.directory) {
-      setStatus("Selecciona una carpeta para contraerla.")
-      return
-    }
-    if (!expanded().has(item.path)) {
-      setStatus("La carpeta seleccionada ya está contraída.")
-      return
-    }
-    const next = new Set(expanded())
-    for (const expandedPath of next) {
-      const fromSelected = relative(item.path, expandedPath)
-      if (fromSelected === "" || !fromSelected.startsWith("..")) next.delete(expandedPath)
-    }
-    setExpanded(next)
-    await refreshTree()
-    setStatus(`Carpeta contraída: ${item.name}`)
   }
 
   async function openFile(path: string) {
@@ -156,18 +94,7 @@ export function App(props: { root: string }) {
     }
   }
 
-  async function activateItem(item = selectedItem()) {
-    if (!item) return
-    if (item.directory) {
-      const next = new Set(expanded())
-      if (next.has(item.path)) next.delete(item.path)
-      else next.add(item.path)
-      setExpanded(next)
-      await refreshTree()
-      return
-    }
-    await openFile(item.path)
-  }
+  const explorer = useExplorer({ root: props.root, setStatus, openFile })
 
   async function save(): Promise<boolean> {
     const path = filePath()
@@ -254,10 +181,10 @@ export function App(props: { root: string }) {
       setStatus("El nombre debe pertenecer a la carpeta seleccionada.")
       return
     }
-    const path = join(newFileDirectory(), name)
+    const path = join(explorer.newFileDirectory(), name)
     try {
       await createTextFile(props.root, path)
-      await refreshTree()
+      await explorer.refreshTree()
       closeOverlay()
       await openFile(path)
       setStatus(`Creado: ${displayPath(props.root, path)}`)
@@ -267,9 +194,7 @@ export function App(props: { root: string }) {
   }
 
   function closeFile() {
-    editorGeneration += 1
-    if (highlightTimer) clearTimeout(highlightTimer)
-    if (lineLabelTimer) clearTimeout(lineLabelTimer)
+    metrics.reset()
     const closingIndex = activeTab()
     const nextTabs = tabs().filter((_, index) => index !== closingIndex)
     setTabs(nextTabs)
@@ -280,8 +205,6 @@ export function App(props: { root: string }) {
       setSavedContent("")
       editor?.setText("")
       editor = undefined
-      setLineLabels("1")
-      setEditorScrollbar("")
       setExplorerVisible(true)
       setActive("explorer")
       setStatus("Archivo cerrado.")
@@ -377,56 +300,14 @@ export function App(props: { root: string }) {
   function setLineWrap(mode: "none" | "word") {
     setWrapMode(mode)
     if (editor) editor.wrapMode = mode
-    scheduleLineMetrics()
+    metrics.schedule()
     setStatus(mode === "word" ? "Ajuste de línea activado." : "Ajuste de línea desactivado.")
-  }
-
-  function refreshLineLabels() {
-    if (!editor) {
-      setLineLabels("1")
-      return
-    }
-    const sources = editor.lineInfo.lineSources
-    if (!sources.length) {
-      setLineLabels(content().split("\n").map((_, index) => String(index + 1)).join("\n"))
-      return
-    }
-    const wraps = editor.lineInfo.lineWraps
-    setLineLabels(sources.map((source, index) => {
-      if (wraps[index] !== 0) return ""
-      return String(source + 1)
-    }).join("\n"))
-    lineNumberScroll?.scrollTo({ x: 0, y: editor.scrollY })
-    lastEditorScrollY = editor.scrollY
-    const visibleRows = Math.max(1, editor.height)
-    const totalRows = Math.max(visibleRows, editor.lineCount)
-    const maxScroll = totalRows - visibleRows
-    const thumbRows = Math.max(1, Math.ceil((visibleRows / totalRows) * visibleRows))
-    const maxThumbStart = visibleRows - thumbRows
-    const thumbStart = maxScroll === 0 ? 0 : Math.round((editor.scrollY / maxScroll) * maxThumbStart)
-    setEditorScrollbar(Array.from({ length: visibleRows }, (_, index) => index >= thumbStart && index < thumbStart + thumbRows ? "█" : "│").join("\n"))
-  }
-
-  function scheduleLineMetrics() {
-    if (lineLabelTimer) clearTimeout(lineLabelTimer)
-    const generation = editorGeneration
-    lineLabelTimer = setTimeout(() => {
-      if (generation === editorGeneration && editor) refreshLineLabels()
-    }, 16)
-  }
-
-  function scheduleHighlight(path: string | undefined, text: string, delay = 120) {
-    if (highlightTimer) clearTimeout(highlightTimer)
-    const generation = editorGeneration
-    highlightTimer = setTimeout(() => {
-      if (generation === editorGeneration && filePath() === path && editor && editor.plainText === text) highlightEditor(editor, path, text)
-    }, delay)
   }
 
   function undo() {
     if (editor?.undo()) {
       setContent(editor.plainText)
-      scheduleHighlight(filePath(), editor.plainText)
+      metrics.scheduleHighlight(filePath(), editor.plainText)
       setStatus("Cambio deshecho.")
     }
   }
@@ -434,13 +315,14 @@ export function App(props: { root: string }) {
   function redo() {
     if (editor?.redo()) {
       setContent(editor.plainText)
-      scheduleHighlight(filePath(), editor.plainText)
+      metrics.scheduleHighlight(filePath(), editor.plainText)
       setStatus("Cambio rehecho.")
     }
   }
 
-  const commands = () => [
+  const commands = (): Command[] => [
     { title: "Abrir explorador", shortcut: "Ctrl+B", run: () => { setExplorerVisible(true); setActive("explorer"); setStatus("Explorador activo.") } },
+    { title: "Actualizar explorador", shortcut: "F5", run: () => void explorer.refreshExplorer() },
     { title: "Crear archivo en carpeta seleccionada", shortcut: "Ctrl+N", run: () => { setOverlay("new-file"); setNewFileName("") } },
     { title: "Buscar texto", shortcut: "Ctrl+F", run: () => { setOverlay("text-search"); setQuery("") } },
     { title: "Buscar en todo el proyecto", shortcut: "Ctrl+Alt+F", run: () => { setOverlay("project-search"); setQuery(""); setProjectResults([]) } },
@@ -480,6 +362,7 @@ export function App(props: { root: string }) {
       return
     }
     if (ctrl && keyName === "q") return quit()
+    if (keyName === "f5") return void explorer.refreshExplorer()
     if (ctrl && keyName === "s") return void save()
     if (ctrl && shift && keyName === "z") {
       key.preventDefault()
@@ -564,19 +447,19 @@ export function App(props: { root: string }) {
       if (ctrl && shift && isEnter) {
         key.preventDefault()
         key.stopPropagation()
-        return void collapseAllFolders()
+        return void explorer.collapseAllFolders()
       }
       if (shift && isEnter) {
         key.preventDefault()
         key.stopPropagation()
-        return void collapseSelectedFolder()
+        return void explorer.collapseSelectedFolder()
       }
-      if (key.name === "down") setSelected((value) => Math.min(value + 1, Math.max(0, tree().length - 1)))
-      if (key.name === "up") setSelected((value) => Math.max(0, value - 1))
-      if (isEnter) void activateItem()
+      if (key.name === "down") explorer.setSelected((value) => Math.min(value + 1, Math.max(0, explorer.tree().length - 1)))
+      if (key.name === "up") explorer.setSelected((value) => Math.max(0, value - 1))
+      if (isEnter) void explorer.activateItem()
       if (key.name === "left") {
-        const item = selectedItem()
-        if (item?.directory && item.expanded) void activateItem(item)
+        const item = explorer.selectedItem()
+        if (item?.directory && item.expanded) void explorer.activateItem(item)
       }
     }
   })
@@ -587,22 +470,13 @@ export function App(props: { root: string }) {
   })
 
   createEffect(() => {
-    const itemIndex = selected()
+    const itemIndex = explorer.selected()
     explorerScroll?.scrollTo({ x: explorerScroll.scrollLeft, y: Math.max(0, itemIndex - 4) })
   })
 
   onMount(() => {
-    void refreshTree()
-    const syncEditorScroll = () => {
-      if (editor && editor.scrollY !== lastEditorScrollY) refreshLineLabels()
-    }
-    renderer.on("frame", syncEditorScroll)
-    onCleanup(() => renderer.off("frame", syncEditorScroll))
-  })
-
-  onCleanup(() => {
-    if (highlightTimer) clearTimeout(highlightTimer)
-    if (lineLabelTimer) clearTimeout(lineLabelTimer)
+    renderer.on("frame", metrics.syncScroll)
+    onCleanup(() => renderer.off("frame", metrics.syncScroll))
   })
 
   return (
@@ -616,109 +490,21 @@ export function App(props: { root: string }) {
       </box>
       <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
         <Show when={explorerVisible()} fallback={<box />}>
-        <box style={{ width: 32, flexShrink: 0, flexDirection: "column", border: ["right"], borderColor: "#30404d" }}>
-          <box style={{ paddingX: 1, paddingY: 1 }}>
-            <text fg={active() === "explorer" ? "#70d6a7" : "#8ca0ae"}>ARCHIVOS</text>
-          </box>
-          <scrollbox ref={(value) => { explorerScroll = value }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1 }}>
-            <For each={tree()}>{(item, itemIndex) => (
-              <box id={`tree-${itemIndex()}`} style={{ paddingLeft: item.depth + 1, flexDirection: "row", alignItems: "center", backgroundColor: itemIndex() === selected() ? "#28404a" : undefined }}>
-                <text fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === filePath() ? "#f2c66d" : "#d6e5dc"}>{fileIcon(item)} {item.name}</text>
-                <Show when={!item.directory && lineCounts()[item.path] !== undefined} fallback={<box />}>
-                  <text style={{ marginLeft: "auto" }} fg="#71808b">{lineCounts()[item.path]}</text>
-                </Show>
-              </box>
-            )}</For>
-          </scrollbox>
-        </box>
+          <ExplorerPane root={props.root} active={() => active() === "explorer"} tree={explorer.tree} selected={explorer.selected} filePath={filePath} lineCounts={lineCounts} setScroll={(value) => { explorerScroll = value }} />
         </Show>
         <box style={{ flexGrow: 1, minWidth: 0, flexDirection: "column" }}>
-          <scrollbox style={{ height: 2, flexShrink: 0, backgroundColor: "#111820" }}>
-            <box style={{ flexDirection: "row" }}>
-              <For each={tabs()}>{(tab, index) => (
-                <box style={{ paddingX: 1, flexShrink: 0, backgroundColor: index() === activeTab() ? "#263a46" : "#111820" }}>
-                  <text fg={index() === activeTab() ? "#f2c66d" : "#8ca0ae"}>{index() === activeTab() && dirty() ? "* " : ""}{basename(tab.path)}</text>
-                </box>
-              )}</For>
-            </box>
-          </scrollbox>
+          <DocumentTabs tabs={tabs} activeTab={activeTab} dirty={dirty} />
           <box style={{ height: 2, paddingX: 1, backgroundColor: "#151c23" }}>
             <text fg="#f2c66d">{title()}</text>
           </box>
-          <Show
-            when={filePath()}
-            fallback={<box style={{ flexGrow: 1, justifyContent: "center", alignItems: "center" }}><text fg="#71808b">Pulsa Ctrl+B y Enter para abrir un archivo</text></box>}
-          >
-            <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
-              <scrollbox ref={(value) => { lineNumberScroll = value; value.verticalScrollBar.visible = false }} style={{ width: 5, flexShrink: 0, paddingRight: 1, backgroundColor: "#151c23" }}>
-                <text fg="#60717f">{lineLabels()}</text>
-              </scrollbox>
-              <textarea
-                ref={(value) => { editor = value; scheduleLineMetrics(); scheduleHighlight(filePath(), content(), 0) }}
-                initialValue={content()}
-                focused={active() === "editor"}
-                wrapMode={wrapMode()}
-                syntaxStyle={syntaxStyle}
-                keyBindings={[
-                  ...defaultTextareaKeyBindings,
-                  { name: "z", ctrl: true, action: "undo" },
-                  { name: "z", ctrl: true, shift: true, action: "redo" },
-                ]}
-                style={{ flexGrow: 1, minWidth: 0, backgroundColor: "#101419", textColor: "#d6e5dc", cursorColor: "#70d6a7" }}
-                onContentChange={() => {
-                  const text = editor?.plainText ?? ""
-                  setContent(text)
-                  scheduleHighlight(filePath(), text)
-                  scheduleLineMetrics()
-                }}
-                onCursorChange={(value) => { setCursor({ line: value.line + 1, column: value.visualColumn + 1 }); scheduleLineMetrics() }}
-              />
-              <box style={{ width: 1, flexShrink: 0, backgroundColor: "#151c23" }}>
-                <text fg="#60717f">{editorScrollbar()}</text>
-              </box>
-            </box>
-          </Show>
+          <EditorPane filePath={filePath} content={content} active={active} wrapMode={wrapMode} lineLabels={metrics.lineLabels} scrollbar={metrics.scrollbar} setEditor={(value) => { editor = value; metrics.schedule(); metrics.scheduleHighlight(filePath(), content(), 0) }} setLineNumberScroll={metrics.setLineNumberScroll} onContentChange={() => { const text = editor?.plainText ?? ""; setContent(text); metrics.scheduleHighlight(filePath(), text); metrics.schedule() }} onCursorChange={(line, visualColumn) => { setCursor({ line: line + 1, column: visualColumn + 1 }); metrics.schedule() }} />
         </box>
       </box>
       <box style={{ height: 3, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
         <text fg="#8ca0ae">{status()}</text>
         <text fg="#8ca0ae">Ln {cursor().line}:{cursor().column} | P menú | B archivos | F buscar | Alt+F global | Shift+Tab pestañas</text>
       </box>
-      <Show when={overlay() === "command-palette" || overlay() === "text-search" || overlay() === "project-search" || overlay() === "new-file"} fallback={<box />}>
-        <box style={{ position: "absolute", top: "20%", left: "15%", width: "70%", height: "55%", padding: 1, flexDirection: "column", backgroundColor: "#1b252e", border: true, borderColor: "#70d6a7" }}>
-          <text fg="#70d6a7">{overlay() === "command-palette" ? "COMANDOS Y CONFIGURACIÓN" : overlay() === "project-search" ? "BUSCAR EN TODO EL PROYECTO" : overlay() === "new-file" ? "NUEVO ARCHIVO" : "BUSCAR EN EL ARCHIVO"}</text>
-          <Show when={overlay() !== "new-file"} fallback={<box><text style={{ marginTop: 1 }} fg="#8ca0ae">Carpeta: {displayPath(props.root, newFileDirectory())}</text><input focused value={newFileName()} onInput={setNewFileName} placeholder="nombre.ext" style={{ marginTop: 1, backgroundColor: "#101419" }} /></box>}>
-            <input focused value={query()} onInput={(value) => { setQuery(value); setSearchIndex(0); if (overlay() === "project-search") setProjectResults([]) }} placeholder="Escribe para buscar..." style={{ marginTop: 1, backgroundColor: "#101419" }} />
-          </Show>
-          <Show when={overlay() === "command-palette"} fallback={<box />}>
-            <scrollbox scrollY style={{ flexGrow: 1, marginTop: 1 }}>
-              <For each={paletteResults()}>{(command, itemIndex) => <box style={{ flexDirection: "row", backgroundColor: itemIndex() === searchIndex() ? "#28404a" : undefined }}><text fg="#d6e5dc">{command.title}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{command.shortcut}</text></box>}</For>
-            </scrollbox>
-          </Show>
-          <Show when={overlay() === "project-search"} fallback={<box />}>
-            <scrollbox style={{ flexGrow: 1, marginTop: 1 }}>
-              <Show when={!projectSearching()} fallback={<box><text fg="#8ca0ae">Buscando...</text></box>}>
-                <For each={projectResults()}>{(result, index) => <box style={{ backgroundColor: index() === searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">{displayPath(props.root, result.path)}:{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box>}</For>
-              </Show>
-            </scrollbox>
-          </Show>
-          <text fg="#8ca0ae">{overlay() === "command-palette" ? "Flechas seleccionar | Enter ejecutar | Esc cerrar" : overlay() === "project-search" ? "Enter buscar | Flechas resultado | Enter abrir | Esc cerrar" : overlay() === "new-file" ? "Enter crear | Esc cancelar" : "Enter buscar siguiente | Esc cerrar"}</text>
-        </box>
-      </Show>
-      <Show when={overlay() === "confirm"} fallback={<box />}>
-        <box style={{ position: "absolute", top: "28%", left: "25%", width: "50%", height: 13, padding: 1, flexDirection: "column", backgroundColor: "#2a2020", border: true, borderColor: "#f2c66d" }}>
-          <text fg="#f2c66d">Hay cambios sin guardar.</text>
-          <text style={{ marginTop: 1 }} fg="#b8c7d1">Elige qué hacer con el archivo actual.</text>
-          <box style={{ marginTop: 1, flexDirection: "column" }}>
-            <For each={["Guardar", "Guardar y cerrar", "Cerrar sin guardar"]}>{(label, index) => <box style={{ paddingX: 1, backgroundColor: index() === confirmChoice() ? "#6b5224" : undefined }}><text fg={index() === confirmChoice() ? "#ffffff" : "#d6e5dc"}>{index() === confirmChoice() ? "› " : "  "}{label}</text></box>}</For>
-          </box>
-          <text fg="#8ca0ae">Flechas arriba/abajo | Enter confirmar | Esc cancelar</text>
-        </box>
-      </Show>
+      <Overlays root={props.root} overlay={overlay} query={query} setQuery={(value) => { setQuery(value); setSearchIndex(0); if (overlay() === "project-search") setProjectResults([]) }} newFileName={newFileName} setNewFileName={setNewFileName} newFileDirectory={explorer.newFileDirectory} searchIndex={searchIndex} paletteResults={paletteResults} projectResults={projectResults} projectSearching={projectSearching} confirmChoice={confirmChoice} />
     </box>
   )
-}
-
-export function resolveRoot(argument?: string): string {
-  return resolve(argument || process.cwd())
 }

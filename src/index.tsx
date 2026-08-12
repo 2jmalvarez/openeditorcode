@@ -1,7 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 import { createCliRenderer } from "@opentui/core"
 import { render } from "@opentui/solid"
-import { App, resolveRoot } from "./app"
+import { resolveRoot } from "./bootstrap/resolve-root"
+import { App } from "./workbench/App"
 
 // Ctrl+C belongs to the editor for copying selected text.
 const renderer = await createCliRenderer({

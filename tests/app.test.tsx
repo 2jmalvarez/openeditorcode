@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { testRender } from "@opentui/solid"
-import { App } from "../src/app"
+import { App } from "../src/workbench/App"
 
 let root = ""
 
@@ -41,6 +41,8 @@ test("opens the command and configuration palette", async () => {
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("COMANDOS Y CONFIGURACIÓN")
     expect(setup.captureCharFrame()).toContain("Crear archivo en carpeta seleccionada")
+    expect(setup.captureCharFrame()).toContain("Actualizar explorador")
+    expect(setup.captureCharFrame()).toContain("F5")
   } finally {
     setup.renderer.destroy()
   }

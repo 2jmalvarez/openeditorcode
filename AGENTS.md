@@ -25,18 +25,41 @@ La ejecución de desarrollo necesita el preload de OpenTUI, ya incluido en los s
 
 ```text
 src/
-  index.tsx                 Entrada y configuración del renderer.
-  app.tsx                   Estado principal, atajos, pestañas y UI.
+  index.tsx                 Entrada de compatibilidad y configuración del renderer.
+  bootstrap/
+    resolve-root.ts          Resolución de la carpeta inicial.
+  workbench/
+    App.tsx                  Ensamblaje de capacidades, estado transversal y atajos.
+    types.ts                 Tipos compartidos de foco, overlays y acciones pendientes.
+  documents/
+    DocumentTabs.tsx         Barra de pestañas abiertas.
+    files.ts                 Lectura, creación y guardado seguro.
+  explorer/
+    ExplorerPane.tsx         Panel visual del árbol de proyecto.
+    useExplorer.ts           Selección, expansión y actualización del árbol.
+    tree.ts                  Árbol de carpetas y rutas visibles.
+    gitignore.ts             Reglas de .gitignore.
   editor/
+    EditorPane.tsx           Textarea, líneas y scrollbar del editor.
+    useEditorMetrics.ts      Métricas, scroll y resaltado diferido del editor.
     clipboard.ts            Lectura del portapapeles de Windows.
+    keyboard.ts              Detección de modificadores nativos de Windows.
     syntax.ts               Estilos y resaltado por línea.
-  filesystem/
-    files.ts                Lectura, creación y guardado seguro.
-    project.ts              Conteo de líneas y búsqueda global.
-    search.ts               Índice y búsqueda difusa.
-    tree.ts                 Árbol de carpetas.
+  search/
+    file-index.ts            Índice de archivos y búsqueda difusa.
+    project-search.ts        Conteo de líneas y búsqueda global.
+  dialogs/
+    Overlays.tsx             Paleta, búsquedas, archivo nuevo y confirmación.
 tests/                      Pruebas Bun y renderer de OpenTUI.
 ```
+
+## Límites de arquitectura
+
+- La estructura expresa capacidades del producto: `documents`, `explorer`, `editor`, `search` y `dialogs`; no crees carpetas genéricas de utilidades para lógica de una sola capacidad.
+- `workbench/App.tsx` coordina estado y acciones entre capacidades. Los paneles reciben estado y callbacks por props; no deben importar otra capacidad para ejecutar una acción.
+- Los módulos de infraestructura de cada capacidad no deben depender de OpenTUI. La UI de OpenTUI queda en componentes `*.tsx`.
+- Si una responsabilidad transversal crece, extráela junto a la capacidad que la posee (`documents`, `explorer`, etc.), no la reincorpores en el workbench.
+- Las entradas de la aplicación solo arrancan el renderer y resuelven la raíz; no contienen estado de producto.
 
 ## Reglas de implementación
 
@@ -46,7 +69,7 @@ tests/                      Pruebas Bun y renderer de OpenTUI.
 - Al añadir una pestaña o cambiar de pestaña, sincroniza el contenido actual con `syncActiveTab()` antes de cargar la siguiente.
 - El resaltado de `src/editor/syntax.ts` usa rangos relativos a cada línea mediante `addHighlight`. No vuelvas a usar rangos globales: causan artefactos visuales en OpenTUI.
 - El explorador debe mantener visible la selección con el `ScrollBoxRenderable`. Si cambias las filas, conserva IDs o el scroll programático.
-- Usa los helpers de `filesystem/files.ts` para accesos de archivos. No escribas directamente fuera de esos helpers.
+- Usa los helpers de `documents/files.ts` para accesos de archivos. No escribas directamente fuera de esos helpers.
 - Las rutas siempre deben permanecer dentro de la raíz del proyecto mediante `ensureInsideRoot`.
 - No sobrescribas un archivo al crearlo; `createTextFile` usa el flag exclusivo `wx`.
 - Mantén los límites de 2 MB, el rechazo de binarios, la exclusión de `.git` y el respeto de `.gitignore` para el conteo y la búsqueda global.
@@ -57,6 +80,7 @@ No reasignes estos atajos sin actualizar `README.md`, la paleta y las pruebas co
 
 - `Ctrl+P`: paleta.
 - `Ctrl+B`: explorador.
+- `F5`: actualizar el explorador de archivos.
 - `Ctrl+N`: archivo nuevo.
 - `Ctrl+S`: guardar.
 - `Ctrl+W`: cerrar pestaña.

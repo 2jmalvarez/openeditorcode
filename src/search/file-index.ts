@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises"
 import { join, relative } from "node:path"
-import { isIgnoredPath, readGitignore } from "./gitignore"
-import { displayPath, type TreeItem } from "./tree"
+import { isIgnoredPath, readGitignore } from "../explorer/gitignore"
+import { displayPath, type TreeItem } from "../explorer/tree"
 
 export const SEARCH_LIMIT = 2000
 

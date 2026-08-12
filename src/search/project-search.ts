@@ -1,5 +1,5 @@
-import { indexFiles } from "./search"
-import { readTextFile } from "./files"
+import { readTextFile } from "../documents/files"
+import { indexFiles } from "./file-index"
 
 export type ProjectSearchResult = {
   path: string
