@@ -1,0 +1,28 @@
+{
+  "name": "openeditorcode",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "oec": "./src/index.tsx"
+  },
+  "scripts": {
+    "dev": "bun --preload @opentui/solid/preload ./src/index.tsx",
+    "start": "bun --preload @opentui/solid/preload ./src/index.tsx",
+    "test": "bun test --preload @opentui/solid/preload",
+    "typecheck": "bun x tsc --noEmit",
+    "build": "bun run build.ts"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.5.1",
+    "@opentui/solid": "^0.5.1",
+    "solid-js": "^1.9.9"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.8.3"
+  }
+}
