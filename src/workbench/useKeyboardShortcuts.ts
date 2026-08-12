@@ -11,6 +11,7 @@ type Props = {
   searchIndex: () => number
   setSearchIndex: (value: number | ((value: number) => number)) => void
   closeOverlay: () => void
+  cancelProjectSearch: () => void
   acceptConfirm: () => Promise<void>
   acceptDeletion: () => Promise<void>
   quit: () => void
@@ -86,6 +87,7 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) { key.preventDefault(); key.stopPropagation(); return props.acceptEditorFind() }
       return
     }
+    if (key.name === "escape" && props.overlay() === "project-search") return props.cancelProjectSearch()
     if (key.name === "escape" && props.overlay()) return props.closeOverlay()
     if (props.overlay() === "command-palette") {
       if (key.name === "down") props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.paletteLength() - 1)))

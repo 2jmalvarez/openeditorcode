@@ -76,7 +76,7 @@ tests/                      Pruebas Bun y renderer de OpenTUI.
 ## Reglas de implementación
 
 - Conserva la aplicación funcional con teclado; no dependas de interacción con ratón.
-- Las superposiciones deben capturar sus teclas antes de atajos globales. El modal `confirm` tiene prioridad absoluta para evitar que el editor o explorador procese flechas y combinaciones.
+- Las superposiciones deben capturar sus teclas antes de atajos globales. El modal `confirm` tiene prioridad absoluta para evitar que el editor o explorador procese flechas y combinaciones. La búsqueda global conserva sus resultados al abrirlos y los limpia con `Esc`.
 - Un editor sin `filePath` nunca está modificado. Mantén esta invariante al cambiar el estado de pestañas o limpiar el textarea.
 - Al añadir una pestaña o cambiar de pestaña, sincroniza el contenido actual con `syncActiveTab()` antes de cargar la siguiente.
 - El resaltado de `src/editor/syntax.ts` usa rangos relativos a cada línea mediante `addHighlight`. No vuelvas a usar rangos globales: causan artefactos visuales en OpenTUI.

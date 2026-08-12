@@ -118,9 +118,9 @@ export function useEditor(props: Props) {
   function acceptFind() {
     const result = findResults()[findIndex()]
     if (!result || !renderable) return
-    renderable.setSelection(result.offset, result.offset + findQuery().length)
-    renderable.cursorOffset = result.offset
     renderable.gotoLine(result.line - 1)
+    renderable.setSelection(result.offset, result.offset)
+    renderable.cursorOffset = result.offset
     props.setStatus(`Coincidencia ${findIndex() + 1} de ${findResults().length}.`)
     closeFind()
   }
