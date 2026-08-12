@@ -29,10 +29,15 @@ src/
   bootstrap/
     resolve-root.ts          Resolución de la carpeta inicial.
   workbench/
-    App.tsx                  Ensamblaje de capacidades, estado transversal y atajos.
+    App.tsx                  Punto de composición de la aplicación.
+    AppLayout.tsx            Estructura visual del workbench.
+    useWorkbench.ts          Conecta capacidades y estado transversal mínimo.
+    useKeyboardShortcuts.ts  Prioridad y enrutamiento de todos los atajos.
     types.ts                 Tipos compartidos de foco, overlays y acciones pendientes.
   documents/
     DocumentTabs.tsx         Barra de pestañas abiertas.
+    useDocuments.ts          Pestañas, apertura, guardado, cierre y estado modificado.
+    types.ts                 Tipo de pestaña abierta.
     files.ts                 Lectura, creación y guardado seguro.
   explorer/
     ExplorerPane.tsx         Panel visual del árbol de proyecto.
@@ -41,22 +46,27 @@ src/
     gitignore.ts             Reglas de .gitignore.
   editor/
     EditorPane.tsx           Textarea, líneas y scrollbar del editor.
+    useEditor.ts             Contenido, foco, portapapeles, wrap y deshacer/rehacer.
     useEditorMetrics.ts      Métricas, scroll y resaltado diferido del editor.
     clipboard.ts            Lectura del portapapeles de Windows.
     keyboard.ts              Detección de modificadores nativos de Windows.
     syntax.ts               Estilos y resaltado por línea.
   search/
+    useSearch.ts             Paleta, búsquedas, resultados y conteo de líneas.
     file-index.ts            Índice de archivos y búsqueda difusa.
     project-search.ts        Conteo de líneas y búsqueda global.
   dialogs/
     Overlays.tsx             Paleta, búsquedas, archivo nuevo y confirmación.
+    useOverlays.ts           Estado y ciclo de vida de superposiciones.
 tests/                      Pruebas Bun y renderer de OpenTUI.
 ```
 
 ## Límites de arquitectura
 
 - La estructura expresa capacidades del producto: `documents`, `explorer`, `editor`, `search` y `dialogs`; no crees carpetas genéricas de utilidades para lógica de una sola capacidad.
-- `workbench/App.tsx` coordina estado y acciones entre capacidades. Los paneles reciben estado y callbacks por props; no deben importar otra capacidad para ejecutar una acción.
+- `workbench/App.tsx` solo compone `useWorkbench` y `AppLayout`; no contiene estado de producto ni lógica de capacidades.
+- `workbench/useWorkbench.ts` conecta capacidades mediante callbacks. Los paneles reciben estado y callbacks por props; no deben importar otra capacidad para ejecutar una acción.
+- `workbench/useKeyboardShortcuts.ts` es el único dueño de la prioridad y el enrutamiento de teclado.
 - Los módulos de infraestructura de cada capacidad no deben depender de OpenTUI. La UI de OpenTUI queda en componentes `*.tsx`.
 - Si una responsabilidad transversal crece, extráela junto a la capacidad que la posee (`documents`, `explorer`, etc.), no la reincorpores en el workbench.
 - Las entradas de la aplicación solo arrancan el renderer y resuelven la raíz; no contienen estado de producto.

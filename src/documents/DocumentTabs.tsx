@@ -1,8 +1,9 @@
 /** @jsxImportSource @opentui/solid */
 import { basename } from "node:path"
 import { For, type Accessor } from "solid-js"
+import type { OpenTab } from "./types"
 
-export type OpenTab = { path: string; content: string; savedContent: string }
+export type { OpenTab } from "./types"
 
 type Props = {
   tabs: Accessor<OpenTab[]>
