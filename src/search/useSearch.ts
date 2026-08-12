@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js"
 import { countProjectLines, searchProjectText, type ProjectSearchResult } from "./project-search"
-import type { Command } from "../dialogs/Overlays"
-import { indexFiles } from "./file-index"
+import type { Command } from "../dialogs/types"
+import { buildFileIndex } from "./file-index"
 
 function normalize(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase()
@@ -18,11 +18,11 @@ export function useSearch(props: Props) {
   const [projectResults, setProjectResults] = createSignal<ProjectSearchResult[]>([])
   const [projectSearching, setProjectSearching] = createSignal(false)
   const [lineCounts, setLineCounts] = createSignal<Record<string, number>>({})
-  let indexPromise: ReturnType<typeof indexFiles> | undefined
+  let indexPromise: ReturnType<typeof buildFileIndex> | undefined
   let searchGeneration = 0
 
   function projectIndex() {
-    indexPromise ??= indexFiles(props.root)
+    indexPromise ??= buildFileIndex(props.root)
     return indexPromise
   }
 
@@ -51,11 +51,13 @@ export function useSearch(props: Props) {
     const generation = ++searchGeneration
     setProjectSearching(true)
     try {
-      const results = await searchProjectText(props.root, query(), 100, await projectIndex())
+      const index = await projectIndex()
+      const results = await searchProjectText(props.root, query(), 100, index.items)
       if (generation !== searchGeneration) return
       setProjectResults(results)
       setSearchIndex(0)
-      props.setStatus(results.length ? `${results.length} coincidencias en el proyecto.` : "No se encontraron coincidencias en el proyecto.")
+      const partial = index.truncated ? " Resultado parcial: el índice alcanzó 50.000 entradas." : ""
+      props.setStatus((results.length ? `${results.length} coincidencias en el proyecto.` : "No se encontraron coincidencias en el proyecto.") + partial)
     } catch {
       if (generation !== searchGeneration) return
       props.setStatus("No se pudo buscar en el proyecto.")
@@ -67,9 +69,10 @@ export function useSearch(props: Props) {
   async function showProjectLineCount() {
     props.setStatus("Calculando líneas del proyecto...")
     try {
-      const summary = await countProjectLines(props.root, await projectIndex())
+      const index = await projectIndex()
+      const summary = await countProjectLines(props.root, index.items)
       setLineCounts(summary.byPath)
-      props.setStatus(`Proyecto: ${summary.lines.toLocaleString()} líneas en ${summary.files.toLocaleString()} archivos de texto.`)
+      props.setStatus(`Proyecto: ${summary.lines.toLocaleString()} líneas en ${summary.files.toLocaleString()} archivos de texto.${index.truncated ? " Resultado parcial: el índice alcanzó 50.000 entradas." : ""}`)
     } catch {
       props.setStatus("No se pudieron calcular las líneas del proyecto.")
     }

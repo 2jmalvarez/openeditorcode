@@ -8,6 +8,20 @@ type Props = {
   setStatus: (message: string) => void
 }
 
+export async function fetchAndRefreshGit(
+  root: string,
+  refresh: () => Promise<void>,
+  setStatus: (message: string) => void,
+  fetchRemote: (root: string) => Promise<boolean> = fetchGit,
+) {
+  setStatus("Actualizando referencias remotas y cambios de Git...")
+  const fetched = await fetchRemote(root)
+  await refresh()
+  setStatus(fetched
+    ? "Referencias remotas y cambios de Git actualizados."
+    : "Cambios de Git actualizados; no se pudieron actualizar las referencias remotas.")
+}
+
 export function useGit(props: Props) {
   const [state, setState] = createSignal({ available: false, branch: "", remoteStatus: "", files: [] as GitFile[], message: "Comprobando Git..." })
   const [selected, setSelected] = createSignal(0)
@@ -75,13 +89,7 @@ export function useGit(props: Props) {
   }
 
   async function fetch() {
-    props.setStatus("Actualizando referencias remotas de Git...")
-    if (await fetchGit(props.root)) {
-      await refresh()
-      props.setStatus("Referencias remotas de Git actualizadas.")
-    } else {
-      props.setStatus("No se pudieron actualizar las referencias remotas de Git.")
-    }
+    await fetchAndRefreshGit(props.root, refresh, props.setStatus)
   }
 
   onMount(() => {

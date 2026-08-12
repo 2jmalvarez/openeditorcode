@@ -22,7 +22,7 @@ export function AppLayout(props: Props) {
         <ExplorerPane root={props.root} active={() => props.active() === "explorer"} tree={props.explorer.tree} selected={props.explorer.selected} filePath={props.documents.filePath} lineCounts={props.search.lineCounts} setScroll={props.setExplorerScroll} onActivate={props.activateExplorerAt} />
       </Show>
         <box style={{ flexGrow: 1, minWidth: 0, flexDirection: "column", border: ["top"], borderColor: props.active() === "editor" ? "#70d6a7" : "#30404d" }}>
-        <DocumentTabs tabs={props.documents.tabs} activeTab={props.documents.activeTab} dirty={props.documents.dirty} onActivate={props.documents.activateTab} onClose={props.requestCloseTab} />
+        <DocumentTabs tabs={props.documents.tabs} activeTab={props.documents.activeTab} isTabDirty={props.documents.isTabDirty} onActivate={props.documents.activateTab} onClose={props.requestCloseTab} />
         <box style={{ position: "relative", flexGrow: 1, minHeight: 0 }}>
           <Show when={props.documents.activeDiff()} fallback={<><EditorPane filePath={props.documents.filePath} content={props.editor.content} active={props.active} wrapMode={props.editor.wrapMode} lineLabels={props.editor.metrics.lineLabels} scrollbar={props.editor.metrics.scrollbar} setEditor={props.editor.setEditor} onContentChange={props.editor.onContentChange} onCursorChange={props.editor.onCursorChange} onUnmount={props.editor.detachEditor} /><FindPanel open={props.editor.findOpen} query={props.editor.findQuery} results={props.editor.findResults} index={props.editor.findIndex} onQuery={props.editor.updateFindQuery} /></>}>
             <DiffPane diff={props.documents.activeDiff} />
@@ -39,6 +39,6 @@ export function AppLayout(props: Props) {
         <text style={{ marginLeft: "auto" }} fg="#8ca0ae"><Show when={props.documents.filePath()}>Ln {props.editor.cursor().line}:{props.editor.cursor().column}  |  </Show>v{props.appVersion}<Show when={props.updates.latestVersion()}> ↑ {props.updates.latestVersion()}</Show></text>
       </box>
     </box>
-    <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.explorer.newFileDirectory} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} pendingAction={props.overlays.pendingAction} />
+    <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.overlays.newFileDirectory} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} pendingAction={props.overlays.pendingAction} />
   </box>
 }

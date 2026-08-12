@@ -6,6 +6,7 @@ export type GitFileStatus = "modified" | "added" | "deleted" | "renamed" | "untr
 export type GitFile = {
   path: string
   status: GitFileStatus
+  previousPath?: string
 }
 
 export type GitState = {
@@ -51,13 +52,15 @@ export function parseGitStatus(output: string): GitFile[] {
     if (!entry || entry.length < 4) continue
     const code = entry.slice(0, 2)
     const path = entry.slice(3)
-    if (["R", "C"].some((kind) => code.includes(kind))) index += 1
+    const renamed = code.includes("R") || code.includes("C")
+    const previousPath = renamed ? entries[index + 1] : undefined
+    if (renamed) index += 1
     const status: GitFileStatus = code === "??" ? "untracked"
-      : code.includes("R") || code.includes("C") ? "renamed"
+      : renamed ? "renamed"
         : code.includes("D") ? "deleted"
           : code.includes("A") ? "added"
             : "modified"
-    files.push({ path, status })
+    files.push(previousPath === undefined ? { path, status } : { path, status, previousPath })
   }
   return files.sort((left, right) => left.path.localeCompare(right.path))
 }
@@ -91,8 +94,11 @@ export async function fetchGit(root: string): Promise<boolean> {
 }
 
 export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff> {
-  const previous = file.status === "untracked" ? { stdout: "", success: true } : await runGit(root, ["show", `HEAD:${file.path}`])
+  const hasPrevious = file.status !== "added" && file.status !== "untracked"
+  const previousPath = file.status === "renamed" ? file.previousPath : file.path
+  if (hasPrevious && !previousPath) throw new Error("No se pudo determinar la ruta anterior del archivo.")
+  const previous = hasPrevious ? await runGit(root, ["show", `HEAD:${previousPath}`]) : { stdout: "", success: true }
   const current = file.status === "deleted" ? "" : await readTextFile(root, join(root, file.path))
-  if (file.status !== "untracked" && !previous.success) throw new Error("No se pudo leer la versión anterior del archivo.")
+  if (!previous.success) throw new Error("No se pudo leer la versión anterior del archivo.")
   return { file, previous: previous.stdout, current }
 }

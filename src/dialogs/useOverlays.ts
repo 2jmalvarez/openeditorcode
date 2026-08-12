@@ -5,13 +5,17 @@ import type { TreeItem } from "../explorer/tree"
 export function useOverlays() {
   const [overlay, setOverlay] = createSignal<Overlay>()
   const [newFileName, setNewFileName] = createSignal("")
+  const [newFileDirectory, setNewFileDirectory] = createSignal("")
   const [confirmChoice, setConfirmChoice] = createSignal(2)
   const [pendingAction, setPendingAction] = createSignal<PendingAction>()
   const [pendingDeletion, setPendingDeletion] = createSignal<TreeItem>()
 
-  function open(next: Exclude<Overlay, "confirm" | undefined>) {
+  function open(next: Exclude<Overlay, "confirm" | undefined>, directory?: string) {
     setOverlay(next)
-    if (next === "new-file") setNewFileName("")
+    if (next === "new-file") {
+      setNewFileName("")
+      setNewFileDirectory(directory ?? "")
+    }
   }
 
   function requestConfirm(action: PendingAction) {
@@ -28,10 +32,11 @@ export function useOverlays() {
   function close() {
     setOverlay(undefined)
     setNewFileName("")
+    setNewFileDirectory("")
     setPendingAction(undefined)
     setPendingDeletion(undefined)
     setConfirmChoice(2)
   }
 
-  return { overlay, newFileName, setNewFileName, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, open, requestConfirm, requestDeletion, close }
+  return { overlay, newFileName, setNewFileName, newFileDirectory, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, open, requestConfirm, requestDeletion, close }
 }

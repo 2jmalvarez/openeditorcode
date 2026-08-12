@@ -5,7 +5,7 @@ import { createTree, type TreeItem } from "./tree"
 type Props = {
   root: string
   setStatus: (status: string) => void
-  openFile: (path: string) => Promise<void>
+  openFile: (path: string) => Promise<unknown>
 }
 
 export function useExplorer(props: Props) {
@@ -86,14 +86,7 @@ export function useExplorer(props: Props) {
     setSelected((value) => Math.max(0, Math.min(value + direction, tree().length - 1)))
   }
 
-  async function removeSelected(remove: (path: string) => Promise<void>) {
-    const item = selectedItem()
-    if (!item) return
-    await remove(item.path)
-    await refreshTree()
-  }
-
   onMount(() => void refreshTree())
 
-  return { tree, selected, setSelected, selectedItem, newFileDirectory, refreshTree, refreshExplorer, collapseAllFolders, collapseSelectedFolder, activateItem, activateAt, moveSelection, removeSelected }
+  return { tree, selected, setSelected, selectedItem, newFileDirectory, refreshTree, refreshExplorer, collapseAllFolders, collapseSelectedFolder, activateItem, activateAt, moveSelection }
 }

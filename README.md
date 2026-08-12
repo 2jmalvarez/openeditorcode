@@ -98,7 +98,7 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 | `Ctrl+B` | Mostrar u ocultar el explorador de archivos |
 | `Ctrl+Alt+B` | Mostrar u ocultar el control de cambios Git |
 | `Ctrl+Shift+Enter` | Contraer todas las carpetas del panel activo |
-| `F5` | Actualizar el explorador de archivos |
+| `F5` | Actualizar el panel activo; en Cambios revisa el estado local y ejecuta `git fetch` |
 | `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
 | `Shift+Enter` | Alternar la carpeta seleccionada en explorador o cambios |
@@ -126,6 +126,7 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 ## Cambios Git
 
 - `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Sus archivos se organizan en un árbol y usan las mismas flechas, `Enter` y `Shift+Enter` que el explorador.
+- Con el panel **CAMBIOS** activo, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales aunque el fetch falle.
 - OEC muestra el estado remoto de la rama disponible localmente. La paleta incluye **Actualizar referencias remotas de Git** para ejecutar `git fetch --quiet` manualmente.
 - Abrir un archivo del panel crea una pestaña `Δ` con el diff anterior/nuevo. Los diffs son de solo lectura, se pueden cerrar normalmente y conviven con el archivo editable.
 
@@ -142,7 +143,9 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 ```powershell
 bun run typecheck
 bun run test
+bun run test:coverage
 bun run build
+bun run smoke:tui
 ```
 
-`bun run build` genera el binario de la plataforma actual. También puedes ejecutar `bun run build:windows` o `bun run build:linux`. La publicación de npm compila los binarios en GitHub Actions y los distribuye automáticamente según el sistema operativo. Consulta `AGENTS.md` para la arquitectura y pautas de mantenimiento.
+`bun run build` genera el binario de la plataforma actual. También puedes ejecutar `bun run build:windows` o `bun run build:linux`. La CI exige cobertura mínima sobre la lógica de producto y arranca el ejecutable compilado hasta verificar su primer frame. La publicación de npm valida versiones, contenido de paquetes y binarios antes de distribuirlos según el sistema operativo. Consulta `AGENTS.md` para la arquitectura y pautas de mantenimiento.

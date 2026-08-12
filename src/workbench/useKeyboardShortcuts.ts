@@ -5,9 +5,7 @@ import type { FocusTarget, Overlay } from "./types"
 
 type Props = {
   active: () => FocusTarget
-  setActive: (value: FocusTarget | ((value: FocusTarget) => FocusTarget)) => void
   overlay: () => Overlay
-  pendingDeletion: () => unknown
   setConfirmChoice: (value: number | ((value: number) => number)) => void
   searchIndex: () => number
   setSearchIndex: (value: number | ((value: number) => number)) => void
@@ -16,7 +14,7 @@ type Props = {
   acceptConfirm: () => Promise<void>
   acceptDeletion: () => Promise<void>
   quit: () => void
-  refreshExplorer: () => Promise<void>
+  refreshActivePanel: () => Promise<void>
   save: () => Promise<boolean>
   undo: () => void
   redo: () => void
@@ -73,18 +71,37 @@ export function useKeyboardShortcuts(props: Props) {
       if (key.name === "down") return consume(key, () => props.setConfirmChoice((value) => Math.min(2, value + 1)))
       if (isEnter) return consume(key, () => void props.acceptConfirm())
       if (key.name === "escape") return consume(key, props.closeOverlay)
-      return
+      return consume(key, () => undefined)
     }
     if (props.overlay() === "delete-confirm") {
       if (isEnter) return consume(key, () => void props.acceptDeletion())
       if (key.name === "escape") return consume(key, props.closeOverlay)
+      return consume(key, () => undefined)
+    }
+    if (props.overlay() === "command-palette") {
+      if (key.name === "escape") return consume(key, props.closeOverlay)
+      if (key.name === "down") return consume(key, () => props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.paletteLength() - 1))))
+      if (key.name === "up") return consume(key, () => props.setSearchIndex((value) => Math.max(0, value - 1)))
+      if (isEnter) return consume(key, props.acceptCommand)
+      return
+    }
+    if (props.overlay() === "new-file") {
+      if (key.name === "escape") return consume(key, props.closeOverlay)
+      if (isEnter) return consume(key, () => void props.createNewFile())
+      return
+    }
+    if (props.overlay() === "project-search") {
+      if (key.name === "escape") return consume(key, props.cancelProjectSearch)
+      if (key.name === "down") return consume(key, () => props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.projectResultsLength() - 1))))
+      if (key.name === "up") return consume(key, () => props.setSearchIndex((value) => Math.max(0, value - 1)))
+      if (isEnter) return consume(key, () => void (props.projectResultsLength() ? props.openProjectResult() : props.findInProject()))
       return
     }
     if (ctrl && keyName === "q") return consume(key, props.quit)
-    if (keyName === "f5") return consume(key, () => void props.refreshExplorer())
+    if (keyName === "f5") return consume(key, () => void props.refreshActivePanel())
     if (ctrl && keyName === "s") return consume(key, () => void props.save())
-    if (ctrl && shift && keyName === "z") return consume(key, props.redo)
-    if (ctrl && keyName === "z") return consume(key, props.undo)
+    if (props.active() === "editor" && ctrl && shift && keyName === "z") return consume(key, props.redo)
+    if (props.active() === "editor" && ctrl && keyName === "z") return consume(key, props.undo)
     if (ctrl && keyName === "p") return consume(key, props.openPalette)
     if (ctrl && keyName === "n") return consume(key, props.openNewFile)
     if (ctrl && (key.option || key.meta) && keyName === "f") return consume(key, props.openProjectSearch)
@@ -96,28 +113,13 @@ export function useKeyboardShortcuts(props: Props) {
     if (shift && keyName === "tab") return consume(key, props.changeTab)
     if (ctrl && ((key.option || key.meta) && keyName === "w" || keyName === "l")) return consume(key, props.toggleWrap)
     if (ctrl && keyName === "w") return consume(key, props.requestClose)
-    if (ctrl && keyName === "c") return consume(key, props.copy)
+    if (props.active() === "editor" && ctrl && keyName === "c") return consume(key, props.copy)
     if (ctrl && keyName === "v") return consume(key, () => void props.paste())
     if (key.name === "escape" && props.editorFindOpen()) return consume(key, props.closeEditorFind)
     if (props.editorFindOpen()) {
       if (key.name === "down") return consume(key, () => props.moveEditorFindResult(1))
       if (key.name === "up") return consume(key, () => props.moveEditorFindResult(-1))
       if (isEnter) return consume(key, props.acceptEditorFind)
-      return
-    }
-    if (key.name === "escape" && props.overlay() === "project-search") return consume(key, props.cancelProjectSearch)
-    if (key.name === "escape" && props.overlay()) return consume(key, props.closeOverlay)
-    if (props.overlay() === "command-palette") {
-      if (key.name === "down") return consume(key, () => props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.paletteLength() - 1))))
-      if (key.name === "up") return consume(key, () => props.setSearchIndex((value) => Math.max(0, value - 1)))
-      if (isEnter) return consume(key, props.acceptCommand)
-      return
-    }
-    if (props.overlay() === "new-file" && isEnter) return consume(key, () => void props.createNewFile())
-    if (props.overlay() === "project-search") {
-      if (key.name === "down") return consume(key, () => props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.projectResultsLength() - 1))))
-      if (key.name === "up") return consume(key, () => props.setSearchIndex((value) => Math.max(0, value - 1)))
-      if (isEnter) return consume(key, () => void (props.projectResultsLength() ? props.openProjectResult() : props.findInProject()))
       return
     }
     if (key.name === "tab") return consume(key, props.cycleFocus)

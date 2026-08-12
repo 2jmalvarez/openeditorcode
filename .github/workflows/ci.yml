@@ -22,6 +22,39 @@ jobs:
         with:
           bun-version: "1.3.14"
       - run: bun install --frozen-lockfile
+      - run: bun run preflight
       - run: bun run typecheck
-      - run: bun run test
+      - run: bun run test:coverage
       - run: bun run build
+      - run: bun run smoke:check
+      - run: bun run smoke:tui
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: oec-win32-x64
+          path: packages/oec-win32-x64/bin/oec.exe
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: oec-linux-x64
+          path: packages/oec-linux-x64/bin/oec
+
+  package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: oec-win32-x64
+          path: packages/oec-win32-x64/bin
+      - uses: actions/download-artifact@v4
+        with:
+          name: oec-linux-x64
+          path: packages/oec-linux-x64/bin
+      - run: chmod +x packages/oec-linux-x64/bin/oec
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun run preflight
+      - run: bun run pack:check

@@ -18,9 +18,12 @@ jobs:
         with:
           bun-version: "1.3.14"
       - run: bun install --frozen-lockfile
+      - run: bun run preflight
       - run: bun run typecheck
-      - run: bun run test
+      - run: bun run test:coverage
       - run: bun run build:windows
+      - run: bun run smoke:check win32-x64
+      - run: bun run smoke:tui
       - uses: actions/upload-artifact@v4
         with:
           name: oec-win32-x64
@@ -34,9 +37,12 @@ jobs:
         with:
           bun-version: "1.3.14"
       - run: bun install --frozen-lockfile
+      - run: bun run preflight
       - run: bun run typecheck
-      - run: bun run test
+      - run: bun run test:coverage
       - run: bun run build:linux
+      - run: bun run smoke:check linux-x64
+      - run: bun run smoke:tui
       - uses: actions/upload-artifact@v4
         with:
           name: oec-linux-x64
@@ -61,11 +67,11 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - run: npm pack --dry-run
-        working-directory: packages/oec-win32-x64
-      - run: npm pack --dry-run
-        working-directory: packages/oec-linux-x64
-      - run: npm pack --dry-run
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun run preflight
+      - run: bun run pack:check
       - run: npm publish --access public
         working-directory: packages/oec-win32-x64
         env:

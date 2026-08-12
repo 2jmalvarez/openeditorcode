@@ -1,6 +1,5 @@
 import { readTextFile } from "../documents/files"
-import { indexFiles } from "./file-index"
-import type { TreeItem } from "../explorer/tree"
+import { indexFiles, type IndexedItem } from "./file-index"
 
 export type ProjectSearchResult = {
   path: string
@@ -15,7 +14,7 @@ function lineCount(content: string): number {
   return content.endsWith("\n") ? content.slice(0, -1).split("\n").length : content.split("\n").length
 }
 
-export async function countProjectLines(root: string, indexedItems?: TreeItem[]): Promise<ProjectLineCount> {
+export async function countProjectLines(root: string, indexedItems?: IndexedItem[]): Promise<ProjectLineCount> {
   const items = indexedItems ?? await indexFiles(root)
   let files = 0
   let lines = 0
@@ -36,7 +35,7 @@ export async function countProjectLines(root: string, indexedItems?: TreeItem[])
   return { files, lines, byPath }
 }
 
-export async function searchProjectText(root: string, query: string, limit = 100, indexedItems?: TreeItem[]): Promise<ProjectSearchResult[]> {
+export async function searchProjectText(root: string, query: string, limit = 100, indexedItems?: IndexedItem[]): Promise<ProjectSearchResult[]> {
   const needle = query.toLocaleLowerCase()
   if (!needle) return []
   const items = (indexedItems ?? await indexFiles(root)).filter((item) => !item.directory)

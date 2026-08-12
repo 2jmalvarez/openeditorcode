@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { createTextFile, ensureInsideRoot, FileAccessError, readTextFile, removeProjectEntry, writeTextFile } from "../src/documents/files"
+import { createTextFile, ensureInsideRoot, FileAccessError, MAX_FILE_BYTES, readTextFile, removeProjectEntry, writeTextFile } from "../src/documents/files"
 import { fuzzyScore, filterItems } from "../src/search/file-index"
 import { countProjectLines, searchProjectText } from "../src/search/project-search"
 import { createTree } from "../src/explorer/tree"
+import { pathIsAffected } from "../src/documents/useDocuments"
 
 let root = ""
 
@@ -18,6 +19,12 @@ afterEach(async () => {
 })
 
 describe("file access", () => {
+  test("identifies files affected by an exact entry or directory deletion", () => {
+    expect(pathIsAffected(join(root, "notes.txt"), join(root, "notes.txt"), false)).toBe(true)
+    expect(pathIsAffected(join(root, "folder"), join(root, "folder", "notes.txt"), true)).toBe(true)
+    expect(pathIsAffected(join(root, "folder"), join(root, "folder-two", "notes.txt"), true)).toBe(false)
+  })
+
   test("reads and atomically writes UTF-8 text inside the selected root", async () => {
     const path = join(root, "notes.txt")
     await writeFile(path, "first", "utf8")
@@ -31,10 +38,38 @@ describe("file access", () => {
     expect(() => ensureInsideRoot(root, join(root, "..", "outside.txt"))).toThrow(FileAccessError)
   })
 
+  test("allows names beginning with two dots inside the selected root", () => {
+    expect(ensureInsideRoot(root, join(root, "..foo"))).toBe(join(root, "..foo"))
+  })
+
   test("rejects binary files", async () => {
     const path = join(root, "image.bin")
     await writeFile(path, Buffer.from([0x48, 0x00, 0x49]))
     await expect(readTextFile(root, path)).rejects.toThrow("binarios")
+  })
+
+  test("rejects invalid UTF-8 text", async () => {
+    const path = join(root, "invalid.txt")
+    await writeFile(path, Buffer.from([0xc3, 0x28]))
+    await expect(readTextFile(root, path)).rejects.toThrow("UTF-8")
+  })
+
+  test("rejects writes above the UTF-8 byte limit", async () => {
+    const path = join(root, "large.txt")
+    const content = "é".repeat(MAX_FILE_BYTES / 2 + 1)
+    await expect(writeTextFile(root, path, content)).rejects.toThrow("2 MB")
+  })
+
+  test("uses unique temporary names and cleans them after saving", async () => {
+    const path = join(root, "notes.txt")
+    const oldTemporaryPath = `${path}.oec-${process.pid}.tmp`
+    await writeFile(path, "old", "utf8")
+    await writeFile(oldTemporaryPath, "keep", "utf8")
+
+    await writeTextFile(root, path, "new")
+
+    expect(await readFile(oldTemporaryPath, "utf8")).toBe("keep")
+    expect((await readdir(root)).filter((name) => name.startsWith("notes.txt.oec-") && name !== `notes.txt.oec-${process.pid}.tmp`)).toEqual([])
   })
 
   test("creates an empty file without overwriting an existing one", async () => {
@@ -53,6 +88,60 @@ describe("file access", () => {
     await removeProjectEntry(root, directory)
     await expect(readTextFile(root, file)).rejects.toThrow()
     await expect(removeProjectEntry(root, root)).rejects.toThrow("raíz")
+  })
+
+  test("rejects link escapes while allowing links that resolve inside the root", async () => {
+    const outside = await mkdtemp(join(tmpdir(), "oec-outside-"))
+    const internalDirectory = join(root, "internal")
+    const internalLink = join(root, "internal-link")
+    const escapingLink = join(root, "escaping-link")
+    await mkdir(internalDirectory)
+    await writeFile(join(internalDirectory, "inside.txt"), "inside", "utf8")
+    await writeFile(join(outside, "outside.txt"), "outside", "utf8")
+
+    try {
+      try {
+        await symlink(internalDirectory, internalLink, process.platform === "win32" ? "junction" : "dir")
+        await symlink(outside, escapingLink, process.platform === "win32" ? "junction" : "dir")
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code
+        if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") return
+        throw error
+      }
+
+      expect(await readTextFile(root, join(internalLink, "inside.txt"))).toBe("inside")
+      await writeTextFile(root, join(internalLink, "written.txt"), "written")
+      await createTextFile(root, join(internalLink, "created.txt"))
+      expect(await readFile(join(internalDirectory, "written.txt"), "utf8")).toBe("written")
+      await expect(readTextFile(root, join(escapingLink, "outside.txt"))).rejects.toThrow(FileAccessError)
+      await expect(writeTextFile(root, join(escapingLink, "written.txt"), "blocked")).rejects.toThrow(FileAccessError)
+      await expect(createTextFile(root, join(escapingLink, "created.txt"))).rejects.toThrow(FileAccessError)
+    } finally {
+      await rm(outside, { recursive: true, force: true })
+    }
+  })
+
+  test("removes an escaping link itself without following its destination", async () => {
+    const outside = await mkdtemp(join(tmpdir(), "oec-outside-"))
+    const link = join(root, "outside-link")
+    const destinationFile = join(outside, "keep.txt")
+    await writeFile(destinationFile, "keep", "utf8")
+
+    try {
+      try {
+        await symlink(outside, link, process.platform === "win32" ? "junction" : "dir")
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code
+        if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") return
+        throw error
+      }
+
+      await removeProjectEntry(root, link)
+      await expect(lstat(link)).rejects.toThrow()
+      expect(await readFile(destinationFile, "utf8")).toBe("keep")
+    } finally {
+      await rm(outside, { recursive: true, force: true })
+    }
   })
 })
 

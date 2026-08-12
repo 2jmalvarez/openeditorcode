@@ -3,7 +3,7 @@ import { APP_VERSION } from "../bootstrap/version"
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import { useRenderer } from "@opentui/solid"
 import { basename } from "node:path"
-import { type Command } from "../dialogs/Overlays"
+import type { Command } from "../dialogs/types"
 import { useOverlays } from "../dialogs/useOverlays"
 import { useDocuments } from "../documents/useDocuments"
 import { useEditor } from "../editor/useEditor"
@@ -15,6 +15,7 @@ import { useSearch } from "../search/useSearch"
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts"
 import type { FocusTarget } from "./types"
 import { useUpdates } from "../updates/useUpdates"
+import { refreshFocusedPanel } from "./refresh"
 
 export function useWorkbench(root: string) {
   const renderer = useRenderer()
@@ -42,8 +43,10 @@ export function useWorkbench(root: string) {
   const git = useGit({ root, setStatus })
   const updates = useUpdates()
 
+  createEffect(() => documents.syncContent(editor.content()))
+
   function openOverlay(kind: "command-palette" | "project-search" | "new-file") {
-    overlays.open(kind)
+    overlays.open(kind, kind === "new-file" ? explorer.newFileDirectory() : undefined)
     if (kind !== "project-search") search.reset()
   }
 
@@ -62,7 +65,7 @@ export function useWorkbench(root: string) {
   }
 
   function quit() {
-    if (documents.dirty()) {
+    if (documents.hasDirtyTabs()) {
       overlays.requestConfirm("quit")
       setStatus("Hay cambios sin guardar.")
       return
@@ -76,7 +79,7 @@ export function useWorkbench(root: string) {
   }
 
   function requestUpdate() {
-    if (documents.dirty()) {
+    if (documents.hasDirtyTabs()) {
       overlays.requestConfirm("update")
       setStatus("Guarda o descarta los cambios antes de actualizar OEC.")
       return
@@ -87,7 +90,10 @@ export function useWorkbench(root: string) {
   async function acceptConfirm() {
     const choice = overlays.confirmChoice()
     const action = overlays.pendingAction()
-    if (choice < 2 && !(await documents.save())) return
+    if (choice < 2) {
+      const saved = action === "close" ? await documents.save() : await documents.saveAllDirtyTabs()
+      if (!saved) return
+    }
     overlays.close()
     if (choice === 0) return
     if (choice === 2) setStatus("Cambios descartados.")
@@ -97,7 +103,7 @@ export function useWorkbench(root: string) {
   }
 
   async function createNewFile() {
-    if (await documents.createFile(explorer.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) {
+    if (await documents.createFile(overlays.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) {
       search.invalidateIndex()
       overlays.close()
     }
@@ -106,8 +112,15 @@ export function useWorkbench(root: string) {
   async function acceptDeletion() {
     const item = overlays.pendingDeletion()
     if (!item) return overlays.close()
+    if (documents.hasDirtyTabsAffectedBy(item.path, item.directory)) {
+      overlays.close()
+      setStatus("No se puede eliminar: hay cambios sin guardar en una pestaña afectada.")
+      return
+    }
     try {
-      await explorer.removeSelected((path) => removeProjectEntry(root, path))
+      await removeProjectEntry(root, item.path)
+      documents.closeTabsAffectedBy(item.path, item.directory)
+      await explorer.refreshTree()
       search.invalidateIndex()
       overlays.close()
       setStatus(`${item.directory ? "Carpeta" : "Archivo"} eliminado: ${item.name}`)
@@ -127,13 +140,17 @@ export function useWorkbench(root: string) {
     await explorer.refreshExplorer()
   }
 
+  async function refreshActivePanel() {
+    await refreshFocusedPanel(active(), refreshExplorer, git.fetch)
+  }
+
   const commands = (): Command[] => [
     { title: "Mover foco a la izquierda", shortcut: "Ctrl+Shift+←", run: focusLeft },
     { title: "Mover foco a la derecha", shortcut: "Ctrl+Shift+→", run: focusRight },
     { title: "Mostrar u ocultar explorador", shortcut: "Ctrl+B", run: toggleExplorer },
     { title: "Mostrar u ocultar control de cambios", shortcut: "Ctrl+Alt+B", run: toggleGit },
-    { title: "Actualizar referencias remotas de Git", shortcut: "Paleta", run: () => void git.fetch() },
-    { title: "Actualizar explorador", shortcut: "F5", run: () => void explorer.refreshExplorer() },
+    { title: "Actualizar referencias remotas y cambios de Git", shortcut: "Paleta", run: () => void git.fetch() },
+    { title: "Actualizar panel activo", shortcut: "F5", run: () => void refreshActivePanel() },
     { title: "Crear archivo en carpeta seleccionada", shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
     { title: "Buscar texto", shortcut: "Ctrl+F", run: editor.openFind },
     { title: "Buscar en todo el proyecto", shortcut: "Ctrl+Alt+F", run: () => openOverlay("project-search") },
@@ -161,8 +178,7 @@ export function useWorkbench(root: string) {
     const result = search.projectResults()[search.searchIndex()]
     if (!result) return search.findInProject()
     overlays.close()
-    await documents.openFile(result.path)
-    editor.gotoLine(result.line - 1)
+    if (await documents.openFile(result.path)) editor.gotoLine(result.line - 1)
   }
 
   function cancelProjectSearch() {
@@ -255,8 +271,8 @@ export function useWorkbench(root: string) {
   }
 
   useKeyboardShortcuts({
-    active, setActive, overlay: overlays.overlay, pendingDeletion: overlays.pendingDeletion, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
-    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
+    active, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
+    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshActivePanel, save: documents.save, undo: editor.undo, redo: editor.redo,
     openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: editor.openFind, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
     focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,

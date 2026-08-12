@@ -93,7 +93,7 @@ No reasignes estos atajos sin actualizar `README.md`, la paleta y las pruebas co
 - `Ctrl+P`: paleta.
 - `Ctrl+Shift+←` / `Ctrl+Shift+→`: alternar entre explorador y editor.
 - `Ctrl+B`: mostrar u ocultar el explorador de archivos.
-- `F5`: actualizar el explorador de archivos.
+- `F5`: actualizar el panel activo; en el panel de cambios ejecuta `git fetch` y vuelve a leer el estado local.
 - `Supr`: eliminar el archivo o carpeta seleccionado tras confirmar.
 - `Ctrl+N`: archivo nuevo.
 - `Ctrl+S`: guardar.

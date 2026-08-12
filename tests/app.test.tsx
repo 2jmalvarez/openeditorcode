@@ -34,7 +34,7 @@ test("renders the explorer and opens its selected file", async () => {
     expect(setup.captureCharFrame()).toContain("hello.txt")
 
     setup.mockInput.pressEnter()
-    await Bun.sleep(60)
+    await Bun.sleep(120)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("contenido de prueba")
   } finally {
@@ -49,7 +49,7 @@ test("opens the command and configuration palette", async () => {
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("COMANDOS Y CONFIGURACIÓN")
     expect(setup.captureCharFrame()).toContain("Crear archivo en carpeta seleccionada")
-    expect(setup.captureCharFrame()).toContain("Actualizar explorador")
+    expect(setup.captureCharFrame()).toContain("Actualizar panel activo")
     expect(setup.captureCharFrame()).toContain("F5")
   } finally {
     setup.renderer.destroy()
@@ -146,6 +146,48 @@ test("opens a second tab without asking to save the modified first tab", async (
     expect(frame).toContain("segundo archivo")
     expect(frame).toContain("hello.txt")
     expect(frame).not.toContain("Hay cambios sin guardar")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("keeps an inactive modified tab dirty and protects quit", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(60)
+    setup.mockInput.pressEnter()
+    await Bun.sleep(60)
+    await setup.mockInput.typeText("!")
+    setup.mockInput.pressArrow("left", { ctrl: true, shift: true })
+    setup.mockInput.pressArrow("down")
+    setup.mockInput.pressEnter()
+    await Bun.sleep(60)
+    await setup.renderOnce()
+
+    expect(setup.captureCharFrame()).toContain("* hello.txt")
+    setup.mockInput.pressKey("q", { ctrl: true })
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("Hay cambios sin guardar")
+    expect(setup.captureCharFrame()).toContain("Guardar y salir")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("does not run global shortcuts behind the command palette", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(60)
+    setup.mockInput.pressEnter()
+    await Bun.sleep(120)
+    setup.mockInput.pressKey("p", { ctrl: true })
+    setup.mockInput.pressKey("w", { ctrl: true })
+    await setup.renderOnce()
+
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("COMANDOS Y CONFIGURACIÓN")
+    expect(frame).toContain("contenido de prueba")
+    expect(frame).not.toContain("Archivo cerrado")
   } finally {
     setup.renderer.destroy()
   }
