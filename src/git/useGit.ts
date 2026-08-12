@@ -15,12 +15,13 @@ export function useGit(props: Props) {
   let refreshing = false
   let queued = false
   let timer: ReturnType<typeof setTimeout> | undefined
+  const controller = new AbortController()
 
   async function refresh() {
     if (refreshing) { queued = true; return }
     refreshing = true
     try {
-      const next = await readGitState(props.root)
+      const next = await readGitState(props.root, controller.signal)
       setState(next)
       setExpanded((current) => {
         const nextExpanded = new Set(current)
@@ -93,6 +94,7 @@ export function useGit(props: Props) {
     })
     onCleanup(() => {
       disposed = true
+      controller.abort()
       if (timer) clearTimeout(timer)
       watcher?.close()
     })

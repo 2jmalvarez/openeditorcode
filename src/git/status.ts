@@ -24,10 +24,11 @@ export type GitDiff = {
 
 const emptyState = (message: string): GitState => ({ available: false, branch: "", remoteStatus: "", files: [], message })
 
-async function runGit(root: string, args: string[]): Promise<{ stdout: string; success: boolean }> {
+async function runGit(root: string, args: string[], signal?: AbortSignal): Promise<{ stdout: string; success: boolean }> {
   try {
-    const process = Bun.spawnSync(["git", "-C", root, ...args], { stdout: "pipe", stderr: "pipe" })
-    return { stdout: new TextDecoder().decode(process.stdout), success: process.exitCode === 0 }
+    const process = Bun.spawn(["git", "-C", root, ...args], { stdout: "pipe", stderr: "ignore", signal })
+    const stdout = await new Response(process.stdout).text()
+    return { stdout, success: await process.exited === 0 }
   } catch {
     return { stdout: "", success: false }
   }
@@ -61,22 +62,22 @@ export function parseGitStatus(output: string): GitFile[] {
   return files.sort((left, right) => left.path.localeCompare(right.path))
 }
 
-export async function readGitState(root: string): Promise<GitState> {
-  const repository = await runGit(root, ["rev-parse", "--is-inside-work-tree"])
+export async function readGitState(root: string, signal?: AbortSignal): Promise<GitState> {
+  const repository = await runGit(root, ["rev-parse", "--is-inside-work-tree"], signal)
   if (!repository.success || repository.stdout.trim() !== "true") return emptyState("Esta carpeta no es un repositorio Git.")
 
   const [branch, status, upstream] = await Promise.all([
-    runGit(root, ["branch", "--show-current"]),
-    runGit(root, ["status", "--porcelain=v1", "-z"]),
-    runGit(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]),
+    runGit(root, ["branch", "--show-current"], signal),
+    runGit(root, ["status", "--porcelain=v1", "-z"], signal),
+    runGit(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], signal),
   ])
   if (!status.success) return emptyState("No se pudo leer el estado de Git.")
-  const remoteStatus = !upstream.success ? "sin remoto" : await remoteSummary(root)
+  const remoteStatus = !upstream.success ? "sin remoto" : await remoteSummary(root, signal)
   return { available: true, branch: branch.stdout.trim() || "HEAD separado", remoteStatus, files: parseGitStatus(status.stdout), message: "Sin cambios locales." }
 }
 
-async function remoteSummary(root: string): Promise<string> {
-  const counts = await runGit(root, ["rev-list", "--left-right", "--count", "HEAD...@{upstream}"])
+async function remoteSummary(root: string, signal?: AbortSignal): Promise<string> {
+  const counts = await runGit(root, ["rev-list", "--left-right", "--count", "HEAD...@{upstream}"], signal)
   if (!counts.success) return "sin remoto"
   const [ahead = 0, behind = 0] = counts.stdout.trim().split(/\s+/).map(Number)
   if (ahead && behind) return `${ahead} adelante, ${behind} atrás`

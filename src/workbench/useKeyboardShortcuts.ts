@@ -96,8 +96,6 @@ export function useKeyboardShortcuts(props: Props) {
       if (key.name === "down") { key.preventDefault(); key.stopPropagation(); return props.moveEditorFindResult(1) }
       if (key.name === "up") { key.preventDefault(); key.stopPropagation(); return props.moveEditorFindResult(-1) }
       if (isEnter) { key.preventDefault(); key.stopPropagation(); return props.acceptEditorFind() }
-      key.preventDefault()
-      key.stopPropagation()
       return
     }
     if (key.name === "escape" && props.overlay() === "project-search") { key.preventDefault(); key.stopPropagation(); return props.cancelProjectSearch() }

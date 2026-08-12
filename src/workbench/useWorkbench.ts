@@ -96,7 +96,10 @@ export function useWorkbench(root: string) {
   }
 
   async function createNewFile() {
-    if (await documents.createFile(explorer.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) overlays.close()
+    if (await documents.createFile(explorer.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) {
+      search.invalidateIndex()
+      overlays.close()
+    }
   }
 
   async function acceptDeletion() {
@@ -104,6 +107,7 @@ export function useWorkbench(root: string) {
     if (!item) return overlays.close()
     try {
       await explorer.removeSelected((path) => removeProjectEntry(root, path))
+      search.invalidateIndex()
       overlays.close()
       setStatus(`${item.directory ? "Carpeta" : "Archivo"} eliminado: ${item.name}`)
     } catch (error) {
@@ -115,6 +119,11 @@ export function useWorkbench(root: string) {
   function requestDeletion() {
     const item = explorer.selectedItem()
     if (item) overlays.requestDeletion(item)
+  }
+
+  async function refreshExplorer() {
+    search.invalidateIndex()
+    await explorer.refreshExplorer()
   }
 
   const commands = (): Command[] => [
@@ -246,7 +255,7 @@ export function useWorkbench(root: string) {
 
   useKeyboardShortcuts({
     active, setActive, overlay: overlays.overlay, pendingDeletion: overlays.pendingDeletion, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
-    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshExplorer: explorer.refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
+    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
     openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: editor.openFind, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
     focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,

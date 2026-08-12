@@ -1,5 +1,6 @@
 import { readTextFile } from "../documents/files"
 import { indexFiles } from "./file-index"
+import type { TreeItem } from "../explorer/tree"
 
 export type ProjectSearchResult = {
   path: string
@@ -14,8 +15,8 @@ function lineCount(content: string): number {
   return content.endsWith("\n") ? content.slice(0, -1).split("\n").length : content.split("\n").length
 }
 
-export async function countProjectLines(root: string): Promise<ProjectLineCount> {
-  const items = await indexFiles(root)
+export async function countProjectLines(root: string, indexedItems?: TreeItem[]): Promise<ProjectLineCount> {
+  const items = indexedItems ?? await indexFiles(root)
   let files = 0
   let lines = 0
   const byPath: Record<string, number> = {}
@@ -35,24 +36,29 @@ export async function countProjectLines(root: string): Promise<ProjectLineCount>
   return { files, lines, byPath }
 }
 
-export async function searchProjectText(root: string, query: string, limit = 100): Promise<ProjectSearchResult[]> {
+export async function searchProjectText(root: string, query: string, limit = 100, indexedItems?: TreeItem[]): Promise<ProjectSearchResult[]> {
   const needle = query.toLocaleLowerCase()
   if (!needle) return []
-  const items = await indexFiles(root)
+  const items = (indexedItems ?? await indexFiles(root)).filter((item) => !item.directory)
   const matches: ProjectSearchResult[] = []
 
-  for (const item of items) {
-    if (item.directory || matches.length >= limit) continue
-    try {
-      const lines = (await readTextFile(root, item.path)).split("\n")
-      for (let index = 0; index < lines.length && matches.length < limit; index += 1) {
-        if (lines[index].toLocaleLowerCase().includes(needle)) {
-          matches.push({ path: item.path, line: index + 1, preview: lines[index].trim().slice(0, 100) })
+  for (let offset = 0; offset < items.length && matches.length < limit; offset += 12) {
+    const batch = items.slice(offset, offset + 12)
+    const batchMatches = await Promise.all(batch.map(async (item) => {
+      const fileMatches: ProjectSearchResult[] = []
+      try {
+        const lines = (await readTextFile(root, item.path)).split("\n")
+        for (let index = 0; index < lines.length && fileMatches.length < limit; index += 1) {
+          if (lines[index].toLocaleLowerCase().includes(needle)) {
+            fileMatches.push({ path: item.path, line: index + 1, preview: lines[index].trim().slice(0, 100) })
+          }
         }
+      } catch {
+        // Skip binaries, oversized files, and files that cannot be read.
       }
-    } catch {
-      // Skip binaries, oversized files, and files that cannot be read.
-    }
+      return fileMatches
+    }))
+    matches.push(...batchMatches.flat().slice(0, limit - matches.length))
   }
   return matches
 }

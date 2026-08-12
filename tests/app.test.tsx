@@ -48,6 +48,26 @@ test("opens the command and configuration palette", async () => {
   }
 })
 
+test("types a local search query and opens its result", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(60)
+    setup.mockInput.pressEnter()
+    await Bun.sleep(60)
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("prueba")
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("1/1")
+    expect(setup.captureCharFrame()).toContain("contenido de prueba")
+
+    setup.mockInput.pressEnter()
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("BUSCAR EN ARCHIVO")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
 test("opens another file after closing the current tab without a stale save dialog", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {

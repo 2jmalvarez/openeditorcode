@@ -3,7 +3,7 @@ import { join, relative } from "node:path"
 import { isIgnoredPath, readGitignore } from "../explorer/gitignore"
 import { displayPath, type TreeItem } from "../explorer/tree"
 
-export const SEARCH_LIMIT = 2000
+export const SEARCH_LIMIT = 50_000
 
 export function fuzzyScore(query: string, candidate: string): number | undefined {
   const needle = query.toLocaleLowerCase()
@@ -33,21 +33,27 @@ export function filterItems(root: string, items: TreeItem[], query: string, limi
 export async function indexFiles(root: string): Promise<TreeItem[]> {
   const output: TreeItem[] = []
   const rules = await readGitignore(root)
-  const visit = async (directory: string, depth: number): Promise<void> => {
-    if (output.length >= SEARCH_LIMIT) return
-    const entries = await readdir(directory, { withFileTypes: true })
-    entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
-    for (const entry of entries) {
-      if (output.length >= SEARCH_LIMIT || entry.name === ".git") continue
-      const path = join(directory, entry.name)
-      const directoryEntry = entry.isDirectory()
-      if (isIgnoredPath(root, path, directoryEntry, rules)) continue
-      output.push({ path, name: entry.name, depth, directory: directoryEntry, ignored: false })
-      if (directoryEntry) await visit(path, depth + 1)
+  const pending = [{ path: root, depth: 0 }]
+
+  while (pending.length && output.length < SEARCH_LIMIT) {
+    const directories = pending.splice(0, 16)
+    const batches = await Promise.all(directories.map(async (directory) => ({
+      directory,
+      entries: await readdir(directory.path, { withFileTypes: true }).catch(() => []),
+    })))
+    for (const { directory, entries } of batches) {
+      entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
+      for (const entry of entries) {
+        if (output.length >= SEARCH_LIMIT || entry.name === ".git") continue
+        const path = join(directory.path, entry.name)
+        const directoryEntry = entry.isDirectory()
+        if (isIgnoredPath(root, path, directoryEntry, rules)) continue
+        output.push({ path, name: entry.name, depth: directory.depth, directory: directoryEntry, ignored: false })
+        if (directoryEntry) pending.push({ path, depth: directory.depth + 1 })
+      }
     }
   }
-  await visit(root, 0)
-  return output
+  return output.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0)
 }
 
 export function relativeResult(root: string, item: TreeItem): string {
