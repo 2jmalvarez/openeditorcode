@@ -399,10 +399,12 @@ export function App(props: { root: string }) {
     lineNumberScroll?.scrollTo({ x: 0, y: editor.scrollY })
     lastEditorScrollY = editor.scrollY
     const visibleRows = Math.max(1, editor.height)
-    const totalRows = Math.max(visibleRows, editor.virtualLineCount)
-    const available = Math.max(1, totalRows - visibleRows)
-    const markerRow = Math.min(visibleRows - 1, Math.round((editor.scrollY / available) * (visibleRows - 1)))
-    setEditorScrollbar(Array.from({ length: visibleRows }, (_, index) => index === markerRow ? "█" : "│").join("\n"))
+    const totalRows = Math.max(visibleRows, editor.lineCount)
+    const maxScroll = totalRows - visibleRows
+    const thumbRows = Math.max(1, Math.ceil((visibleRows / totalRows) * visibleRows))
+    const maxThumbStart = visibleRows - thumbRows
+    const thumbStart = maxScroll === 0 ? 0 : Math.round((editor.scrollY / maxScroll) * maxThumbStart)
+    setEditorScrollbar(Array.from({ length: visibleRows }, (_, index) => index >= thumbStart && index < thumbStart + thumbRows ? "█" : "│").join("\n"))
   }
 
   function scheduleLineMetrics() {
