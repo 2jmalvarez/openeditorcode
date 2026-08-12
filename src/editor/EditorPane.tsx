@@ -22,31 +22,33 @@ export function EditorPane(props: Props) {
     when={props.filePath()}
     fallback={<box style={{ flexGrow: 1, paddingX: 4, justifyContent: "center", alignItems: "center", flexDirection: "column", backgroundColor: "#101419" }}>
       <box style={{ paddingX: 3, paddingY: 1, border: true, borderColor: "#70d6a7", backgroundColor: "#17202a" }}>
-        <text fg="#70d6a7"><strong>{"  OOO     EEEEEEE   CCCCC \n O   O    EE       CC      \n O   O    EEEEE    CC      \n O   O    EE       CC      \n  OOO     EEEEEEE   CCCCC "}</strong></text>
+        <text fg="#70d6a7"><strong>{"  OOOO    EEEEEE   CCCCC \n O    O   EE       CC     \n O    O   EEEE     CC     \n O    O   EE       CC     \n  OOOO    EEEEEE   CCCCC "}</strong></text>
       </box>
       <text style={{ marginTop: 1 }} fg="#70d6a7"><strong>OpenEditorCode</strong></text>
       <text style={{ marginTop: 1 }} fg="#8ca0ae">Editor de proyectos de codigo abierto para consola</text>
-      <box style={{ marginTop: 3, width: "92%", padding: 1, flexDirection: "row", border: true, borderColor: "#30404d", backgroundColor: "#151c23" }}>
-        <box style={{ width: "48%", paddingX: 1, flexDirection: "column" }}>
+      <box style={{ marginTop: 3, width: "92%", flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
+        <box style={{ flexGrow: 1, flexBasis: 34, minWidth: 34, margin: 1, padding: 1, flexDirection: "column", border: true, borderColor: "#30404d", backgroundColor: "#151c23" }}>
           <text fg="#70d6a7"><strong>ARCHIVOS Y NAVEGACION</strong></text>
-          <box style={{ marginTop: 1, flexDirection: "row" }}><text fg="#f2c66d">Ctrl+B</text><text style={{ marginLeft: 2 }} fg="#d6e5dc">Explorador</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">F5</text><text style={{ marginLeft: 6 }} fg="#d6e5dc">Actualizar archivos</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+N</text><text style={{ marginLeft: 2 }} fg="#d6e5dc">Nuevo archivo</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Supr</text><text style={{ marginLeft: 4 }} fg="#d6e5dc">Eliminar selección</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Enter</text><text style={{ marginLeft: 3 }} fg="#d6e5dc">Abrir / expandir</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Shift+Enter</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">Contraer carpeta</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+Enter</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">Contraer árbol</text></box>
+          <box style={{ marginTop: 1, flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+←</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Explorador</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+→</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Editor</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+B</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Mostrar / ocultar explorador</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">F5</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Actualizar archivos</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+N</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Nuevo archivo</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Supr</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Eliminar selección</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Enter</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Abrir / expandir</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Shift+Enter</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Contraer carpeta</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Shift+Enter</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Contraer árbol</text></box>
         </box>
-        <box style={{ width: "48%", paddingX: 1, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
+        <box style={{ flexGrow: 1, flexBasis: 34, minWidth: 34, margin: 1, padding: 1, flexDirection: "column", border: true, borderColor: "#30404d", backgroundColor: "#151c23" }}>
           <text fg="#70d6a7"><strong>EDICION Y BUSQUEDA</strong></text>
-          <box style={{ marginTop: 1, flexDirection: "row" }}><text fg="#f2c66d">Ctrl+P</text><text style={{ marginLeft: 2 }} fg="#d6e5dc">Paleta de comandos</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+F</text><text style={{ marginLeft: 2 }} fg="#d6e5dc">Buscar en archivo</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Alt+F</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">Buscar en proyecto</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+S</text><text style={{ marginLeft: 2 }} fg="#d6e5dc">Guardar</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+W</text><text style={{ marginLeft: 2 }} fg="#d6e5dc">Cerrar pestaña</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Shift+Tab</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">Siguiente pestaña</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+C / Ctrl+V</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">Portapapeles</text></box>
-          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Z / Ctrl+Shift+Z</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">Deshacer / rehacer</text></box>
+          <box style={{ marginTop: 1, flexDirection: "row" }}><text fg="#f2c66d">Ctrl+P</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Paleta de comandos</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+F</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Buscar en archivo</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Alt+F</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Buscar en proyecto</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+S</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Guardar</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+W</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Cerrar pestaña</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Shift+Tab</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Siguiente pestaña</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+C / Ctrl+V</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Portapapeles</text></box>
+          <box style={{ flexDirection: "row" }}><text fg="#f2c66d">Ctrl+Z / Ctrl+Shift+Z</text><text style={{ marginLeft: "auto" }} fg="#d6e5dc">Deshacer / rehacer</text></box>
         </box>
       </box>
     </box>}

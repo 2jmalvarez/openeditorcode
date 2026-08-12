@@ -82,7 +82,7 @@ test("opens a second tab without asking to save the modified first tab", async (
     await setup.mockInput.typeText("!")
     await setup.renderOnce()
 
-    setup.mockInput.pressKey("b", { ctrl: true })
+    setup.mockInput.pressArrow("left", { ctrl: true, shift: true })
     setup.mockInput.pressArrow("down")
     setup.mockInput.pressEnter()
     await Bun.sleep(30)

@@ -95,6 +95,12 @@ export function useDocuments(props: Props) {
     loadTab((activeTab() + direction + tabs().length) % tabs().length)
   }
 
+  function activateTab(index: number) {
+    if (index === activeTab()) return
+    syncActiveTab()
+    loadTab(index)
+  }
+
   async function createFile(directory: string, name: string, refreshExplorer: () => Promise<void>) {
     if (!name) return props.setStatus("Escribe un nombre de archivo.")
     if (name.includes("/") || name.includes("\\")) return props.setStatus("El nombre debe pertenecer a la carpeta seleccionada.")
@@ -111,5 +117,5 @@ export function useDocuments(props: Props) {
     }
   }
 
-  return { filePath, tabs, activeTab, dirty, title, openFile, save, closeFile, changeTab, createFile }
+  return { filePath, tabs, activeTab, dirty, title, openFile, save, closeFile, changeTab, activateTab, createFile }
 }

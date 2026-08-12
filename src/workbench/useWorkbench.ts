@@ -1,4 +1,5 @@
 import type { ScrollBoxRenderable } from "@opentui/core"
+import { APP_VERSION } from "../bootstrap/version"
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import { useRenderer } from "@opentui/solid"
 import { basename } from "node:path"
@@ -49,6 +50,11 @@ export function useWorkbench(root: string) {
     documents.closeFile()
   }
 
+  function requestCloseTab(index: number) {
+    documents.activateTab(index)
+    requestClose()
+  }
+
   function quit() {
     if (documents.dirty()) {
       overlays.requestConfirm("quit")
@@ -92,7 +98,9 @@ export function useWorkbench(root: string) {
   }
 
   const commands = (): Command[] => [
-    { title: "Abrir explorador", shortcut: "Ctrl+B", run: focusExplorer },
+    { title: "Enfocar explorador", shortcut: "Ctrl+Shift+←", run: focusExplorer },
+    { title: "Enfocar editor", shortcut: "Ctrl+Shift+→", run: focusEditor },
+    { title: "Mostrar u ocultar explorador", shortcut: "Ctrl+B", run: toggleExplorer },
     { title: "Actualizar explorador", shortcut: "F5", run: () => void explorer.refreshExplorer() },
     { title: "Crear archivo en carpeta seleccionada", shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
     { title: "Buscar texto", shortcut: "Ctrl+F", run: editor.openFind },
@@ -140,6 +148,30 @@ export function useWorkbench(root: string) {
     setStatus("Explorador activo. Flechas para seleccionar, Enter para abrir, Shift+Enter para contraer.")
   }
 
+  function focusEditor() {
+    if (!documents.filePath()) return
+    setActive("editor")
+    setStatus("Editor activo.")
+  }
+
+  function toggleExplorer() {
+    setExplorerVisible((visible) => !visible)
+    if (explorerVisible()) {
+      setActive("explorer")
+      setStatus("Explorador visible.")
+    } else {
+      setActive("editor")
+      setStatus("Explorador oculto.")
+    }
+  }
+
+  function activateExplorerAt(index: number) {
+    setExplorerVisible(true)
+    setActive("explorer")
+    setStatus("Explorador activo. Flechas para seleccionar, Enter para abrir, Shift+Enter para contraer.")
+    void explorer.activateAt(index)
+  }
+
   function toggleWrap() { editor.setLineWrap(editor.wrapMode() === "none" ? "word" : "none") }
   function moveExplorerSelection(direction: number) { explorer.moveSelection(direction) }
   async function collapseExplorerItem() {
@@ -151,7 +183,7 @@ export function useWorkbench(root: string) {
     active, setActive, overlay: overlays.overlay, pendingDeletion: overlays.pendingDeletion, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
     closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshExplorer: explorer.refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
     openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: editor.openFind, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
-    focusExplorer, changeTab: () => documents.changeTab(1), toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
+    focusExplorer, focusEditor, toggleExplorer, changeTab: () => documents.changeTab(1), toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
     moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion,
@@ -161,8 +193,8 @@ export function useWorkbench(root: string) {
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
 
   return {
-    root, rootName: () => basename(root) || root, active, explorerVisible, status, explorer, documents, editor, overlays, search,
-    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : "Sin archivo abierto",
+    root, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, status, explorer, documents, editor, overlays, search,
+    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : "Sin archivo abierto", activateExplorerAt, requestCloseTab,
     paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value },
   }
 }

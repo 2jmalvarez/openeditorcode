@@ -11,6 +11,7 @@ type Props = {
   filePath: Accessor<string | undefined>
   lineCounts: Accessor<Record<string, number>>
   setScroll: (scroll: ScrollBoxRenderable) => void
+  onActivate: (index: number) => void
 }
 
 function fileIcon(item: TreeItem): string {
@@ -32,7 +33,7 @@ export function ExplorerPane(props: Props) {
     </box>
     <scrollbox ref={props.setScroll} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1 }}>
       <For each={props.tree()}>{(item, itemIndex) => (
-        <box id={`tree-${itemIndex()}`} style={{ paddingLeft: item.depth + 1, flexDirection: "row", alignItems: "center", backgroundColor: itemIndex() === props.selected() ? "#28404a" : undefined }}>
+        <box id={`tree-${itemIndex()}`} onMouseDown={() => props.onActivate(itemIndex())} style={{ paddingLeft: item.depth + 1, flexDirection: "row", alignItems: "center", backgroundColor: itemIndex() === props.selected() ? "#28404a" : undefined }}>
           <text fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"}>{fileIcon(item)} {item.name}</text>
           <Show when={!item.directory && props.lineCounts()[item.path] !== undefined} fallback={<box />}>
             <text style={{ marginLeft: "auto" }} fg="#71808b">{props.lineCounts()[item.path]}</text>

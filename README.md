@@ -1,17 +1,24 @@
 # openeditorcode (OEC)
 
-Editor de texto y explorador de proyectos para Windows Terminal. Es una aplicación autónoma de consola escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
+Editor de proyectos de codigo abierto para consola. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
+
+## Vista principal
+
+Al iniciar sin documentos abiertos, OEC muestra una portada con los atajos organizados por capacidad. El explorador permanece disponible a la izquierda y el pie indica el estado actual.
 
 ## Características
 
 - Explorador de carpetas con iconos por tipo de archivo, selección por teclado y scroll vertical que sigue la selección.
+- Explorador operable con ratón: clic para seleccionar, expandir carpetas o abrir archivos.
 - Creación de archivos en la carpeta seleccionada, sin sobrescribir archivos existentes.
-- Varias pestañas abiertas y cambio circular entre ellas.
+- Varias pestañas abiertas, cambio circular y pestañas clicables con cierre mediante `×`.
 - Editor multilinea con números de línea, resaltado básico para archivos de código, ajuste de línea, deshacer y rehacer.
 - Copia mediante OSC 52 y pegado desde el portapapeles de Windows.
-- Búsqueda dentro del archivo actual y búsqueda global en el proyecto.
+- Búsqueda local con resultados, navegación por flechas y aplicación con `Enter`.
+- Búsqueda global persistente con resultados navegables y scroll sincronizado.
 - Conteo de líneas por archivo y total del proyecto.
 - Confirmación modal para cambios sin guardar.
+- Eliminación confirmada de archivos y carpetas desde el explorador.
 - Protección contra rutas externas, binarios y archivos de más de 2 MB.
 
 ## Requisitos
@@ -42,7 +49,7 @@ Sin argumento, abre el directorio actual. Si se ejecuta desde la carpeta padre, 
 
 ## Uso básico
 
-1. Pulsa `Ctrl+B` para enfocar el explorador.
+1. Pulsa `Ctrl+B` para mostrar u ocultar el explorador.
 2. Usa las flechas para mover la selección.
 3. Pulsa `Enter` para expandir una carpeta o abrir un archivo.
 4. Usa `Tab` para alternar entre explorador y editor.
@@ -50,12 +57,16 @@ Sin argumento, abre el directorio actual. Si se ejecuta desde la carpeta padre, 
 
 Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y cerrar** y **Cerrar sin guardar** (opción predeterminada). Usa flechas arriba/abajo y confirma con `Enter`.
 
+La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Esc` para cerrarla y limpiarla. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, y se limpia con `Esc` desde el modal.
+
 ## Atajos
 
 | Atajo | Acción |
 | --- | --- |
 | `Ctrl+P` | Paleta de comandos, atajos y configuración |
-| `Ctrl+B` | Enfocar el explorador de archivos |
+| `Ctrl+Shift+←` | Enfocar el explorador de archivos |
+| `Ctrl+Shift+→` | Enfocar el editor |
+| `Ctrl+B` | Mostrar u ocultar el explorador de archivos |
 | `F5` | Actualizar el explorador de archivos |
 | `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
@@ -78,7 +89,7 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 
 ## Búsqueda y conteo
 
-- `Ctrl+F`: escribe el texto y pulsa `Enter` para encontrar la siguiente coincidencia en el archivo actual.
+- `Ctrl+F`: escribe el texto para ver todas las coincidencias locales. Usa flechas para elegir una y `Enter` para llevar el cursor a su inicio.
 - `Ctrl+Alt+F`: escribe el texto y pulsa `Enter` para buscar en todo el proyecto. Tras obtener resultados, usa flechas para elegir uno y `Enter` para abrir el archivo en la línea coincidente.
 - `Ctrl+P`: ejecuta **Calcular líneas del proyecto**. El explorador mostrará el conteo a la derecha de cada archivo y el pie mostrará el total final.
 

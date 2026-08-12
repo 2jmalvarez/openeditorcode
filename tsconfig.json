@@ -8,6 +8,7 @@
     "noEmit": true,
     "jsx": "preserve",
     "jsxImportSource": "@opentui/solid",
+    "resolveJsonModule": true,
     "types": ["bun-types"]
   },
   "include": ["src", "tests", "build.ts"]

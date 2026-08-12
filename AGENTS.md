@@ -91,7 +91,8 @@ tests/                      Pruebas Bun y renderer de OpenTUI.
 No reasignes estos atajos sin actualizar `README.md`, la paleta y las pruebas correspondientes:
 
 - `Ctrl+P`: paleta.
-- `Ctrl+B`: explorador.
+- `Ctrl+Shift+←` / `Ctrl+Shift+→`: alternar entre explorador y editor.
+- `Ctrl+B`: mostrar u ocultar el explorador de archivos.
 - `F5`: actualizar el explorador de archivos.
 - `Supr`: eliminar el archivo o carpeta seleccionado tras confirmar.
 - `Ctrl+N`: archivo nuevo.

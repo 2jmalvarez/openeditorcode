@@ -28,6 +28,8 @@ type Props = {
   acceptEditorFind: () => void
   closeEditorFind: () => void
   focusExplorer: () => void
+  focusEditor: () => void
+  toggleExplorer: () => void
   changeTab: () => void
   toggleWrap: () => void
   requestClose: () => void
@@ -74,7 +76,9 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && keyName === "n") return props.openNewFile()
     if (ctrl && (key.option || key.meta) && keyName === "f") return props.openProjectSearch()
     if (ctrl && keyName === "f") return props.openTextSearch()
-    if (ctrl && keyName === "b") return props.focusExplorer()
+    if (ctrl && shift && keyName === "left") return props.focusExplorer()
+    if (ctrl && shift && keyName === "right") return props.focusEditor()
+    if (ctrl && keyName === "b") return props.toggleExplorer()
     if (shift && keyName === "tab") return props.changeTab()
     if (ctrl && ((key.option || key.meta) && keyName === "w" || keyName === "l")) return props.toggleWrap()
     if (ctrl && keyName === "w") return props.requestClose()
