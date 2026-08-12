@@ -91,6 +91,7 @@ No reasignes estos atajos sin actualizar `README.md`, la paleta y las pruebas co
 - `Ctrl+P`: paleta.
 - `Ctrl+B`: explorador.
 - `F5`: actualizar el explorador de archivos.
+- `Supr`: eliminar el archivo o carpeta seleccionado tras confirmar.
 - `Ctrl+N`: archivo nuevo.
 - `Ctrl+S`: guardar.
 - `Ctrl+W`: cerrar pestaña.

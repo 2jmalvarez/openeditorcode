@@ -53,3 +53,9 @@ export async function createTextFile(root: string, filePath: string): Promise<vo
     throw error
   }
 }
+
+export async function removeProjectEntry(root: string, targetPath: string): Promise<void> {
+  const safePath = ensureInsideRoot(root, targetPath)
+  if (safePath === resolve(root)) throw new FileAccessError("No se puede eliminar la carpeta raíz del proyecto.")
+  await rm(safePath, { recursive: true, force: false })
+}

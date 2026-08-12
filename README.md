@@ -57,6 +57,7 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 | `Ctrl+P` | Paleta de comandos, atajos y configuración |
 | `Ctrl+B` | Enfocar el explorador de archivos |
 | `F5` | Actualizar el explorador de archivos |
+| `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
 | `Shift+Enter` | Contraer la carpeta seleccionada en el explorador |
 | `Ctrl+Shift+Enter` | Contraer todas las carpetas en el explorador |

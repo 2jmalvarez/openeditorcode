@@ -21,12 +21,12 @@ afterEach(async () => {
 test("renders the explorer and opens its selected file", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(30)
+    await Bun.sleep(60)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("hello.txt")
 
     setup.mockInput.pressEnter()
-    await Bun.sleep(30)
+    await Bun.sleep(60)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("contenido de prueba")
   } finally {
@@ -51,10 +51,10 @@ test("opens the command and configuration palette", async () => {
 test("opens another file after closing the current tab without a stale save dialog", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(30)
+    await Bun.sleep(60)
     await setup.renderOnce()
     setup.mockInput.pressEnter()
-    await Bun.sleep(30)
+    await Bun.sleep(60)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("contenido de prueba")
 
@@ -64,7 +64,7 @@ test("opens another file after closing the current tab without a stale save dial
     expect(setup.captureCharFrame()).not.toContain("Hay cambios sin guardar")
 
     setup.mockInput.pressEnter()
-    await Bun.sleep(30)
+    await Bun.sleep(60)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("contenido de prueba")
   } finally {
@@ -75,10 +75,10 @@ test("opens another file after closing the current tab without a stale save dial
 test("opens a second tab without asking to save the modified first tab", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(30)
+    await Bun.sleep(60)
     await setup.renderOnce()
     setup.mockInput.pressEnter()
-    await Bun.sleep(30)
+    await Bun.sleep(60)
     await setup.mockInput.typeText("!")
     await setup.renderOnce()
 

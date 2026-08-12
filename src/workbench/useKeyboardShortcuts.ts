@@ -6,11 +6,13 @@ type Props = {
   active: () => FocusTarget
   setActive: (value: FocusTarget | ((value: FocusTarget) => FocusTarget)) => void
   overlay: () => Overlay
+  pendingDeletion: () => unknown
   setConfirmChoice: (value: number | ((value: number) => number)) => void
   searchIndex: () => number
   setSearchIndex: (value: number | ((value: number) => number)) => void
   closeOverlay: () => void
   acceptConfirm: () => Promise<void>
+  acceptDeletion: () => Promise<void>
   quit: () => void
   refreshExplorer: () => Promise<void>
   save: () => Promise<boolean>
@@ -38,6 +40,7 @@ type Props = {
   moveExplorerSelection: (direction: number) => void
   activateExplorerItem: () => Promise<void>
   collapseExplorerItem: () => Promise<void>
+  requestDeletion: () => void
 }
 
 export function useKeyboardShortcuts(props: Props) {
@@ -50,6 +53,11 @@ export function useKeyboardShortcuts(props: Props) {
       if (key.name === "up") props.setConfirmChoice((value) => Math.max(0, value - 1))
       if (key.name === "down") props.setConfirmChoice((value) => Math.min(2, value + 1))
       if (isEnter) void props.acceptConfirm()
+      if (key.name === "escape") props.closeOverlay()
+      return
+    }
+    if (props.overlay() === "delete-confirm") {
+      if (isEnter) void props.acceptDeletion()
       if (key.name === "escape") props.closeOverlay()
       return
     }
@@ -91,5 +99,6 @@ export function useKeyboardShortcuts(props: Props) {
     if (key.name === "up") return props.moveExplorerSelection(-1)
     if (isEnter) return void props.activateExplorerItem()
     if (key.name === "left") return void props.collapseExplorerItem()
+    if (keyName === "delete") return props.requestDeletion()
   })
 }

@@ -3,6 +3,7 @@ import { For, Show, type Accessor } from "solid-js"
 import { displayPath } from "../explorer/tree"
 import type { ProjectSearchResult } from "../search/project-search"
 import type { Overlay } from "../workbench/types"
+import type { TreeItem } from "../explorer/tree"
 
 export type Command = { title: string; shortcut: string; run: () => void }
 
@@ -19,6 +20,7 @@ type Props = {
   projectResults: Accessor<ProjectSearchResult[]>
   projectSearching: Accessor<boolean>
   confirmChoice: Accessor<number>
+  pendingDeletion: Accessor<TreeItem | undefined>
 }
 
 export function Overlays(props: Props) {
@@ -43,6 +45,14 @@ export function Overlays(props: Props) {
         <text fg="#f2c66d">Hay cambios sin guardar.</text><text style={{ marginTop: 1 }} fg="#b8c7d1">Elige qué hacer con el archivo actual.</text>
         <box style={{ marginTop: 1, flexDirection: "column" }}><For each={["Guardar", "Guardar y cerrar", "Cerrar sin guardar"]}>{(label, index) => <box style={{ paddingX: 1, backgroundColor: index() === props.confirmChoice() ? "#6b5224" : undefined }}><text fg={index() === props.confirmChoice() ? "#ffffff" : "#d6e5dc"}>{index() === props.confirmChoice() ? "› " : "  "}{label}</text></box>}</For></box>
         <text fg="#8ca0ae">Flechas arriba/abajo | Enter confirmar | Esc cancelar</text>
+      </box>
+    </Show>
+    <Show when={props.overlay() === "delete-confirm"} fallback={<box />}>
+      <box style={{ position: "absolute", top: "30%", left: "25%", width: "50%", height: 10, padding: 1, flexDirection: "column", backgroundColor: "#2a2020", border: true, borderColor: "#f2c66d" }}>
+        <text fg="#f2c66d">Eliminar {props.pendingDeletion()?.directory ? "carpeta" : "archivo"}</text>
+        <text style={{ marginTop: 1 }} fg="#b8c7d1">¿Quieres eliminar {props.pendingDeletion()?.name}?</text>
+        <text fg="#b8c7d1">{props.pendingDeletion()?.directory ? "También se eliminará todo su contenido." : "Esta acción no se puede deshacer."}</text>
+        <text style={{ marginTop: 1 }} fg="#8ca0ae">Enter confirmar | Esc cancelar</text>
       </box>
     </Show>
   </>

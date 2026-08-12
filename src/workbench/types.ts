@@ -1,3 +1,3 @@
 export type FocusTarget = "explorer" | "editor"
-export type Overlay = "command-palette" | "text-search" | "project-search" | "new-file" | "confirm" | undefined
+export type Overlay = "command-palette" | "text-search" | "project-search" | "new-file" | "confirm" | "delete-confirm" | undefined
 export type PendingAction = "open" | "close" | "quit"

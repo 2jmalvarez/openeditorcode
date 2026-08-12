@@ -8,6 +8,7 @@ import { useDocuments } from "../documents/useDocuments"
 import { useEditor } from "../editor/useEditor"
 import { useExplorer } from "../explorer/useExplorer"
 import { displayPath } from "../explorer/tree"
+import { removeProjectEntry } from "../documents/files"
 import { useSearch } from "../search/useSearch"
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts"
 import type { FocusTarget } from "./types"
@@ -71,6 +72,24 @@ export function useWorkbench(root: string) {
     if (await documents.createFile(explorer.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) overlays.close()
   }
 
+  async function acceptDeletion() {
+    const item = overlays.pendingDeletion()
+    if (!item) return overlays.close()
+    try {
+      await explorer.removeSelected((path) => removeProjectEntry(root, path))
+      overlays.close()
+      setStatus(`${item.directory ? "Carpeta" : "Archivo"} eliminado: ${item.name}`)
+    } catch (error) {
+      overlays.close()
+      setStatus(error instanceof Error ? error.message : "No se pudo eliminar el elemento.")
+    }
+  }
+
+  function requestDeletion() {
+    const item = explorer.selectedItem()
+    if (item) overlays.requestDeletion(item)
+  }
+
   const commands = (): Command[] => [
     { title: "Abrir explorador", shortcut: "Ctrl+B", run: focusExplorer },
     { title: "Actualizar explorador", shortcut: "F5", run: () => void explorer.refreshExplorer() },
@@ -120,20 +139,20 @@ export function useWorkbench(root: string) {
   }
 
   function toggleWrap() { editor.setLineWrap(editor.wrapMode() === "none" ? "word" : "none") }
-  function moveExplorerSelection(direction: number) { explorer.setSelected((value) => Math.max(0, Math.min(value + direction, explorer.tree().length - 1))) }
+  function moveExplorerSelection(direction: number) { explorer.moveSelection(direction) }
   async function collapseExplorerItem() {
     const item = explorer.selectedItem()
     if (item?.directory && item.expanded) await explorer.activateItem(item)
   }
 
   useKeyboardShortcuts({
-    active, setActive, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
-    closeOverlay: overlays.close, acceptConfirm, quit, refreshExplorer: explorer.refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
+    active, setActive, overlay: overlays.overlay, pendingDeletion: overlays.pendingDeletion, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
+    closeOverlay: overlays.close, acceptConfirm, acceptDeletion, quit, refreshExplorer: explorer.refreshExplorer, save: documents.save, undo: editor.undo, redo: editor.redo,
     openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: () => openOverlay("text-search"),
     focusExplorer, changeTab: () => documents.changeTab(1), toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, findText, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
-    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem,
+    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion,
   })
 
   createEffect(() => explorerScroll?.scrollTo({ x: explorerScroll.scrollLeft, y: Math.max(0, explorer.selected() - 4) }))

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { createTextFile, ensureInsideRoot, FileAccessError, readTextFile, writeTextFile } from "../src/documents/files"
+import { createTextFile, ensureInsideRoot, FileAccessError, readTextFile, removeProjectEntry, writeTextFile } from "../src/documents/files"
 import { fuzzyScore, filterItems } from "../src/search/file-index"
 import { countProjectLines, searchProjectText } from "../src/search/project-search"
 import { createTree } from "../src/explorer/tree"
@@ -42,6 +42,17 @@ describe("file access", () => {
     await createTextFile(root, path)
     expect(await readTextFile(root, path)).toBe("")
     await expect(createTextFile(root, path)).rejects.toThrow("Ya existe")
+  })
+
+  test("removes a file or directory inside the selected root but never the root", async () => {
+    const directory = join(root, "obsolete")
+    const file = join(directory, "notes.txt")
+    await mkdir(directory)
+    await writeFile(file, "remove me", "utf8")
+
+    await removeProjectEntry(root, directory)
+    await expect(readTextFile(root, file)).rejects.toThrow()
+    await expect(removeProjectEntry(root, root)).rejects.toThrow("raíz")
   })
 })
 

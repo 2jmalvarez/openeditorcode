@@ -75,7 +75,18 @@ export function useExplorer(props: Props) {
     await props.openFile(item.path)
   }
 
+  function moveSelection(direction: number) {
+    setSelected((value) => Math.max(0, Math.min(value + direction, tree().length - 1)))
+  }
+
+  async function removeSelected(remove: (path: string) => Promise<void>) {
+    const item = selectedItem()
+    if (!item) return
+    await remove(item.path)
+    await refreshTree()
+  }
+
   onMount(() => void refreshTree())
 
-  return { tree, selected, setSelected, selectedItem, newFileDirectory, refreshTree, refreshExplorer, collapseAllFolders, collapseSelectedFolder, activateItem }
+  return { tree, selected, setSelected, selectedItem, newFileDirectory, refreshTree, refreshExplorer, collapseAllFolders, collapseSelectedFolder, activateItem, moveSelection, removeSelected }
 }
