@@ -6,6 +6,8 @@ Editor de proyectos de codigo abierto para consola. Es una aplicación autónoma
 
 Al iniciar sin documentos abiertos, OEC muestra una portada con los atajos organizados por capacidad. El explorador permanece disponible a la izquierda y el pie indica el estado actual.
 
+![Pantalla principal de OpenEditorCode](docs/images/welcome-screen.png)
+
 ## Características
 
 - Explorador de carpetas con iconos por tipo de archivo, selección por teclado y scroll vertical que sigue la selección.
