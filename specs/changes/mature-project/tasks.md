@@ -145,3 +145,21 @@ Checkpoint: completed. CI validates versions, packages, binary format, size, Lin
 - [x] Document residual risks and manual tests in phase checkpoints
 
 Final checkpoint: completed for version 0.2.7. Typecheck, 51 tests with 80.15% line and 77.98% function coverage, Windows build, release preflight for `v0.2.7`, structural smoke, real TUI smoke, root and Windows package dry runs, and `git diff --check` passed. Cross-platform package aggregation remains delegated to the Windows/Linux CI matrix.
+
+## Phase 9: Git Change Summary and Welcome Navigation
+
+Goal: Make changed-file scope and primary panel navigation immediately visible.
+Testable end: The Git panel shows `CAMBIOS N`, stable file numbers, and colored `+/-` statistics; the welcome screen prominently shows the three panel shortcuts.
+Validation: `bun run typecheck`, `bun run test:coverage`, `bun run build`, `bun run smoke:tui`.
+Status: completed
+
+- [x] Read tracked numstat data in one Git command per refresh
+- [x] Count readable untracked files and handle unknown/binary statistics
+- [x] Render total, stable numbering, green additions, and red deletions
+- [x] Recalculate statistics through watcher and F5 refresh paths
+- [x] Add primary welcome-screen panel navigation
+- [x] Collapse narrow welcome areas to vertical OEC
+- [x] Update README and version to 0.2.8
+- [x] Complete final validation checkpoint
+
+Checkpoint: completed for version 0.2.8. Typecheck, 60 tests with 81.95% line and 79.40% function coverage, Windows build, release preflight for `v0.2.8`, structural smoke, real TUI smoke, and `git diff --check` passed. Renderer tests verify the visible Git total/number/statistics, the primary welcome navigation block, and vertical OEC in narrow central areas.

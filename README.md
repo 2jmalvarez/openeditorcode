@@ -4,7 +4,7 @@ Editor de proyectos de codigo abierto para consola. Es una aplicación autónoma
 
 ## Vista principal
 
-Al iniciar sin documentos abiertos, OEC muestra una portada con los atajos organizados por capacidad. El explorador permanece disponible a la izquierda y el pie indica el estado actual.
+Al iniciar sin documentos abiertos, OEC destaca cómo abrir el panel izquierdo con `Ctrl+B`, el panel derecho de cambios con `Ctrl+Alt+B` y cómo moverse entre paneles con `Ctrl+Shift+←/→`. Debajo muestra el resto de los atajos organizados por capacidad. Si el área central queda más angosta que el explorador, la ayuda se oculta y solo se muestra `OEC` en vertical.
 
 ![Pantalla principal de OpenEditorCode](docs/images/welcome-screen.png)
 
@@ -21,7 +21,7 @@ Al iniciar sin documentos abiertos, OEC muestra una portada con los atajos organ
 - Conteo de líneas por archivo y total del proyecto.
 - Confirmación modal para cambios sin guardar.
 - Eliminación confirmada de archivos y carpetas desde el explorador.
-- Panel de cambios Git virtualizado, con procesos asíncronos, actualización automática local y vista diff de solo lectura.
+- Panel de cambios Git virtualizado, con numeración, total de archivos y estadísticas de líneas añadidas/eliminadas, actualización automática local y vista diff de solo lectura.
 - Navegación y atajos globales aislados del textarea para evitar modificaciones involuntarias al abrir, cerrar o cambiar archivos.
 - Protección contra rutas externas, binarios y archivos de más de 2 MB.
 
@@ -126,7 +126,8 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 ## Cambios Git
 
 - `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Sus archivos se organizan en un árbol y usan las mismas flechas, `Enter` y `Shift+Enter` que el explorador.
-- Con el panel **CAMBIOS** activo, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales aunque el fetch falle.
+- El encabezado muestra el total de archivos y cada archivo se numera y muestra sus líneas añadidas en verde y eliminadas en rojo. Los binarios o estadísticas no disponibles se indican con `?`.
+- Con el panel **CAMBIOS** activo, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales y sus estadísticas aunque el fetch falle.
 - OEC muestra el estado remoto de la rama disponible localmente. La paleta incluye **Actualizar referencias remotas de Git** para ejecutar `git fetch --quiet` manualmente.
 - Abrir un archivo del panel crea una pestaña `Δ` con el diff anterior/nuevo. Los diffs son de solo lectura, se pueden cerrar normalmente y conviven con el archivo editable.
 

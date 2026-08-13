@@ -61,6 +61,36 @@ The system MUST produce coherent previous and current content for modified, adde
 - THEN the previous content is read from the original path
 - AND the current content is read from the new path
 
+### Requirement: Observable Git Change Summary
+
+The changes panel MUST show the total number of changed files, a stable number for each file, and added/deleted line counts whenever Git can determine them.
+
+#### Scenario: Refresh changes panel
+
+- WHEN the changes panel refreshes automatically or through F5
+- THEN file numbering and line statistics are recalculated from the current working tree
+- AND additions are displayed in green and deletions in red
+
+#### Scenario: Unknown statistics
+
+- WHEN a changed file is binary or cannot be analyzed
+- THEN the panel displays unknown statistics without blocking the remaining files
+
+### Requirement: Prominent Panel Navigation
+
+The welcome screen MUST prominently explain how to open both side panels and move focus between them.
+
+#### Scenario: No document is open
+
+- WHEN the welcome screen is visible
+- THEN `Ctrl+B`, `Ctrl+Alt+B`, and `Ctrl+Shift+Left/Right` are displayed in a primary navigation block above secondary shortcuts
+
+#### Scenario: Central area is narrower than the explorer
+
+- WHEN the welcome area is less than 32 columns wide
+- THEN the logo, descriptions, navigation block, and secondary shortcuts are hidden
+- AND only `O`, `E`, and `C` are displayed vertically
+
 ### Requirement: Observable Partial Search
 
 The system MUST identify search and line-count results as partial when the project index limit is reached.

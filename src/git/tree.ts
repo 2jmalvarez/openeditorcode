@@ -7,13 +7,14 @@ export type GitTreeItem = {
   directory: boolean
   expanded: boolean
   file?: GitFile
+  fileNumber?: number
 }
 
-type Node = { name: string; path: string; children: Map<string, Node>; file?: GitFile }
+type Node = { name: string; path: string; children: Map<string, Node>; file?: GitFile; fileNumber?: number }
 
 export function createGitTree(files: GitFile[], expanded: Set<string>): GitTreeItem[] {
   const root: Node = { name: "", path: "", children: new Map() }
-  for (const file of files) {
+  for (const [fileIndex, file] of files.entries()) {
     let node = root
     const parts = file.path.replace(/\\/g, "/").split("/")
     for (let index = 0; index < parts.length; index += 1) {
@@ -23,6 +24,7 @@ export function createGitTree(files: GitFile[], expanded: Set<string>): GitTreeI
       node = child
     }
     node.file = file
+    node.fileNumber = fileIndex + 1
   }
 
   const output: GitTreeItem[] = []
@@ -31,7 +33,7 @@ export function createGitTree(files: GitFile[], expanded: Set<string>): GitTreeI
     for (const child of children) {
       const directory = child.children.size > 0
       const isExpanded = expanded.has(child.path)
-      output.push({ path: child.path, name: child.name, depth, directory, expanded: isExpanded, file: child.file })
+      output.push({ path: child.path, name: child.name, depth, directory, expanded: isExpanded, file: child.file, fileNumber: child.fileNumber })
       if (directory && isExpanded) visit(child, depth + 1)
     }
   }

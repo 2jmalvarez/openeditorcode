@@ -34,9 +34,9 @@ export function GitPane(props: Props) {
   onMount(() => renderer.on("frame", syncRange))
   onCleanup(() => renderer.off("frame", syncRange))
 
-  return <box style={{ width: 36, flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
+  return <box style={{ width: 44, flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
     <box style={{ height: 5, flexShrink: 0, paddingX: 1, paddingTop: 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
-      <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>CAMBIOS</text>
+      <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>CAMBIOS {props.state().files.length}</text>
       <Show when={props.state().available} fallback={<text fg="#71808b">{props.state().message}</text>}>
         <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch.slice(0, 31)}</text>
         <text fg="#71808b">{props.state().remoteStatus}</text>
@@ -46,8 +46,13 @@ export function GitPane(props: Props) {
       <Show when={range().top}><box style={{ height: range().top }} /></Show>
       <For each={rows()}>{(item, index) => { const logicalIndex = () => range().start + index(); return (
         <box onMouseDown={() => props.onActivate(logicalIndex())} style={{ paddingLeft: item.depth + 1, paddingRight: 1, flexDirection: "row", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
-          <text fg={item.directory ? "#8ed1ff" : colors[item.file!.status]}>{item.directory ? item.expanded ? "▾" : "▸" : labels[item.file!.status]}</text>
-          <text style={{ marginLeft: 1 }} fg="#d6e5dc">{item.name}</text>
+          <Show when={!item.directory}><text fg="#71808b">{item.fileNumber}.</text></Show>
+          <text style={{ marginLeft: item.directory ? 0 : 1 }} fg={item.directory ? "#8ed1ff" : colors[item.file!.status]}>{item.directory ? item.expanded ? "▾" : "▸" : labels[item.file!.status]}</text>
+          <box style={{ marginLeft: 1, flexGrow: 1, minWidth: 0 }}><text fg="#d6e5dc">{item.name}</text></box>
+          <Show when={!item.directory && item.file!.additions !== null && item.file!.deletions !== null} fallback={<Show when={!item.directory}><text fg="#70d6a7">+?</text><text style={{ marginLeft: 1 }} fg="#ef7b7b">-?</text></Show>}>
+            <text style={{ marginLeft: "auto" }} fg="#70d6a7">+{item.file!.additions}</text>
+            <text style={{ marginLeft: 1 }} fg="#ef7b7b">-{item.file!.deletions}</text>
+          </Show>
         </box>
       )}}</For>
       <Show when={range().bottom}><box style={{ height: range().bottom }} /></Show>
