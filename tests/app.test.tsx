@@ -110,7 +110,7 @@ test("shows changed file totals, numbering, and line statistics", async () => {
       await Bun.sleep(50)
       await setup.renderOnce()
       frame = setup.captureCharFrame()
-      if (frame.includes("CAMBIOS 1")) break
+      if (frame.includes("CAMBIOS 1") && frame.includes("+2") && frame.includes("-1")) break
     }
     expect(frame).toContain("CAMBIOS 1")
     expect(frame).toContain("1. M")
@@ -208,6 +208,9 @@ test("opens session search exclusions from the explorer search", async () => {
     expect(frame).toContain("EXCLUSIONES DE BÚSQUEDA")
     expect(frame).toContain("ignored/")
     expect(frame).toContain(".gitignore")
+
+    setup.mockInput.pressArrow("down")
+    await setup.renderOnce()
   } finally {
     setup.renderer.destroy()
   }
@@ -276,10 +279,13 @@ test("opens a second tab without asking to save the modified first tab", async (
     setup.mockInput.pressArrow("left", { ctrl: true, shift: true })
     setup.mockInput.pressArrow("down")
     setup.mockInput.pressEnter()
-    await Bun.sleep(30)
-    await setup.renderOnce()
-
-    const frame = setup.captureCharFrame()
+    let frame = ""
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await Bun.sleep(40)
+      await setup.renderOnce()
+      frame = setup.captureCharFrame()
+      if (frame.includes("segundo archivo")) break
+    }
     expect(frame).toContain("segundo archivo")
     expect(frame).toContain("hello.txt")
     expect(frame).not.toContain("Hay cambios sin guardar")
