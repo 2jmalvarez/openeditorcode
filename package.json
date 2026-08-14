@@ -1,6 +1,6 @@
 {
   "name": "openeditorcode",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "description": "Editor de proyectos para la terminal, escrito con Bun y OpenTUI.",
   "license": "MIT",
   "repository": {
@@ -28,8 +28,8 @@
     "openeditorcode": "bin/oec.js"
   },
   "optionalDependencies": {
-    "@2jmalvarez/oec-linux-x64": "0.2.12",
-    "@2jmalvarez/oec-win32-x64": "0.2.12"
+    "@2jmalvarez/oec-linux-x64": "0.2.13",
+    "@2jmalvarez/oec-win32-x64": "0.2.13"
   },
   "scripts": {
     "dev": "bun --preload @opentui/solid/preload ./src/index.tsx",
