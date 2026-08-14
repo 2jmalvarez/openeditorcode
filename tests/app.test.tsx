@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { testRender } from "@opentui/solid"
 import { App } from "../src/workbench/App"
+import { configureLanguage } from "../src/localization"
 
 let root = ""
 
@@ -14,6 +15,7 @@ async function git(...args: string[]) {
 }
 
 beforeEach(async () => {
+  configureLanguage("es")
   root = await mkdtemp(join(tmpdir(), "oec-ui-"))
   await writeFile(join(root, "hello.txt"), "contenido de prueba", "utf8")
   await writeFile(join(root, "second.txt"), "segundo archivo", "utf8")

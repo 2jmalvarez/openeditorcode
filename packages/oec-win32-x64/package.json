@@ -1,6 +1,6 @@
 {
   "name": "@2jmalvarez/oec-win32-x64",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "description": "Windows x64 binary for openeditorcode.",
   "license": "MIT",
   "os": ["win32"],
