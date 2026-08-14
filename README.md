@@ -2,9 +2,11 @@
 
 Editor de proyectos de codigo abierto para consola. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
+La referencia completa está en [docs/manual.md](docs/manual.md); la instalación npm también ofrece `man oec` en Unix. Desde OEC, `Ctrl+P` incluye **Editar configuración de OEC** y **Abrir manual de OEC**.
+
 ## Vista principal
 
-Al iniciar sin documentos abiertos, OEC destaca cómo abrir el panel izquierdo con `Ctrl+B`, el panel derecho de cambios con `Ctrl+Alt+B` y cómo moverse entre paneles con `Ctrl+Shift+←/→`. Debajo muestra el resto de los atajos organizados por capacidad. Si el área central queda más angosta que el explorador, la ayuda se oculta y solo se muestra `OEC` en vertical.
+Al iniciar sin documentos abiertos, OEC muestra el explorador y, cuando hay al menos 144 columnas disponibles, también el panel de cambios. `Ctrl+B` y `Ctrl+Alt+B` muestran u ocultan cada lateral, mientras que `Ctrl+Shift+←/→` mueve el foco entre paneles. Debajo se muestran los demás atajos organizados por capacidad. Si el área central queda más angosta que el explorador, la ayuda se oculta y solo se muestra `OEC` en vertical.
 
 ![Pantalla principal de OpenEditorCode](docs/images/welcome-screen.png)
 
@@ -15,6 +17,8 @@ Al iniciar sin documentos abiertos, OEC destaca cómo abrir el panel izquierdo c
 - Creación de archivos en la carpeta seleccionada, sin sobrescribir archivos existentes.
 - Varias pestañas abiertas, cambio circular y pestañas clicables con cierre mediante `×`, incluidos diffs Git identificados con `Δ`.
 - Editor multilinea con números de línea, resaltado básico para archivos de código, ajuste de línea, deshacer y rehacer.
+- Preview Markdown de solo lectura por defecto, con `Ctrl+Alt+M` para alternar entre preview y edición; el manual interno nunca se puede editar.
+- Preview de PNG, JPEG, WebP y GIF en Kitty/Sixel cuando están disponibles, con fallback de bloques de terminal.
 - Copia mediante OSC 52 y pegado desde el portapapeles de Windows, Wayland o X11.
 - Búsqueda local lineal con resultados, navegación por flechas y aplicación con `Enter`.
 - Búsqueda global concurrente, persistente y agrupada por archivo, con índice reutilizable de hasta 50.000 entradas.
@@ -51,9 +55,32 @@ openeditorcode /ruta/del/proyecto
 
 `oec` y `openeditorcode` son comandos equivalentes.
 
+También puedes consultar la ayuda y la versión sin iniciar la interfaz:
+
+```bash
+oec --help
+oec --version
+```
+
 OEC comprueba actualizaciones en segundo plano después de iniciar. Si hay una versión nueva, la muestra junto a la versión actual y añade **Actualizar OEC** a `Ctrl+P`. La actualización cierra el editor antes de reemplazar el ejecutable y vuelve a abrir el mismo proyecto al finalizar.
 
 La instalación npm incluye únicamente el lanzador y el binario de la plataforma actual; las dependencias de compilación no se instalan globalmente.
+
+## Configuración e idioma
+
+OEC mantiene su configuración fuera de los proyectos y fuera de la instalación npm, por lo que se conserva al actualizar:
+
+- Windows: `%APPDATA%\openeditorcode\config.json`.
+- Linux: `${XDG_CONFIG_HOME:-~/.config}/openeditorcode/config.json`.
+- Entornos administrados o pruebas: `OEC_CONFIG_DIR` permite indicar el directorio de configuración.
+
+Abre **Editar configuración de OEC** desde `Ctrl+P`. El archivo se valida al guardar y usa el esquema distribuido en [`docs/oec-config.schema.json`](docs/oec-config.schema.json). Incluye preferencias de idioma, layout, ajuste y números de línea, resaltado, respeto de `.gitignore`, actualización automática de Git, búsqueda de actualizaciones y previews.
+
+El idioma predeterminado es el del sistema. `appearance.language` acepta `"auto"`, `"es"` y `"en"`.
+
+Las configuraciones de versiones anteriores se migran automáticamente. Si el JSON es inválido, tiene valores incompatibles o impide iniciar OEC, se conserva la versión problemática en `config.bkp.json` y se restaura `config.json` con valores de fábrica. El backup es único y se reemplaza en cada recuperación; OEC muestra un aviso al iniciar tras una restauración.
+
+Las exclusiones que se agregan con `Ctrl+E` son deliberadamente temporales: no se escriben ni en `.gitignore` ni en `config.json`.
 
 ## Ejecutar
 
@@ -88,6 +115,8 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 
 `Ctrl+F` es contextual: en el explorador filtra archivos de todo el proyecto por nombre y en el editor busca dentro del archivo abierto. `Esc` cancela y limpia cualquiera de las dos búsquedas. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
 
+Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `Ctrl+Alt+M` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
+
 ## Atajos
 
 | Atajo | Acción |
@@ -113,6 +142,7 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 | `Ctrl+Z` | Deshacer el último cambio |
 | `Ctrl+Shift+Z` | Rehacer el último cambio |
 | `Ctrl+Alt+W` | Alternar ajuste de línea |
+| `Ctrl+Alt+M` | Alternar preview y edición de Markdown |
 | `Ctrl+L` | Ajustar líneas al ancho para ver el contenido completo |
 | `Ctrl+Q` | Salir |
 | `Tab` | Alternar explorador, editor y control de cambios |
@@ -140,6 +170,7 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 - Todas las rutas se validan contra la carpeta raíz seleccionada.
 - No se abren ni procesan archivos binarios.
 - El límite de lectura y análisis es 2 MB por archivo.
+- Los previews de imágenes aceptan PNG, JPEG, WebP y GIF hasta 16 MB; formatos dañados o no compatibles se informan sin cerrar OEC.
 - Los guardados usan un archivo temporal antes de reemplazar el original.
 - Los archivos y carpetas definidos en `.gitignore` se muestran en gris y se excluyen del conteo y de los buscadores de proyecto. Las búsquedas permiten excepciones temporales durante la sesión; la carpeta `.git` permanece oculta y excluida siempre.
 

@@ -158,6 +158,18 @@ export async function fetchGit(root: string): Promise<boolean> {
   return runGitAsync(root, ["fetch", "--quiet"])
 }
 
+export async function stageGitFile(root: string, file: GitFile): Promise<boolean> {
+  return runGitAsync(root, ["add", "--", file.path])
+}
+
+export async function unstageGitFile(root: string, file: GitFile): Promise<boolean> {
+  return runGitAsync(root, ["restore", "--staged", "--", file.path])
+}
+
+export async function restoreGitFile(root: string, file: GitFile): Promise<boolean> {
+  return runGitAsync(root, ["checkout", "--", file.path])
+}
+
 export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff> {
   const hasPrevious = file.status !== "added" && file.status !== "untracked"
   const previousPath = file.status === "renamed" ? file.previousPath : file.path

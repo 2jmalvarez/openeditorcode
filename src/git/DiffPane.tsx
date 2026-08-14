@@ -1,11 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 import type { ScrollBoxRenderable } from "@opentui/core"
-import { createSignal, For, onCleanup, onMount, type Accessor } from "solid-js"
+import { createEffect, createSignal, For, onCleanup, onMount, type Accessor } from "solid-js"
 import { useRenderer } from "@opentui/solid"
 import { alignDiff, type DiffLine } from "./diff"
 import type { GitDiff } from "./status"
+import { t } from "../localization"
 
-type Props = { diff: Accessor<GitDiff | undefined> }
+type Props = { diff: Accessor<GitDiff | undefined>; orientation: Accessor<"auto" | "horizontal" | "vertical">; stackBelow: Accessor<number> }
 
 function VersionPane(props: { title: string; lines: DiffLine[]; color: string; scroll: (value: ScrollBoxRenderable) => void }) {
   return <box style={{ flexGrow: 1, flexBasis: 0, minHeight: 0, minWidth: 0, flexDirection: "column", border: true, borderColor: "#30404d" }}>
@@ -18,12 +19,12 @@ function VersionPane(props: { title: string; lines: DiffLine[]; color: string; s
 
 export function DiffPane(props: Props) {
   const renderer = useRenderer()
-  const [vertical, setVertical] = createSignal(renderer.width < 120)
+  const [vertical, setVertical] = createSignal(props.orientation() === "vertical" || props.orientation() === "auto" && renderer.width < props.stackBelow())
   let previousScroll: ScrollBoxRenderable | undefined
   let currentScroll: ScrollBoxRenderable | undefined
   let previousY = 0
   let currentY = 0
-  const updateLayout = (width: number) => setVertical(width < 120)
+  const updateLayout = (width: number) => setVertical(props.orientation() === "vertical" || props.orientation() === "auto" && width < props.stackBelow())
 
   function syncScroll() {
     if (!previousScroll || !currentScroll) return
@@ -42,12 +43,13 @@ export function DiffPane(props: Props) {
 
   onMount(() => { renderer.on("resize", updateLayout); renderer.on("frame", syncScroll) })
   onCleanup(() => { renderer.off("resize", updateLayout); renderer.off("frame", syncScroll) })
+  createEffect(() => { props.orientation(); props.stackBelow(); updateLayout(renderer.width) })
 
   const diffLines = () => alignDiff(props.diff()!.previous, props.diff()!.current)
   return <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "column", backgroundColor: "#101419" }}>
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: vertical() ? "column" : "row" }}>
-      <VersionPane title="ANTERIOR" lines={diffLines()[0]} color="#ef7b7b" scroll={(value) => { previousScroll = value; previousY = value.scrollTop }} />
-      <VersionPane title="NUEVO" lines={diffLines()[1]} color="#70d6a7" scroll={(value) => { currentScroll = value; currentY = value.scrollTop }} />
+      <VersionPane title={t("app.previous")} lines={diffLines()[0]} color="#ef7b7b" scroll={(value) => { previousScroll = value; previousY = value.scrollTop }} />
+      <VersionPane title={t("app.new")} lines={diffLines()[1]} color="#70d6a7" scroll={(value) => { currentScroll = value; currentY = value.scrollTop }} />
     </box>
   </box>
 }

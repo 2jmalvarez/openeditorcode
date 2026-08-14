@@ -3,6 +3,7 @@ import { lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "n
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
 
 export const MAX_FILE_BYTES = 2 * 1024 * 1024
+export const MAX_IMAGE_BYTES = 16 * 1024 * 1024
 
 export class FileAccessError extends Error {}
 
@@ -70,6 +71,16 @@ export async function readTextFile(root: string, filePath: string): Promise<stri
   } catch {
     throw new FileAccessError("El archivo no contiene texto UTF-8 válido.")
   }
+}
+
+export async function readImageFile(root: string, filePath: string): Promise<Uint8Array> {
+  const safePath = await ensurePhysicallyInsideRoot(root, filePath)
+  const info = await stat(safePath)
+  if (!info.isFile()) throw new FileAccessError("La ruta seleccionada no es un archivo.")
+  if (info.size > MAX_IMAGE_BYTES) throw new FileAccessError("La imagen supera el límite de 16 MB.")
+  const content = await readFile(safePath)
+  if (content.length > MAX_IMAGE_BYTES) throw new FileAccessError("La imagen supera el límite de 16 MB.")
+  return content
 }
 
 export async function writeTextFile(root: string, filePath: string, content: string): Promise<void> {

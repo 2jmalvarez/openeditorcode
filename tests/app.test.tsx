@@ -26,9 +26,9 @@ test("highlights how to open and move between side panels on the welcome screen"
     const frame = setup.captureCharFrame()
     expect(frame).toContain("ABRIR Y MOVERSE ENTRE PANELES")
     expect(frame).toContain("Ctrl+B")
-    expect(frame).toContain("ABRIR PANEL IZQUIERDO")
+    expect(frame).toContain("MOSTRAR / OCULTAR PANEL IZQUIERDO")
     expect(frame).toContain("Ctrl+Alt+B")
-    expect(frame).toContain("ABRIR PANEL DERECHO / CAMBIOS")
+    expect(frame).toContain("MOSTRAR / OCULTAR CAMBIOS")
     expect(frame).toContain("Ctrl+Shift+← / →")
     expect(frame).toContain("MOVERSE ENTRE PANELES")
   } finally {
@@ -47,6 +47,46 @@ test("shows only vertical OEC when the welcome area is narrower than the explore
     expect(frame).toMatch(/│\s+O\s*$/m)
     expect(frame).toMatch(/│\s+E\s*$/m)
     expect(frame).toMatch(/│\s+C\s*$/m)
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("shows both side panels initially when the terminal is wide enough", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 160, height: 30 })
+  try {
+    await setup.renderOnce()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("EXPLORADOR")
+    expect(frame).toContain("CAMBIOS 0")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("shows only the explorer initially when the terminal is narrow", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 120, height: 30 })
+  try {
+    await setup.renderOnce()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("EXPLORADOR")
+    expect(frame).not.toContain("CAMBIOS 0")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("keeps the explorer and hides changes when a wide terminal becomes narrow", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 160, height: 30 })
+  try {
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("CAMBIOS 0")
+
+    setup.renderer.resize(120, 30)
+    await setup.renderOnce()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("EXPLORADOR")
+    expect(frame).not.toContain("CAMBIOS 0")
   } finally {
     setup.renderer.destroy()
   }
@@ -94,6 +134,25 @@ test("opens the command and configuration palette", async () => {
   }
 })
 
+test("opens the OEC manual as a read-only Markdown preview", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    setup.mockInput.pressKey("p", { ctrl: true })
+    await setup.mockInput.typeText("manual")
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("Abrir manual de OEC")
+
+    setup.mockInput.pressEnter()
+    await setup.renderOnce()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("MANUAL DE OEC")
+    expect(frame).toContain("SOLO LECTURA")
+    expect(frame).not.toContain("# Manual")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
 test("shows changed file totals, numbering, and line statistics", async () => {
   await git("init", "--quiet")
   await git("config", "user.name", "OEC Tests")
@@ -127,7 +186,7 @@ test("types a local search query and opens its result", async () => {
   try {
     await Bun.sleep(60)
     setup.mockInput.pressEnter()
-    for (let attempt = 0; attempt < 10; attempt += 1) {
+    for (let attempt = 0; attempt < 25; attempt += 1) {
       await Bun.sleep(40)
       await setup.renderOnce()
       if (setup.captureCharFrame().includes("contenido de prueba")) break
@@ -169,6 +228,13 @@ test("filters project files with Ctrl+F while the explorer is active", async () 
       if (openedFrame.includes("segundo archivo")) break
     }
     expect(openedFrame).toContain("segundo archivo")
+    expect(openedFrame).not.toContain("* second.txt")
+
+    setup.mockInput.pressKey("w", { ctrl: true })
+    await setup.renderOnce()
+    const closedFrame = setup.captureCharFrame()
+    expect(closedFrame).toContain("Archivo cerrado")
+    expect(closedFrame).not.toContain("Hay cambios sin guardar")
   } finally {
     setup.renderer.destroy()
   }

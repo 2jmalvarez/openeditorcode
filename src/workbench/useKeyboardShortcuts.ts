@@ -13,6 +13,7 @@ type Props = {
   cancelProjectSearch: () => void
   acceptConfirm: () => Promise<void>
   acceptDeletion: () => Promise<void>
+  acceptGitRevert: () => Promise<void>
   quit: () => void
   refreshActivePanel: () => Promise<void>
   save: () => Promise<boolean>
@@ -33,6 +34,7 @@ type Props = {
   changeTab: () => void
   cycleFocus: () => void
   toggleWrap: () => void
+  togglePreview: () => void
   requestClose: () => void
   copy: () => void
   paste: () => Promise<void>
@@ -52,6 +54,9 @@ type Props = {
   activateGitItem: () => Promise<void>
   collapseGitItem: () => void
   collapseAllGitFolders: () => void
+  stageGitItem: () => Promise<void>
+  unstageGitItem: () => Promise<void>
+  requestGitRevert: () => void
   openFileSearch: () => void
   fileSearchOpen: () => boolean
   closeFileSearch: () => void
@@ -90,6 +95,11 @@ export function useKeyboardShortcuts(props: Props) {
     }
     if (props.overlay() === "delete-confirm") {
       if (isEnter) return consume(key, () => void props.acceptDeletion())
+      if (isEscape) return consume(key, props.closeOverlay)
+      return consume(key, () => undefined)
+    }
+    if (props.overlay() === "git-revert-confirm") {
+      if (isEnter) return consume(key, () => void props.acceptGitRevert())
       if (isEscape) return consume(key, props.closeOverlay)
       return consume(key, () => undefined)
     }
@@ -143,6 +153,7 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && shift && keyName === "left") return consume(key, props.focusLeft)
     if (ctrl && shift && keyName === "right") return consume(key, props.focusRight)
     if (ctrl && (key.option || key.meta) && keyName === "b") return consume(key, props.toggleGit)
+    if (ctrl && (key.option || key.meta) && keyName === "m") return consume(key, props.togglePreview)
     if (ctrl && keyName === "b") return consume(key, props.toggleExplorer)
     if (shift && keyName === "tab") return consume(key, props.changeTab)
     if (ctrl && ((key.option || key.meta) && keyName === "w" || keyName === "l")) return consume(key, props.toggleWrap)
@@ -163,6 +174,8 @@ export function useKeyboardShortcuts(props: Props) {
       if (key.name === "down") return consume(key, () => props.moveGitSelection(1))
       if (key.name === "up") return consume(key, () => props.moveGitSelection(-1))
       if (isEnter) return consume(key, () => void props.activateGitItem())
+      if (keyName === "+") return consume(key, () => void props.stageGitItem())
+      if (keyName === "-") return consume(key, props.requestGitRevert)
       return
     }
     if (props.active() !== "explorer") return

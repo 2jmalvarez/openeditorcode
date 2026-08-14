@@ -101,6 +101,7 @@ No reasignes estos atajos sin actualizar `README.md`, la paleta y las pruebas co
 - `Shift+Tab`: siguiente pestaña.
 - `Ctrl+F`: búsqueda local.
 - `Ctrl+Alt+F`: búsqueda global.
+- `Ctrl+Alt+M`: alternar preview y edición de Markdown; el manual permanece de solo lectura.
 - `Shift+Enter`: contraer carpeta seleccionada en el explorador.
 - `Ctrl+Shift+Enter`: contraer árbol en el explorador.
 - `Ctrl+C` / `Ctrl+V`: portapapeles.

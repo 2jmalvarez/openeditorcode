@@ -5,6 +5,7 @@ import { useRenderer } from "@opentui/solid"
 import type { GitFile, GitState } from "./status"
 import type { GitTreeItem } from "./tree"
 import { virtualRange } from "../explorer/virtual-rows"
+import { t } from "../localization"
 
 type Props = {
   active: Accessor<boolean>
@@ -13,6 +14,7 @@ type Props = {
   selected: Accessor<number>
   setScroll: (scroll: ScrollBoxRenderable) => void
   onActivate: (index: number) => void
+  width: Accessor<number>
 }
 
 const labels: Record<GitFile["status"], string> = { modified: "M", added: "A", deleted: "D", renamed: "R", untracked: "?" }
@@ -34,12 +36,13 @@ export function GitPane(props: Props) {
   onMount(() => renderer.on("frame", syncRange))
   onCleanup(() => renderer.off("frame", syncRange))
 
-  return <box style={{ width: 44, flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
-    <box style={{ height: 5, flexShrink: 0, paddingX: 1, paddingTop: 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
-      <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>CAMBIOS {props.state().files.length}</text>
+  return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
+    <box style={{ height: 6, flexShrink: 0, paddingX: 1, paddingTop: 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
+      <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{t("app.changes")} {props.state().files.length}</text>
       <Show when={props.state().available} fallback={<text fg="#71808b">{props.state().message}</text>}>
         <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch.slice(0, 31)}</text>
         <text fg="#71808b">{props.state().remoteStatus}</text>
+        <text fg="#71808b">{t("app.gitHelp")}</text>
       </Show>
     </box>
     <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0 }}>

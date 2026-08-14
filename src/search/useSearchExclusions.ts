@@ -11,7 +11,7 @@ function normalizePattern(value: string): string {
   return value.trim().replace(/\\/g, "/").replace(/^\.\//, "")
 }
 
-export function useSearchExclusions(root: string) {
+export function useSearchExclusions(root: string, respectGitignore = true) {
   const [basePatterns, setBasePatterns] = createSignal<string[]>([])
   const [disabledPatterns, setDisabledPatterns] = createSignal<Set<string>>(new Set())
   const [customPatterns, setCustomPatterns] = createSignal<Set<string>>(new Set())
@@ -29,7 +29,7 @@ export function useSearchExclusions(root: string) {
   }
 
   const activePatterns = createMemo(() => [
-    ...basePatterns().filter((pattern) => !disabledPatterns().has(pattern)),
+    ...(respectGitignore ? basePatterns().filter((pattern) => !disabledPatterns().has(pattern)) : []),
     ...customPatterns(),
   ])
 
@@ -38,7 +38,7 @@ export function useSearchExclusions(root: string) {
   }
 
   function baseRules() {
-    return createGitignore(basePatterns())
+    return createGitignore(respectGitignore ? basePatterns() : [])
   }
 
   function setDirectoryCandidates(values: string[]) {

@@ -1,12 +1,14 @@
 import { watch } from "node:fs"
 import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
-import { fetchGit, readGitDiff, readGitState, type GitDiff, type GitFile } from "./status"
+import { fetchGit, readGitDiff, readGitState, restoreGitFile, stageGitFile, unstageGitFile, type GitDiff, type GitFile } from "./status"
 import { createGitTree } from "./tree"
 
 type Props = {
   root: string
   setStatus: (message: string) => void
   runActivity: <T>(message: string, operation: () => Promise<T>) => Promise<T>
+  autoRefresh?: boolean
+  fetchOnRefresh?: boolean
 }
 
 export async function fetchAndRefreshGit(
@@ -84,6 +86,8 @@ export function useGit(props: Props) {
 
   function collapseAllFolders() { setExpanded(new Set<string>()) }
 
+  function selectedFile() { return tree()[selected()]?.file }
+
   async function openSelected(): Promise<GitDiff | undefined> {
     const file = tree()[selected()]?.file
     if (!file) return
@@ -95,7 +99,32 @@ export function useGit(props: Props) {
   }
 
   async function fetch() {
+    if (props.fetchOnRefresh === false) return refresh()
     await props.runActivity("Actualizando referencias remotas y cambios de Git...", () => fetchAndRefreshGit(props.root, readState, props.setStatus))
+  }
+
+  async function stageSelected() {
+    const file = selectedFile()
+    if (!file || file.area !== "changes") return false
+    const staged = await stageGitFile(props.root, file)
+    if (staged) await refresh()
+    return staged
+  }
+
+  async function unstageSelected() {
+    const file = selectedFile()
+    if (!file || file.area !== "staged") return false
+    const unstaged = await unstageGitFile(props.root, file)
+    if (unstaged) await refresh()
+    return unstaged
+  }
+
+  async function restoreSelected() {
+    const file = selectedFile()
+    if (!file || file.area !== "changes" || file.status === "untracked") return false
+    const restored = await restoreGitFile(props.root, file)
+    if (restored) await refresh()
+    return restored
   }
 
   onMount(() => {
@@ -103,6 +132,7 @@ export function useGit(props: Props) {
     let watcher: ReturnType<typeof watch> | undefined
     void refresh().then(() => {
       if (disposed || !state().available) return
+      if (props.autoRefresh === false) return
       watcher = watch(props.root, { recursive: true }, scheduleRefresh)
       watcher.on("error", () => undefined)
     })
@@ -114,5 +144,5 @@ export function useGit(props: Props) {
     })
   })
 
-  return { state, tree, selected, refresh, fetch, moveSelection, toggleSelectedFolder, collapseAllFolders, openSelected }
+  return { state, tree, selected, refresh, fetch, moveSelection, toggleSelectedFolder, collapseAllFolders, selectedFile, stageSelected, unstageSelected, restoreSelected, openSelected }
 }

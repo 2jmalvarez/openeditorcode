@@ -1,8 +1,9 @@
 import { basename, join, relative } from "node:path"
-import { createSignal } from "solid-js"
-import { createTextFile, readTextFile, writeTextFile } from "./files"
+import { batch, createSignal } from "solid-js"
+import { createTextFile, readImageFile, readTextFile, writeTextFile } from "./files"
 import type { OpenTab } from "./types"
 import type { GitDiff } from "../git/status"
+import { isImagePath, isMarkdownPath } from "./previews"
 
 type Props = {
   root: string
@@ -15,6 +16,10 @@ type Props = {
   focusExplorer: () => void
   setStatus: (status: string) => void
   readFile?: typeof readTextFile
+  readConfig?: () => Promise<string>
+  writeConfig?: (content: string) => Promise<void>
+  markdownDefault?: "preview" | "source"
+  imagesEnabled?: boolean
 }
 
 export function pathIsAffected(entryPath: string, filePath: string, directory: boolean): boolean {
@@ -34,7 +39,15 @@ export function useDocuments(props: Props) {
     const tab = tabs()[activeTab()]
     return tab?.kind === "diff" ? tab.diff : undefined
   }
-  const dirty = () => Boolean(filePath()) && props.content() !== savedContent()
+  const activeManual = () => { const tab = tabs()[activeTab()]; return tab?.kind === "manual" ? tab : undefined }
+  const activeImage = () => { const tab = tabs()[activeTab()]; return tab?.kind === "image" ? tab : undefined }
+  const activePreviewContent = () => { const tab = tabs()[activeTab()]; return tab?.kind === "manual" || tab?.kind === "file" && tab.view === "preview" ? tab.content : "" }
+  const activePreview = () => { const tab = tabs()[activeTab()]; return Boolean(activeManual() || activeImage() || tab?.kind === "file" && tab.view === "preview") }
+  const canTogglePreview = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && isMarkdownPath(tab.path) }
+  const dirty = () => {
+    const tab = tabs()[activeTab()]
+    return Boolean(filePath()) && tab?.kind === "file" && props.content() !== savedContent()
+  }
   const title = () => filePath() ?? ""
 
   function tabIsDirty(tab: OpenTab, index: number): boolean {
@@ -55,7 +68,7 @@ export function useDocuments(props: Props) {
     const index = activeTab()
     if (index < 0) return
     const tab = tabs()[index]
-    if (!tab || tab.kind !== "file") return
+    if (!tab || tab.kind !== "file" || tab.view === "preview") return
     const content = props.getText()
     setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, content, savedContent: savedContent() } : currentTab))
   }
@@ -63,19 +76,21 @@ export function useDocuments(props: Props) {
   function syncContent(content: string) {
     const index = activeTab()
     if (index < 0) return
-    setTabs((current) => current.map((tab, tabIndex) => tabIndex === index && tab.kind === "file" ? { ...tab, content } : tab))
+    setTabs((current) => current.map((tab, tabIndex) => tabIndex === index && tab.kind === "file" && tab.view === "source" ? { ...tab, content } : tab))
   }
 
   function loadTab(index: number, nextTabs = tabs()) {
     const tab = nextTabs[index]
     if (!tab) return
     props.blurEditor()
-    setActiveTab(index)
-    setFilePath(tab.kind === "file" ? tab.path : undefined)
-    setSavedContent(tab.kind === "file" ? tab.savedContent : "")
-    props.setText(tab.kind === "file" ? tab.content : "")
+    batch(() => {
+      setActiveTab(index)
+      setFilePath(tab.kind === "file" || tab.kind === "image" ? tab.path : undefined)
+      setSavedContent(tab.kind === "file" ? tab.savedContent : "")
+      props.setText(tab.kind === "file" && tab.view === "source" ? tab.content : "")
+    })
     props.focusEditor()
-    props.setStatus(tab.kind === "diff" ? `Cambios: ${tab.path}` : `Abierto: ${tab.path}`)
+    props.setStatus(tab.kind === "manual" ? "Manual de OEC abierto." : tab.kind === "image" ? `Preview: ${tab.path}` : tab.kind === "diff" ? `Cambios: ${tab.path}` : `Abierto: ${tab.path}`)
   }
 
   async function openFile(path: string): Promise<boolean> {
@@ -83,14 +98,22 @@ export function useDocuments(props: Props) {
     try {
       props.blurEditor()
       syncActiveTab()
-      const existing = tabs().findIndex((tab) => tab.kind === "file" && tab.path === path)
+      const existing = tabs().findIndex((tab) => (tab.kind === "file" || tab.kind === "image") && tab.path === path)
       if (existing >= 0) {
         loadTab(existing)
         return true
       }
+      if (props.imagesEnabled !== false && isImagePath(path)) {
+        const bytes = await readImageFile(props.root, path)
+        if (generation !== openGeneration) return false
+        const nextTabs: OpenTab[] = [...tabs(), { kind: "image", path, bytes }]
+        setTabs(nextTabs)
+        loadTab(nextTabs.length - 1, nextTabs)
+        return true
+      }
       const content = await readFile(props.root, path)
       if (generation !== openGeneration) return false
-      const nextTabs: OpenTab[] = [...tabs(), { kind: "file", path, content, savedContent: content }]
+      const nextTabs: OpenTab[] = [...tabs(), { kind: "file", source: "project", path, content, savedContent: content, view: isMarkdownPath(path) && props.markdownDefault !== "source" ? "preview" : "source" }]
       setTabs(nextTabs)
       loadTab(nextTabs.length - 1, nextTabs)
       return true
@@ -99,6 +122,37 @@ export function useDocuments(props: Props) {
       props.setStatus(error instanceof Error ? error.message : "No se pudo abrir el archivo.")
       return false
     }
+  }
+
+  async function openConfig(path: string): Promise<boolean> {
+    if (!props.readConfig) return false
+    const generation = ++openGeneration
+    try {
+      props.blurEditor()
+      syncActiveTab()
+      const existing = tabs().findIndex((tab) => tab.kind === "file" && tab.source === "config")
+      if (existing >= 0) { loadTab(existing); return true }
+      const content = await props.readConfig()
+      if (generation !== openGeneration) return false
+      const nextTabs: OpenTab[] = [...tabs(), { kind: "file", source: "config", path, content, savedContent: content, view: "source" }]
+      setTabs(nextTabs)
+      loadTab(nextTabs.length - 1, nextTabs)
+      return true
+    } catch (error) {
+      if (generation !== openGeneration) return false
+      props.setStatus(error instanceof Error ? error.message : "No se pudo abrir la configuración de OEC.")
+      return false
+    }
+  }
+
+  function openManual(path: string, content: string) {
+    props.blurEditor()
+    syncActiveTab()
+    const existing = tabs().findIndex((tab) => tab.kind === "manual")
+    if (existing >= 0) return loadTab(existing)
+    const nextTabs: OpenTab[] = [...tabs(), { kind: "manual", path, content }]
+    setTabs(nextTabs)
+    loadTab(nextTabs.length - 1, nextTabs)
   }
 
   function openDiff(diff: GitDiff) {
@@ -116,13 +170,19 @@ export function useDocuments(props: Props) {
 
   async function save(): Promise<boolean> {
     const path = filePath()
+    if (activeManual()) { props.setStatus("El manual de OEC es de solo lectura."); return false }
+    if (activeImage()) { props.setStatus("La imagen es de solo lectura."); return false }
     if (!path || activeDiff()) {
       props.setStatus("Selecciona un archivo antes de guardar.")
       return false
     }
     try {
       const content = props.getText()
-      await writeTextFile(props.root, path, content)
+      const tab = tabs()[activeTab()]
+      if (tab?.kind === "file" && tab.source === "config") {
+        if (!props.writeConfig) return false
+        await props.writeConfig(content)
+      } else await writeTextFile(props.root, path, content)
       setSavedContent(content)
       setTabs((current) => current.map((tab, index) => index === activeTab() && tab.kind === "file" ? { ...tab, content, savedContent: content } : tab))
       props.setStatus(`Guardado: ${basename(path)}`)
@@ -140,7 +200,10 @@ export function useDocuments(props: Props) {
       const tab = currentTabs[index]
       if (tab.kind !== "file" || tab.content === tab.savedContent) continue
       try {
-        await writeTextFile(props.root, tab.path, tab.content)
+        if (tab.source === "config") {
+          if (!props.writeConfig) return false
+          await props.writeConfig(tab.content)
+        } else await writeTextFile(props.root, tab.path, tab.content)
         setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, savedContent: currentTab.content } : currentTab))
         if (index === activeTab()) setSavedContent(tab.content)
       } catch (error) {
@@ -185,7 +248,7 @@ export function useDocuments(props: Props) {
 
   function affectedTabIndexes(path: string, directory: boolean): number[] {
     return tabs().flatMap((tab, index) => {
-      if (tab.kind !== "file") return []
+      if ((tab.kind !== "file" && tab.kind !== "image") || (tab.kind === "file" && tab.source !== "project")) return []
       return pathIsAffected(path, tab.path, directory) ? [index] : []
     })
   }
@@ -232,5 +295,13 @@ export function useDocuments(props: Props) {
     }
   }
 
-  return { filePath, tabs, activeTab, activeDiff, dirty, isTabDirty, hasDirtyTabs, title, syncContent, openFile, openDiff, save, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
+  function togglePreview() {
+    if (!canTogglePreview()) { props.setStatus(activeManual() ? "El manual de OEC es de solo lectura." : "El preview solo está disponible para Markdown."); return }
+    syncActiveTab()
+    const index = activeTab()
+    setTabs((current) => current.map((tab, tabIndex) => tabIndex === index && tab.kind === "file" ? { ...tab, view: tab.view === "preview" ? "source" : "preview" } : tab))
+    loadTab(index)
+  }
+
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activePreview, activePreviewContent, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, syncContent, openFile, openConfig, openManual, openDiff, togglePreview, save, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
 }

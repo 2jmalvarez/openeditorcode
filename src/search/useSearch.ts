@@ -12,6 +12,7 @@ type Props = {
   root: string
   setStatus: (status: string) => void
   runActivity: <T>(message: string, operation: () => Promise<T>) => Promise<T>
+  respectGitignore?: boolean
 }
 
 export function useSearch(props: Props) {
@@ -26,7 +27,7 @@ export function useSearch(props: Props) {
   const [fileSearchIndex, setFileSearchIndex] = createSignal(0)
   const [exclusionQuery, setExclusionQuery] = createSignal("")
   const [exclusionIndex, setExclusionIndex] = createSignal(0)
-  const exclusions = useSearchExclusions(props.root)
+  const exclusions = useSearchExclusions(props.root, props.respectGitignore)
   let indexPromise: ReturnType<typeof buildFileIndex> | undefined
   let searchGeneration = 0
   let fileGeneration = 0

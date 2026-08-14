@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenEditorCode configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "appearance", "layout", "editor", "search", "git", "updates", "preview"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "appearance": { "type": "object", "additionalProperties": false, "required": ["theme", "language"], "properties": { "theme": { "const": "oec-dark" }, "language": { "enum": ["auto", "es", "en"] } } },
+    "layout": { "type": "object", "additionalProperties": false, "required": ["explorerWidth", "changesWidth", "minEditorWidth", "explorerStartup", "changesStartup", "narrowSidePanels", "findPanelMaxWidth", "diffOrientation", "diffStackBelow"], "properties": { "explorerWidth": { "type": "integer", "minimum": 24, "maximum": 80 }, "changesWidth": { "type": "integer", "minimum": 32, "maximum": 80 }, "minEditorWidth": { "type": "integer", "minimum": 32, "maximum": 160 }, "explorerStartup": { "enum": ["visible", "hidden"] }, "changesStartup": { "enum": ["auto", "visible", "hidden"] }, "narrowSidePanels": { "const": "single" }, "findPanelMaxWidth": { "type": "integer", "minimum": 24, "maximum": 80 }, "diffOrientation": { "enum": ["auto", "horizontal", "vertical"] }, "diffStackBelow": { "type": "integer", "minimum": 60, "maximum": 240 } } },
+    "editor": { "type": "object", "additionalProperties": false, "required": ["wrap", "lineNumbers", "syntaxHighlighting"], "properties": { "wrap": { "enum": ["none", "word"] }, "lineNumbers": { "type": "boolean" }, "syntaxHighlighting": { "type": "boolean" } } },
+    "search": { "type": "object", "additionalProperties": false, "required": ["respectGitignore"], "properties": { "respectGitignore": { "type": "boolean" } } },
+    "git": { "type": "object", "additionalProperties": false, "required": ["autoRefresh", "fetchOnRefresh"], "properties": { "autoRefresh": { "type": "boolean" }, "fetchOnRefresh": { "type": "boolean" } } },
+    "updates": { "type": "object", "additionalProperties": false, "required": ["checkOnStartup"], "properties": { "checkOnStartup": { "type": "boolean" } } },
+    "preview": { "type": "object", "additionalProperties": false, "required": ["markdownDefault", "images", "imageProtocol"], "properties": { "markdownDefault": { "enum": ["preview", "source"] }, "images": { "type": "boolean" }, "imageProtocol": { "enum": ["auto", "kitty", "sixel", "blocks"] } } }
+  }
+}

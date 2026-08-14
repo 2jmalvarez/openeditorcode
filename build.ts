@@ -14,7 +14,7 @@ if (!target) {
 }
 
 const result = await Bun.build({
-  entrypoints: ["./src/index.tsx"],
+  entrypoints: ["./src/bootstrap/executable.ts"],
   target: "bun",
   format: "esm",
   plugins: [solidPlugin],

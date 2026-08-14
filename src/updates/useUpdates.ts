@@ -4,11 +4,12 @@ import { isNewerVersion } from "./version"
 
 const UPDATE_URL = "https://registry.npmjs.org/openeditorcode/latest"
 
-export function useUpdates() {
+export function useUpdates(checkOnStartup = true) {
   const [latestVersion, setLatestVersion] = createSignal<string>()
   const launchedByNpm = process.env.OEC_NPM_LAUNCHER === "1"
 
   onMount(() => {
+    if (!checkOnStartup) return
     const controller = new AbortController()
     let requestTimer: ReturnType<typeof setTimeout> | undefined
     const startTimer = setTimeout(() => {

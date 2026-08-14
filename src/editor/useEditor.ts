@@ -10,11 +10,12 @@ type Props = {
   overlay: () => unknown
   filePath: () => string | undefined
   setStatus: (status: string) => void
+  wrapMode?: "none" | "word"
 }
 
 export function useEditor(props: Props) {
   const [content, setContent] = createSignal("")
-  const [wrapMode, setWrapMode] = createSignal<"none" | "word">("none")
+  const [wrapMode, setWrapMode] = createSignal<"none" | "word">(props.wrapMode ?? "none")
   const [cursor, setCursor] = createSignal({ line: 1, column: 1 })
   const [findOpen, setFindOpen] = createSignal(false)
   const [findQuery, setFindQuery] = createSignal("")

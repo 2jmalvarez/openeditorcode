@@ -4,7 +4,7 @@ type PackFile = { path: string; size: number }
 type PackResult = { name: string; version: string; files: PackFile[] }
 
 const packages = [
-  { directory: ".", required: ["bin/oec.js", "bin/launcher.js", "LICENSE", "README.md", "package.json"] },
+  { directory: ".", required: ["bin/oec.js", "bin/launcher.js", "docs/manual.md", "docs/oec-config.schema.json", "man/oec.1", "man/openeditorcode.1", "LICENSE", "README.md", "package.json"] },
   { directory: "packages/oec-win32-x64", required: ["bin/oec.exe", "LICENSE", "README.md", "package.json"] },
   { directory: "packages/oec-linux-x64", required: ["bin/oec", "LICENSE", "README.md", "package.json"] },
 ]

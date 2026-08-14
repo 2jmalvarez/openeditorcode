@@ -1,9 +1,9 @@
 import { afterAll, expect, test } from "bun:test"
-import { mkdir, mkdtemp, rename, rm, unlink, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rename, rm, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { alignDiff } from "../src/git/diff"
-import { parseGitNumstat, parseGitStatus, readGitDiff, readGitState } from "../src/git/status"
+import { parseGitNumstat, parseGitStatus, readGitDiff, readGitState, restoreGitFile, stageGitFile, unstageGitFile } from "../src/git/status"
 import type { OpenTab } from "../src/documents/types"
 import { createGitTree } from "../src/git/tree"
 import { fetchAndRefreshGit } from "../src/git/useGit"
@@ -102,6 +102,32 @@ test("reads staged and working diffs independently for the same file", async () 
   expect(await readGitDiff(root, changes!)).toMatchObject({ previous: "staged\n", current: "working\n" })
 })
 
+test("stages and unstages a changed file", async () => {
+  const root = await createRepository({ "tracked.txt": "original\n" })
+  await writeFile(join(root, "tracked.txt"), "changed\n", "utf8")
+  const changed = (await readGitState(root)).files.find((file) => file.path === "tracked.txt")!
+
+  expect(await stageGitFile(root, changed)).toBe(true)
+  const staged = (await readGitState(root)).files.find((file) => file.path === "tracked.txt")!
+  expect(staged.area).toBe("staged")
+
+  expect(await unstageGitFile(root, staged)).toBe(true)
+  expect((await readGitState(root)).files).toContainEqual(expect.objectContaining({ path: "tracked.txt", area: "changes" }))
+})
+
+test("restores a changed or deleted tracked file", async () => {
+  const root = await createRepository({ "tracked.txt": "original\n", "deleted.txt": "present\n" })
+  await writeFile(join(root, "tracked.txt"), "changed\n", "utf8")
+  const changed = (await readGitState(root)).files.find((file) => file.path === "tracked.txt")!
+  expect(await restoreGitFile(root, changed)).toBe(true)
+  expect(await readGitState(root)).toMatchObject({ files: [] })
+
+  await unlink(join(root, "deleted.txt"))
+  const deleted = (await readGitState(root)).files.find((file) => file.path === "deleted.txt")!
+  expect(await restoreGitFile(root, deleted)).toBe(true)
+  expect((await readFile(join(root, "deleted.txt"), "utf8")).replace(/\r\n/g, "\n")).toBe("present\n")
+})
+
 test("aligns removed and added lines into matching diff rows", () => {
   expect(alignDiff("one\ntwo\nthree\n", "one\nchanged\nthree\n")).toEqual([
     [
@@ -119,7 +145,7 @@ test("aligns removed and added lines into matching diff rows", () => {
 
 test("distinguishes file and diff tabs for the same path", () => {
   const tabs: OpenTab[] = [
-    { kind: "file", path: "README.md", content: "working copy", savedContent: "working copy" },
+    { kind: "file", source: "project", path: "README.md", content: "working copy", savedContent: "working copy", view: "source" },
     { kind: "diff", path: "README.md", diff: { file: { path: "README.md", status: "modified", area: "changes", additions: 1, deletions: 1 }, previous: "before", current: "after" } },
   ]
   expect(tabs.map((tab) => tab.kind)).toEqual(["file", "diff"])
