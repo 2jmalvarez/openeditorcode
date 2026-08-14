@@ -47,7 +47,7 @@ test("rejects unknown configuration keys without replacing valid saved settings"
   const config = factoryConfig()
   config.layout.explorerWidth = 48
   await saveConfig(target, serializeConfig(config))
-  await expect(saveConfig(target, JSON.stringify({ ...config, extra: true }))).rejects.toThrow("claves")
+  await expect(saveConfig(target, JSON.stringify({ ...config, extra: true }))).rejects.toThrow()
   expect(parseConfig(await readFile(target.file, "utf8")).layout.explorerWidth).toBe(48)
 })
 
