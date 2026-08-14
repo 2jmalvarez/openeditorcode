@@ -127,7 +127,11 @@ test("types a local search query and opens its result", async () => {
   try {
     await Bun.sleep(60)
     setup.mockInput.pressEnter()
-    await Bun.sleep(60)
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await Bun.sleep(40)
+      await setup.renderOnce()
+      if (setup.captureCharFrame().includes("contenido de prueba")) break
+    }
     setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("prueba")
     await setup.renderOnce()
@@ -137,6 +141,73 @@ test("types a local search query and opens its result", async () => {
     setup.mockInput.pressEnter()
     await setup.renderOnce()
     expect(setup.captureCharFrame()).not.toContain("BUSCAR EN ARCHIVO")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("filters project files with Ctrl+F while the explorer is active", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(80)
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("second")
+    await Bun.sleep(120)
+    await setup.renderOnce()
+
+    const searchFrame = setup.captureCharFrame()
+    expect(searchFrame).toContain("resultados")
+    expect(searchFrame).toContain("second.txt")
+    expect(searchFrame).not.toContain("hello.txt")
+
+    setup.mockInput.pressEnter()
+    let openedFrame = ""
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await Bun.sleep(40)
+      await setup.renderOnce()
+      openedFrame = setup.captureCharFrame()
+      if (openedFrame.includes("segundo archivo")) break
+    }
+    expect(openedFrame).toContain("segundo archivo")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("cancels explorer file search with Escape and restores its tree", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(80)
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("second")
+    await Bun.sleep(80)
+    setup.mockInput.pressEscape()
+    await Bun.sleep(60)
+    await setup.renderOnce()
+
+    const frame = setup.captureCharFrame()
+    expect(frame).not.toContain("Buscar archivo")
+    expect(frame).toContain("hello.txt")
+    expect(frame).toContain("second.txt")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("opens session search exclusions from the explorer search", async () => {
+  await writeFile(join(root, ".gitignore"), "ignored/\n", "utf8")
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(80)
+    setup.mockInput.pressKey("f", { ctrl: true })
+    setup.mockInput.pressKey("e", { ctrl: true })
+    await Bun.sleep(120)
+    await setup.renderOnce()
+
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("EXCLUSIONES DE BÚSQUEDA")
+    expect(frame).toContain("ignored/")
+    expect(frame).toContain(".gitignore")
   } finally {
     setup.renderer.destroy()
   }

@@ -19,7 +19,7 @@ export function AppLayout(props: Props) {
     </box>
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
       <Show when={props.explorerVisible()} fallback={<box />}>
-        <ExplorerPane root={props.root} active={() => props.active() === "explorer"} tree={props.explorer.tree} selected={props.explorer.selected} filePath={props.documents.filePath} lineCounts={props.search.lineCounts} setScroll={props.setExplorerScroll} onActivate={props.activateExplorerAt} />
+        <ExplorerPane root={props.root} active={() => props.active() === "explorer"} tree={props.explorer.tree} selected={props.explorer.selected} filePath={props.documents.filePath} lineCounts={props.search.lineCounts} setScroll={props.setExplorerScroll} onActivate={props.activateExplorerAt} fileSearchOpen={props.search.fileSearchOpen} fileQuery={props.search.fileQuery} fileResults={props.search.fileResults} fileSearchIndex={props.search.fileSearchIndex} onFileQuery={(value) => void props.search.updateFileQuery(value)} onFileActivate={(index) => void props.openFileSearchResult(index)} />
       </Show>
         <box style={{ flexGrow: 1, minWidth: 0, flexDirection: "column", border: ["top"], borderColor: props.active() === "editor" ? "#70d6a7" : "#30404d" }}>
         <DocumentTabs tabs={props.documents.tabs} activeTab={props.documents.activeTab} isTabDirty={props.documents.isTabDirty} onActivate={props.documents.activateTab} onClose={props.requestCloseTab} />
@@ -35,10 +35,10 @@ export function AppLayout(props: Props) {
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
       <box style={{ flexDirection: "row" }}>
-        <text fg="#8ca0ae">{props.status()}</text>
+        <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.status()}</text>
         <text style={{ marginLeft: "auto" }} fg="#8ca0ae"><Show when={props.documents.filePath()}>Ln {props.editor.cursor().line}:{props.editor.cursor().column}  |  </Show>v{props.appVersion}<Show when={props.updates.latestVersion()}> ↑ {props.updates.latestVersion()}</Show></text>
       </box>
     </box>
-    <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.overlays.newFileDirectory} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} pendingAction={props.overlays.pendingAction} />
+    <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.overlays.newFileDirectory} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} pendingAction={props.overlays.pendingAction} exclusionQuery={props.search.exclusionQuery} setExclusionQuery={props.search.updateExclusionQuery} exclusionIndex={props.search.exclusionIndex} exclusionSuggestions={props.search.exclusionSuggestions} />
   </box>
 }

@@ -52,6 +52,20 @@ type Props = {
   activateGitItem: () => Promise<void>
   collapseGitItem: () => void
   collapseAllGitFolders: () => void
+  openFileSearch: () => void
+  fileSearchOpen: () => boolean
+  closeFileSearch: () => void
+  moveFileSearchSelection: (direction: number) => void
+  fileSearchResultsLength: () => number
+  openFileSearchResult: () => Promise<void>
+  openSearchExclusions: () => void
+  closeSearchExclusions: () => void
+  exclusionSuggestionsLength: () => number
+  exclusionIndex: () => number
+  setExclusionIndex: (value: number | ((value: number) => number)) => void
+  completeExclusion: () => void
+  toggleExclusion: () => Promise<void>
+  removeExclusion: () => Promise<void>
 }
 
 export function useKeyboardShortcuts(props: Props) {
@@ -64,37 +78,57 @@ export function useKeyboardShortcuts(props: Props) {
   useKeyboard((key) => {
     const keyName = key.name.toLocaleLowerCase()
     const isEnter = keyName === "return" || keyName === "enter"
+    const isEscape = keyName === "escape" || keyName === "esc"
     const shift = key.shift || isShiftPressed()
     const ctrl = key.ctrl || isControlPressed()
     if (props.overlay() === "confirm") {
       if (key.name === "up") return consume(key, () => props.setConfirmChoice((value) => Math.max(0, value - 1)))
       if (key.name === "down") return consume(key, () => props.setConfirmChoice((value) => Math.min(2, value + 1)))
       if (isEnter) return consume(key, () => void props.acceptConfirm())
-      if (key.name === "escape") return consume(key, props.closeOverlay)
+      if (isEscape) return consume(key, props.closeOverlay)
       return consume(key, () => undefined)
     }
     if (props.overlay() === "delete-confirm") {
       if (isEnter) return consume(key, () => void props.acceptDeletion())
-      if (key.name === "escape") return consume(key, props.closeOverlay)
+      if (isEscape) return consume(key, props.closeOverlay)
       return consume(key, () => undefined)
     }
+    if (props.overlay() === "search-exclusions") {
+      if (isEscape) return consume(key, props.closeSearchExclusions)
+      if (key.name === "tab") return consume(key, props.completeExclusion)
+      if (key.name === "down") return consume(key, () => props.setExclusionIndex((value) => Math.min(value + 1, Math.max(0, props.exclusionSuggestionsLength() - 1))))
+      if (key.name === "up") return consume(key, () => props.setExclusionIndex((value) => Math.max(0, value - 1)))
+      if (keyName === "delete") return consume(key, () => void props.removeExclusion())
+      if (isEnter) return consume(key, () => void props.toggleExclusion())
+      return
+    }
     if (props.overlay() === "command-palette") {
-      if (key.name === "escape") return consume(key, props.closeOverlay)
+      if (isEscape) return consume(key, props.closeOverlay)
       if (key.name === "down") return consume(key, () => props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.paletteLength() - 1))))
       if (key.name === "up") return consume(key, () => props.setSearchIndex((value) => Math.max(0, value - 1)))
       if (isEnter) return consume(key, props.acceptCommand)
       return
     }
     if (props.overlay() === "new-file") {
-      if (key.name === "escape") return consume(key, props.closeOverlay)
+      if (isEscape) return consume(key, props.closeOverlay)
       if (isEnter) return consume(key, () => void props.createNewFile())
       return
     }
     if (props.overlay() === "project-search") {
-      if (key.name === "escape") return consume(key, props.cancelProjectSearch)
+      if (ctrl && keyName === "e") return consume(key, props.openSearchExclusions)
+      if (isEscape) return consume(key, props.cancelProjectSearch)
       if (key.name === "down") return consume(key, () => props.setSearchIndex((value) => Math.min(value + 1, Math.max(0, props.projectResultsLength() - 1))))
       if (key.name === "up") return consume(key, () => props.setSearchIndex((value) => Math.max(0, value - 1)))
       if (isEnter) return consume(key, () => void (props.projectResultsLength() ? props.openProjectResult() : props.findInProject()))
+      return
+    }
+    if (props.fileSearchOpen()) {
+      if (keyName === "f5") return consume(key, () => void props.refreshActivePanel())
+      if (ctrl && keyName === "e") return consume(key, props.openSearchExclusions)
+      if (isEscape) return consume(key, props.closeFileSearch)
+      if (key.name === "down") return consume(key, () => props.moveFileSearchSelection(1))
+      if (key.name === "up") return consume(key, () => props.moveFileSearchSelection(-1))
+      if (isEnter && props.fileSearchResultsLength()) return consume(key, () => void props.openFileSearchResult())
       return
     }
     if (ctrl && keyName === "q") return consume(key, props.quit)
@@ -105,7 +139,7 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && keyName === "p") return consume(key, props.openPalette)
     if (ctrl && keyName === "n") return consume(key, props.openNewFile)
     if (ctrl && (key.option || key.meta) && keyName === "f") return consume(key, props.openProjectSearch)
-    if (ctrl && keyName === "f") return consume(key, props.openTextSearch)
+    if (ctrl && keyName === "f") return consume(key, props.active() === "explorer" ? props.openFileSearch : props.openTextSearch)
     if (ctrl && shift && keyName === "left") return consume(key, props.focusLeft)
     if (ctrl && shift && keyName === "right") return consume(key, props.focusRight)
     if (ctrl && (key.option || key.meta) && keyName === "b") return consume(key, props.toggleGit)
@@ -115,7 +149,7 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && keyName === "w") return consume(key, props.requestClose)
     if (props.active() === "editor" && ctrl && keyName === "c") return consume(key, props.copy)
     if (ctrl && keyName === "v") return consume(key, () => void props.paste())
-    if (key.name === "escape" && props.editorFindOpen()) return consume(key, props.closeEditorFind)
+    if (isEscape && props.editorFindOpen()) return consume(key, props.closeEditorFind)
     if (props.editorFindOpen()) {
       if (key.name === "down") return consume(key, () => props.moveEditorFindResult(1))
       if (key.name === "up") return consume(key, () => props.moveEditorFindResult(-1))

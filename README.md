@@ -86,7 +86,7 @@ Sin argumento, abre el directorio actual. Tras compilar para Windows, el ejecuta
 
 Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y cerrar** y **Cerrar sin guardar** (opción predeterminada). Usa flechas arriba/abajo y confirma con `Enter`.
 
-La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Esc` para cerrarla y limpiarla. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
+`Ctrl+F` es contextual: en el explorador filtra archivos de todo el proyecto por nombre y en el editor busca dentro del archivo abierto. `Esc` cancela y limpia cualquiera de las dos búsquedas. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
 
 ## Atajos
 
@@ -102,8 +102,9 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 | `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
 | `Shift+Enter` | Alternar la carpeta seleccionada en explorador o cambios |
-| `Ctrl+F` | Buscar texto en el archivo abierto |
+| `Ctrl+F` | Buscar archivos por nombre en el Explorador o texto en el Editor |
 | `Ctrl+Alt+F` | Buscar texto en todos los archivos del proyecto |
+| `Ctrl+E` | Editar exclusiones temporales desde un buscador de proyecto |
 | `Ctrl+S` | Guardar archivo actual |
 | `Ctrl+W` | Cerrar pestaña actual |
 | `Shift+Tab` | Ir a la pestaña siguiente |
@@ -119,17 +120,20 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 
 ## Búsqueda y conteo
 
-- `Ctrl+F`: escribe el texto para ver todas las coincidencias locales. Usa flechas para elegir una y `Enter` para llevar el cursor a su inicio.
+- `Ctrl+F` en el Explorador: escribe parte del nombre o ruta para filtrar archivos de todo el proyecto, incluso dentro de carpetas cerradas. Usa flechas para elegir uno, `Enter` para abrirlo y `Esc` para volver al árbol.
+- `Ctrl+F` en el Editor: escribe el texto para ver todas las coincidencias locales. Usa flechas para elegir una y `Enter` para llevar el cursor a su inicio.
 - `Ctrl+Alt+F`: escribe el texto y pulsa `Enter` para buscar en todo el proyecto. El primer uso construye un índice en memoria; los siguientes lo reutilizan. Tras obtener resultados, usa flechas para elegir uno y `Enter` para abrir el archivo en la línea coincidente.
+- `Ctrl+E` dentro de la búsqueda de archivos o la búsqueda global abre las exclusiones de la sesión. Estas parten de `.gitignore`, autocompletan patrones y carpetas, y permiten incluir o excluir rutas sin modificar `.gitignore`. `.git` nunca se incluye.
 - `Ctrl+P`: ejecuta **Calcular líneas del proyecto**. El explorador mostrará el conteo a la derecha de cada archivo y el pie mostrará el total final.
+- El pie muestra un indicador giratorio mientras OEC abre, guarda, crea o elimina archivos, indexa, busca, cuenta líneas o actualiza el panel activo.
 
 ## Cambios Git
 
-- `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Sus archivos se organizan en un árbol y usan las mismas flechas, `Enter` y `Shift+Enter` que el explorador.
-- El encabezado muestra el total de archivos y cada archivo se numera y muestra sus líneas añadidas en verde y eliminadas en rojo. Los binarios o estadísticas no disponibles se indican con `?`.
+- `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Los archivos preparados se separan en **STAGED** y el resto en **CAMBIOS**; ambos grupos usan las mismas flechas, `Enter` y `Shift+Enter` que el explorador.
+- El encabezado muestra el total de entradas y cada cambio se numera y muestra sus líneas añadidas en verde y eliminadas en rojo. Un mismo archivo puede aparecer una vez en cada grupo; los binarios o estadísticas no disponibles se indican con `?`.
 - Con el panel **CAMBIOS** activo, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales y sus estadísticas aunque el fetch falle.
 - OEC muestra el estado remoto de la rama disponible localmente. La paleta incluye **Actualizar referencias remotas de Git** para ejecutar `git fetch --quiet` manualmente.
-- Abrir un archivo del panel crea una pestaña `Δ` con el diff anterior/nuevo. Los diffs son de solo lectura, se pueden cerrar normalmente y conviven con el archivo editable.
+- Los directorios sin seguimiento se expanden en archivos individuales. Abrir una entrada crea una pestaña `Δ` con el diff preparado o no preparado correspondiente, por lo que ambos pueden convivir para una misma ruta. Los diffs son de solo lectura y se pueden cerrar normalmente.
 
 ## Límites de seguridad
 
@@ -137,7 +141,7 @@ La búsqueda local conserva su consulta al confirmar una coincidencia; pulsa `Es
 - No se abren ni procesan archivos binarios.
 - El límite de lectura y análisis es 2 MB por archivo.
 - Los guardados usan un archivo temporal antes de reemplazar el original.
-- Los archivos y carpetas definidos en `.gitignore` se muestran en gris y se excluyen del conteo y de la búsqueda global. La carpeta `.git` permanece oculta.
+- Los archivos y carpetas definidos en `.gitignore` se muestran en gris y se excluyen del conteo y de los buscadores de proyecto. Las búsquedas permiten excepciones temporales durante la sesión; la carpeta `.git` permanece oculta y excluida siempre.
 
 ## Desarrollo, pruebas y distribución
 

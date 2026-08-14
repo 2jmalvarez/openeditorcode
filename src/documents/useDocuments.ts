@@ -104,7 +104,7 @@ export function useDocuments(props: Props) {
   function openDiff(diff: GitDiff) {
     props.blurEditor()
     syncActiveTab()
-    const existing = tabs().findIndex((tab) => tab.kind === "diff" && tab.path === diff.file.path)
+    const existing = tabs().findIndex((tab) => tab.kind === "diff" && tab.path === diff.file.path && tab.diff.file.area === diff.file.area)
     if (existing >= 0) {
       setTabs((current) => current.map((tab, index) => index === existing && tab.kind === "diff" ? { ...tab, diff } : tab))
       return loadTab(existing, tabs().map((tab, index) => index === existing && tab.kind === "diff" ? { ...tab, diff } : tab))

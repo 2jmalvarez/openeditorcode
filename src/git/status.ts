@@ -2,10 +2,12 @@ import { readTextFile } from "../documents/files"
 import { join } from "node:path"
 
 export type GitFileStatus = "modified" | "added" | "deleted" | "renamed" | "untracked"
+export type GitFileArea = "staged" | "changes"
 
 export type GitFile = {
   path: string
   status: GitFileStatus
+  area: GitFileArea
   previousPath?: string
   additions: number | null
   deletions: number | null
@@ -54,18 +56,25 @@ export function parseGitStatus(output: string): GitFile[] {
     if (!entry || entry.length < 4) continue
     const code = entry.slice(0, 2)
     const path = entry.slice(3)
-    const renamed = code.includes("R") || code.includes("C")
-    const previousPath = renamed ? entries[index + 1] : undefined
-    if (renamed) index += 1
-    const status: GitFileStatus = code === "??" ? "untracked"
-      : renamed ? "renamed"
-        : code.includes("D") ? "deleted"
-          : code.includes("A") ? "added"
+    if (code === "!!") continue
+    const hasRenamedPath = code.includes("R") || code.includes("C")
+    const renamedFrom = hasRenamedPath ? entries[index + 1] : undefined
+    if (hasRenamedPath) index += 1
+    if (code === "??") {
+      files.push({ path, status: "untracked", area: "changes", additions: null, deletions: null })
+      continue
+    }
+    for (const [area, statusCode] of [["staged", code[0]], ["changes", code[1]]] as const) {
+      if (!statusCode || statusCode === " ") continue
+      const status: GitFileStatus = statusCode === "R" || statusCode === "C" ? "renamed"
+        : statusCode === "D" ? "deleted"
+          : statusCode === "A" ? "added"
             : "modified"
-    const file = { path, status, additions: null, deletions: null }
-    files.push(previousPath === undefined ? file : { ...file, previousPath })
+      const file = { path, status, area, additions: null, deletions: null }
+      files.push(status !== "renamed" || renamedFrom === undefined ? file : { ...file, previousPath: renamedFrom })
+    }
   }
-  return files.sort((left, right) => left.path.localeCompare(right.path))
+  return files.sort((left, right) => Number(left.area === "changes") - Number(right.area === "changes") || left.path.localeCompare(right.path))
 }
 
 export function parseGitNumstat(output: string): Map<string, { additions: number | null; deletions: number | null }> {
@@ -106,18 +115,20 @@ export async function readGitState(root: string, signal?: AbortSignal): Promise<
   const repository = await runGit(root, ["rev-parse", "--is-inside-work-tree"], signal)
   if (!repository.success || repository.stdout.trim() !== "true") return emptyState("Esta carpeta no es un repositorio Git.")
 
-  const [branch, status, upstream, numstat] = await Promise.all([
+  const [branch, status, upstream, stagedNumstat, changesNumstat] = await Promise.all([
     runGit(root, ["branch", "--show-current"], signal),
-    runGit(root, ["status", "--porcelain=v1", "-z"], signal),
+    runGit(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"], signal),
     runGit(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], signal),
-    runGit(root, ["diff", "--numstat", "-z", "HEAD"], signal),
+    runGit(root, ["diff", "--cached", "--numstat", "-z", "HEAD"], signal),
+    runGit(root, ["diff", "--numstat", "-z"], signal),
   ])
   if (!status.success) return emptyState("No se pudo leer el estado de Git.")
   const files = parseGitStatus(status.stdout)
-  const trackedStats = numstat.success ? parseGitNumstat(numstat.stdout) : new Map()
+  const stagedStats = stagedNumstat.success ? parseGitNumstat(stagedNumstat.stdout) : new Map()
+  const changesStats = changesNumstat.success ? parseGitNumstat(changesNumstat.stdout) : new Map()
   await Promise.all(files.map(async (file) => {
     if (file.status !== "untracked") {
-      const stats = trackedStats.get(file.path)
+      const stats = (file.area === "staged" ? stagedStats : changesStats).get(file.path)
       if (stats) Object.assign(file, stats)
       return
     }
@@ -151,8 +162,14 @@ export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff>
   const hasPrevious = file.status !== "added" && file.status !== "untracked"
   const previousPath = file.status === "renamed" ? file.previousPath : file.path
   if (hasPrevious && !previousPath) throw new Error("No se pudo determinar la ruta anterior del archivo.")
-  const previous = hasPrevious ? await runGit(root, ["show", `HEAD:${previousPath}`]) : { stdout: "", success: true }
-  const current = file.status === "deleted" ? "" : await readTextFile(root, join(root, file.path))
+  const previous = hasPrevious
+    ? await runGit(root, ["show", file.area === "staged" ? `HEAD:${previousPath}` : `:${previousPath}`])
+    : { stdout: "", success: true }
+  const indexed = file.status === "deleted" ? { stdout: "", success: true } : await runGit(root, ["show", `:${file.path}`])
+  const current = file.area === "staged"
+    ? indexed.stdout
+    : file.status === "deleted" ? "" : await readTextFile(root, join(root, file.path))
+  if (file.area === "staged" && !indexed.success) throw new Error("No se pudo leer la versión preparada del archivo.")
   if (!previous.success) throw new Error("No se pudo leer la versión anterior del archivo.")
   return { file, previous: previous.stdout, current }
 }

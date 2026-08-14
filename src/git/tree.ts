@@ -1,4 +1,4 @@
-import type { GitFile } from "./status"
+import type { GitFile, GitFileArea } from "./status"
 
 export type GitTreeItem = {
   path: string
@@ -13,12 +13,14 @@ export type GitTreeItem = {
 type Node = { name: string; path: string; children: Map<string, Node>; file?: GitFile; fileNumber?: number }
 
 export function createGitTree(files: GitFile[], expanded: Set<string>): GitTreeItem[] {
-  const root: Node = { name: "", path: "", children: new Map() }
+  const roots = new Map<GitFileArea, Node>()
   for (const [fileIndex, file] of files.entries()) {
-    let node = root
+    const root = roots.get(file.area) ?? { name: file.area === "staged" ? "STAGED" : "CAMBIOS", path: file.area, children: new Map() }
+    roots.set(file.area, root)
+    let node: Node = root
     const parts = file.path.replace(/\\/g, "/").split("/")
     for (let index = 0; index < parts.length; index += 1) {
-      const path = parts.slice(0, index + 1).join("/")
+      const path = `${file.area}/${parts.slice(0, index + 1).join("/")}`
       const child = node.children.get(parts[index]) ?? { name: parts[index], path, children: new Map() }
       node.children.set(parts[index], child)
       node = child
@@ -37,6 +39,12 @@ export function createGitTree(files: GitFile[], expanded: Set<string>): GitTreeI
       if (directory && isExpanded) visit(child, depth + 1)
     }
   }
-  visit(root, 0)
+  for (const area of ["staged", "changes"] as const) {
+    const root = roots.get(area)
+    if (!root) continue
+    const isExpanded = expanded.has(root.path)
+    output.push({ path: root.path, name: `${root.name} ${files.filter((file) => file.area === area).length}`, depth: 0, directory: true, expanded: isExpanded })
+    if (isExpanded) visit(root, 1)
+  }
   return output
 }

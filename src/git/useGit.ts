@@ -6,6 +6,7 @@ import { createGitTree } from "./tree"
 type Props = {
   root: string
   setStatus: (message: string) => void
+  runActivity: <T>(message: string, operation: () => Promise<T>) => Promise<T>
 }
 
 export async function fetchAndRefreshGit(
@@ -31,7 +32,7 @@ export function useGit(props: Props) {
   let timer: ReturnType<typeof setTimeout> | undefined
   const controller = new AbortController()
 
-  async function refresh() {
+  async function readState() {
     if (refreshing) { queued = true; return }
     refreshing = true
     try {
@@ -40,8 +41,9 @@ export function useGit(props: Props) {
       setExpanded((current) => {
         const nextExpanded = new Set(current)
         for (const file of next.files) {
+          nextExpanded.add(file.area)
           const parts = file.path.replace(/\\/g, "/").split("/")
-          for (let index = 1; index < parts.length; index += 1) nextExpanded.add(parts.slice(0, index).join("/"))
+          for (let index = 1; index < parts.length; index += 1) nextExpanded.add(`${file.area}/${parts.slice(0, index).join("/")}`)
         }
         return nextExpanded
       })
@@ -50,6 +52,10 @@ export function useGit(props: Props) {
       refreshing = false
       if (queued) { queued = false; void refresh() }
     }
+  }
+
+  async function refresh() {
+    await readState()
   }
 
   function scheduleRefresh(_event: string, fileName: string | Buffer | null) {
@@ -89,7 +95,7 @@ export function useGit(props: Props) {
   }
 
   async function fetch() {
-    await fetchAndRefreshGit(props.root, refresh, props.setStatus)
+    await props.runActivity("Actualizando referencias remotas y cambios de Git...", () => fetchAndRefreshGit(props.root, readState, props.setStatus))
   }
 
   onMount(() => {

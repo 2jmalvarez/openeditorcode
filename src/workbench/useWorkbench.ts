@@ -16,6 +16,7 @@ import { useKeyboardShortcuts } from "./useKeyboardShortcuts"
 import type { FocusTarget } from "./types"
 import { useUpdates } from "../updates/useUpdates"
 import { refreshFocusedPanel } from "./refresh"
+import { useActivity } from "./useActivity"
 
 export function useWorkbench(root: string) {
   const renderer = useRenderer()
@@ -23,8 +24,10 @@ export function useWorkbench(root: string) {
   const [explorerVisible, setExplorerVisible] = createSignal(true)
   const [gitVisible, setGitVisible] = createSignal(false)
   const [status, setStatus] = createSignal("Explorador listo")
+  const activity = useActivity()
   let explorerScroll: ScrollBoxRenderable | undefined
   let gitScroll: ScrollBoxRenderable | undefined
+  let exclusionsReturn: "project-search" | "file-search" = "file-search"
   const overlays = useOverlays()
   const editor = useEditor({ active, overlay: overlays.overlay, filePath: () => documents.filePath(), setStatus })
   const documents = useDocuments({
@@ -38,9 +41,11 @@ export function useWorkbench(root: string) {
     focusExplorer: () => { setExplorerVisible(true); setActive("explorer") },
     setStatus,
   })
-  const explorer = useExplorer({ root, setStatus, openFile: documents.openFile })
-  const search = useSearch({ root, setStatus })
-  const git = useGit({ root, setStatus })
+  const openDocument = (path: string) => activity.run("Abriendo archivo...", () => documents.openFile(path))
+  const saveDocument = () => activity.run("Guardando archivo...", documents.save)
+  const explorer = useExplorer({ root, setStatus, openFile: openDocument })
+  const search = useSearch({ root, setStatus, runActivity: activity.run })
+  const git = useGit({ root, setStatus, runActivity: activity.run })
   const updates = useUpdates()
 
   createEffect(() => documents.syncContent(editor.content()))
@@ -103,10 +108,12 @@ export function useWorkbench(root: string) {
   }
 
   async function createNewFile() {
-    if (await documents.createFile(overlays.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) {
-      search.invalidateIndex()
-      overlays.close()
-    }
+    await activity.run("Creando archivo...", async () => {
+      if (await documents.createFile(overlays.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) {
+        search.invalidateIndex()
+        overlays.close()
+      }
+    })
   }
 
   async function acceptDeletion() {
@@ -117,17 +124,19 @@ export function useWorkbench(root: string) {
       setStatus("No se puede eliminar: hay cambios sin guardar en una pestaña afectada.")
       return
     }
-    try {
-      await removeProjectEntry(root, item.path)
-      documents.closeTabsAffectedBy(item.path, item.directory)
-      await explorer.refreshTree()
-      search.invalidateIndex()
-      overlays.close()
-      setStatus(`${item.directory ? "Carpeta" : "Archivo"} eliminado: ${item.name}`)
-    } catch (error) {
-      overlays.close()
-      setStatus(error instanceof Error ? error.message : "No se pudo eliminar el elemento.")
-    }
+    await activity.run("Eliminando elemento...", async () => {
+      try {
+        await removeProjectEntry(root, item.path)
+        documents.closeTabsAffectedBy(item.path, item.directory)
+        await explorer.refreshTree()
+        search.invalidateIndex()
+        overlays.close()
+        setStatus(`${item.directory ? "Carpeta" : "Archivo"} eliminado: ${item.name}`)
+      } catch (error) {
+        overlays.close()
+        setStatus(error instanceof Error ? error.message : "No se pudo eliminar el elemento.")
+      }
+    })
   }
 
   function requestDeletion() {
@@ -136,8 +145,11 @@ export function useWorkbench(root: string) {
   }
 
   async function refreshExplorer() {
-    search.invalidateIndex()
-    await explorer.refreshExplorer()
+    await activity.run("Actualizando explorador...", async () => {
+      await search.reloadExclusions()
+      await explorer.refreshExplorer()
+      await search.refreshFileSearch()
+    })
   }
 
   async function refreshActivePanel() {
@@ -152,9 +164,10 @@ export function useWorkbench(root: string) {
     { title: "Actualizar referencias remotas y cambios de Git", shortcut: "Paleta", run: () => void git.fetch() },
     { title: "Actualizar panel activo", shortcut: "F5", run: () => void refreshActivePanel() },
     { title: "Crear archivo en carpeta seleccionada", shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
-    { title: "Buscar texto", shortcut: "Ctrl+F", run: editor.openFind },
+    { title: active() === "explorer" ? "Buscar archivo por nombre" : "Buscar texto", shortcut: "Ctrl+F", run: openContextSearch },
     { title: "Buscar en todo el proyecto", shortcut: "Ctrl+Alt+F", run: () => openOverlay("project-search") },
-    { title: "Guardar archivo", shortcut: "Ctrl+S", run: () => void documents.save() },
+    { title: "Editar exclusiones de búsqueda", shortcut: "Ctrl+E en buscador", run: openSearchExclusions },
+    { title: "Guardar archivo", shortcut: "Ctrl+S", run: () => void saveDocument() },
     { title: "Cerrar archivo", shortcut: "Ctrl+W", run: requestClose },
     { title: "Pestaña siguiente", shortcut: "Shift+Tab", run: () => documents.changeTab(1) },
     { title: "Copiar selección", shortcut: "Ctrl+C", run: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)) },
@@ -178,12 +191,41 @@ export function useWorkbench(root: string) {
     const result = search.projectResults()[search.searchIndex()]
     if (!result) return search.findInProject()
     overlays.close()
-    if (await documents.openFile(result.path)) editor.gotoLine(result.line - 1)
+    if (await openDocument(result.path)) editor.gotoLine(result.line - 1)
   }
 
   function cancelProjectSearch() {
     overlays.close()
     search.reset()
+  }
+
+  function openContextSearch() {
+    if (active() === "explorer") {
+      editor.closeFind()
+      search.openFileSearch()
+      return
+    }
+    search.closeFileSearch()
+    editor.openFind()
+  }
+
+  function openSearchExclusions() {
+    exclusionsReturn = overlays.overlay() === "project-search" ? "project-search" : "file-search"
+    overlays.open("search-exclusions")
+    void search.prepareExclusions()
+  }
+
+  function closeSearchExclusions() {
+    if (exclusionsReturn === "project-search") overlays.open("project-search")
+    else overlays.close()
+  }
+
+  async function openFileSearchResult(index = search.fileSearchIndex()) {
+    const result = search.fileResults()[index]
+    if (!result) return
+    search.setFileSearchIndex(index)
+    search.closeFileSearch()
+    await openDocument(result.path)
   }
 
   function focusExplorer() {
@@ -272,21 +314,23 @@ export function useWorkbench(root: string) {
 
   useKeyboardShortcuts({
     active, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
-    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshActivePanel, save: documents.save, undo: editor.undo, redo: editor.redo,
-    openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: editor.openFind, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
+    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo,
+    openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: openContextSearch, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
     focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
     moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders,
+    openFileSearch: openContextSearch, fileSearchOpen: search.fileSearchOpen, closeFileSearch: search.closeFileSearch, moveFileSearchSelection: search.moveFileSelection, fileSearchResultsLength: () => search.fileResults().length, openFileSearchResult,
+    openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion,
   })
 
-  createEffect(() => explorerScroll?.scrollTo({ x: explorerScroll.scrollLeft, y: Math.max(0, explorer.selected() - 4) }))
+  createEffect(() => explorerScroll?.scrollTo({ x: explorerScroll.scrollLeft, y: Math.max(0, (search.fileSearchOpen() ? search.fileSearchIndex() : explorer.selected()) - 4) }))
   createEffect(() => gitScroll?.scrollTo({ x: gitScroll.scrollLeft, y: Math.max(0, git.selected() - 4) }))
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
 
   return {
-    root, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, explorer, git, documents, editor, overlays, search, updates,
-    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? `Cambios: ${documents.activeDiff()!.file.path}` : "Sin archivo abierto", activateExplorerAt, activateGitAt, requestCloseTab,
+    root, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, activity, explorer, git, documents, editor, overlays, search, updates,
+    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? `Cambios: ${documents.activeDiff()!.file.path}` : "Sin archivo abierto", activateExplorerAt, activateGitAt, openFileSearchResult, requestCloseTab,
     paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value }, setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value },
   }
 }

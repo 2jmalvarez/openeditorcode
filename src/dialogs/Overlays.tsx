@@ -7,6 +7,7 @@ import type { ProjectSearchResult } from "../search/project-search"
 import type { Overlay, PendingAction } from "../workbench/types"
 import type { TreeItem } from "../explorer/tree"
 import type { Command } from "./types"
+import type { ExclusionSuggestion } from "../search/useSearchExclusions"
 
 function groupedProjectResults(results: ProjectSearchResult[]) {
   const groups = new Map<string, ProjectSearchResult[]>()
@@ -29,6 +30,10 @@ type Props = {
   confirmChoice: Accessor<number>
   pendingDeletion: Accessor<TreeItem | undefined>
   pendingAction: Accessor<PendingAction | undefined>
+  exclusionQuery: Accessor<string>
+  setExclusionQuery: (value: string) => void
+  exclusionIndex: Accessor<number>
+  exclusionSuggestions: Accessor<ExclusionSuggestion[]>
 }
 
 export function Overlays(props: Props) {
@@ -57,11 +62,11 @@ export function Overlays(props: Props) {
   onCleanup(() => { if (pendingScroll) renderer.off("frame", pendingScroll) })
 
   return <>
-    <Show when={props.overlay() === "command-palette" || props.overlay() === "project-search" || props.overlay() === "new-file"} fallback={<box />}>
+    <Show when={props.overlay() === "command-palette" || props.overlay() === "project-search" || props.overlay() === "search-exclusions" || props.overlay() === "new-file"} fallback={<box />}>
       <box style={{ position: "absolute", top: "20%", left: "15%", width: "70%", height: "55%", padding: 1, flexDirection: "column", backgroundColor: "#1b252e", border: true, borderColor: "#70d6a7" }}>
-        <text fg="#70d6a7">{props.overlay() === "command-palette" ? "COMANDOS Y CONFIGURACIÓN" : props.overlay() === "project-search" ? "BUSCAR EN TODO EL PROYECTO" : "NUEVO ARCHIVO"}</text>
+        <text fg="#70d6a7">{props.overlay() === "command-palette" ? "COMANDOS Y CONFIGURACIÓN" : props.overlay() === "project-search" ? "BUSCAR EN TODO EL PROYECTO" : props.overlay() === "search-exclusions" ? "EXCLUSIONES DE BÚSQUEDA" : "NUEVO ARCHIVO"}</text>
         <Show when={props.overlay() !== "new-file"} fallback={<box><text style={{ marginTop: 1 }} fg="#8ca0ae">Carpeta: {displayPath(props.root, props.newFileDirectory())}</text><input focused value={props.newFileName()} onInput={props.setNewFileName} placeholder="nombre.ext" style={{ marginTop: 1, backgroundColor: "#101419" }} /></box>}>
-          <input focused value={props.query()} onInput={props.setQuery} placeholder="Escribe para buscar..." style={{ marginTop: 1, backgroundColor: "#101419" }} />
+          <input focused value={props.overlay() === "search-exclusions" ? props.exclusionQuery() : props.query()} onInput={props.overlay() === "search-exclusions" ? props.setExclusionQuery : props.setQuery} placeholder={props.overlay() === "search-exclusions" ? "Carpeta o patrón..." : "Escribe para buscar..."} style={{ marginTop: 1, backgroundColor: "#101419" }} />
         </Show>
         <Show when={props.overlay() === "command-palette"} fallback={<box />}>
           <scrollbox scrollY style={{ flexGrow: 1, marginTop: 1 }}><For each={props.paletteResults()}>{(command, index) => <box style={{ flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#d6e5dc">{command.title}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{command.shortcut}</text></box>}</For></scrollbox>
@@ -69,7 +74,10 @@ export function Overlays(props: Props) {
         <Show when={props.overlay() === "project-search"} fallback={<box />}>
           <scrollbox ref={(value) => { projectResultsScroll = value; value.verticalScrollBar.visible = true; scrollToSelectedProjectResult() }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><Show when={!props.projectSearching()} fallback={<box><text fg="#8ca0ae">Buscando...</text></box>}><For each={groupedProjectResults(props.projectResults())}>{([path, results]) => <box style={{ flexDirection: "column", marginBottom: 1 }}><text fg="#8ed1ff">▾ {displayPath(props.root, path)}</text><For each={results}>{(result) => { const index = () => props.projectResults().indexOf(result); return <box id={`project-result-${index()}`} style={{ paddingLeft: 2, flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">L{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box> }}</For></box>}</For></Show></scrollbox>
         </Show>
-        <text fg="#8ca0ae">{props.overlay() === "command-palette" ? "Flechas seleccionar | Enter ejecutar | Esc cerrar" : props.overlay() === "project-search" ? "Enter buscar | Flechas resultado | Enter abrir | Esc cerrar" : props.overlay() === "new-file" ? "Enter crear | Esc cancelar" : "Enter buscar siguiente | Esc cerrar"}</text>
+        <Show when={props.overlay() === "search-exclusions"} fallback={<box />}>
+          <scrollbox scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><For each={props.exclusionSuggestions()}>{(item, index) => <box style={{ flexDirection: "row", backgroundColor: index() === props.exclusionIndex() ? "#28404a" : undefined }}><text fg={item.excluded ? "#c98b8b" : "#70d6a7"}>{item.excluded ? "●" : "○"} {item.pattern}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{item.source === "gitignore" ? ".gitignore" : item.source === "session" ? "sesión" : "proyecto"}</text></box>}</For></scrollbox>
+        </Show>
+        <text fg="#8ca0ae">{props.overlay() === "command-palette" ? "Flechas seleccionar | Enter ejecutar | Esc cerrar" : props.overlay() === "project-search" ? "Enter buscar | Ctrl+E exclusiones | Esc cerrar" : props.overlay() === "search-exclusions" ? "Tab completar | Enter alternar | Supr quitar | Esc volver" : props.overlay() === "new-file" ? "Enter crear | Esc cancelar" : "Enter buscar siguiente | Esc cerrar"}</text>
       </box>
     </Show>
     <Show when={props.overlay() === "confirm"} fallback={<box />}>

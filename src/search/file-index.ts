@@ -1,12 +1,13 @@
 import { readdir } from "node:fs/promises"
 import { join, relative } from "node:path"
 import { isIgnoredPath, readGitignore } from "../explorer/gitignore"
+import type { Ignore } from "ignore"
 
 export const SEARCH_LIMIT = 50_000
 
 export type IndexedItem = { path: string; name: string; directory: boolean }
 export type FileIndex = { items: IndexedItem[]; truncated: boolean }
-export type BuildFileIndexOptions = { limit?: number }
+export type BuildFileIndexOptions = { limit?: number; rules?: Ignore }
 
 export function fuzzyScore(query: string, candidate: string): number | undefined {
   const needle = query.toLocaleLowerCase()
@@ -36,7 +37,7 @@ export function filterItems<T extends IndexedItem>(root: string, items: T[], que
 export async function buildFileIndex(root: string, options: BuildFileIndexOptions = {}): Promise<FileIndex> {
   const limit = options.limit ?? SEARCH_LIMIT
   const output: IndexedItem[] = []
-  const rules = await readGitignore(root)
+  const rules = options.rules ?? await readGitignore(root)
   const pending = [{ path: root, depth: 0 }]
 
   while (pending.length && output.length < limit) {
