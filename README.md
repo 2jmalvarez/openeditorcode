@@ -17,7 +17,7 @@ Al iniciar sin documentos abiertos, OEC muestra el explorador y, cuando hay al m
 - Creación de archivos en la carpeta seleccionada, sin sobrescribir archivos existentes.
 - Varias pestañas abiertas, cambio circular y pestañas clicables con cierre mediante `×`, incluidos diffs Git identificados con `Δ`.
 - Editor multilinea con números de línea, resaltado básico para archivos de código, ajuste de línea, deshacer y rehacer.
-- Preview Markdown de solo lectura por defecto, con `Ctrl+Alt+M` para alternar entre preview y edición; el manual interno nunca se puede editar.
+- Preview Markdown de solo lectura por defecto, con `F4` para alternar entre preview y edición; el manual interno nunca se puede editar.
 - Preview de PNG, JPEG, WebP y GIF en Kitty/Sixel cuando están disponibles, con fallback de bloques de terminal.
 - Copia mediante OSC 52 y pegado desde el portapapeles de Windows, Wayland o X11.
 - Búsqueda local lineal con resultados, navegación por flechas y aplicación con `Enter`.
@@ -115,7 +115,7 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 
 `Ctrl+F` es contextual: en el explorador filtra archivos de todo el proyecto por nombre y en el editor busca dentro del archivo abierto. `Esc` cancela y limpia cualquiera de las dos búsquedas. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
 
-Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `Ctrl+Alt+M` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
+Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `F4` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
 
 ## Atajos
 
@@ -142,7 +142,7 @@ Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview rende
 | `Ctrl+Z` | Deshacer el último cambio |
 | `Ctrl+Shift+Z` | Rehacer el último cambio |
 | `Ctrl+Alt+W` | Alternar ajuste de línea |
-| `Ctrl+Alt+M` | Alternar preview y edición de Markdown |
+| `F4` | Alternar preview y edición de Markdown |
 | `Ctrl+L` | Ajustar líneas al ancho para ver el contenido completo |
 | `Ctrl+Q` | Salir |
 | `Tab` | Alternar explorador, editor y control de cambios |

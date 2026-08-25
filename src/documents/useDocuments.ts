@@ -46,7 +46,8 @@ export function useDocuments(props: Props) {
   const canTogglePreview = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && isMarkdownPath(tab.path) }
   const dirty = () => {
     const tab = tabs()[activeTab()]
-    return Boolean(filePath()) && tab?.kind === "file" && props.content() !== savedContent()
+    if (!filePath() || tab?.kind !== "file") return false
+    return tab.view === "preview" ? tab.content !== tab.savedContent : props.content() !== savedContent()
   }
   const title = () => filePath() ?? ""
 

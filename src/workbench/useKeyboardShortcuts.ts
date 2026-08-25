@@ -153,7 +153,7 @@ export function useKeyboardShortcuts(props: Props) {
     if (ctrl && shift && keyName === "left") return consume(key, props.focusLeft)
     if (ctrl && shift && keyName === "right") return consume(key, props.focusRight)
     if (ctrl && (key.option || key.meta) && keyName === "b") return consume(key, props.toggleGit)
-    if (ctrl && (key.option || key.meta) && keyName === "m") return consume(key, props.togglePreview)
+    if (keyName === "f4") return consume(key, props.togglePreview)
     if (ctrl && keyName === "b") return consume(key, props.toggleExplorer)
     if (shift && keyName === "tab") return consume(key, props.changeTab)
     if (ctrl && ((key.option || key.meta) && keyName === "w" || keyName === "l")) return consume(key, props.toggleWrap)

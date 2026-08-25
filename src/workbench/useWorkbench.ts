@@ -220,7 +220,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: t("command.exclusions"), shortcut: "Ctrl+E", run: openSearchExclusions },
     { title: t("command.config"), shortcut: t("command.palette"), run: () => void openOecConfig() },
     { title: t("command.manual"), shortcut: t("command.palette"), run: openManual },
-    { title: documents.activePreview() ? "Editar Markdown" : "Ver preview Markdown", shortcut: "Ctrl+Alt+M", run: documents.togglePreview },
+    { title: documents.activePreview() ? "Editar Markdown" : "Ver preview Markdown", shortcut: "F4", run: documents.togglePreview },
     { title: t("command.save"), shortcut: "Ctrl+S", run: () => void saveDocument() },
     { title: t("command.close"), shortcut: "Ctrl+W", run: requestClose },
     { title: t("command.nextTab"), shortcut: "Shift+Tab", run: () => documents.changeTab(1) },

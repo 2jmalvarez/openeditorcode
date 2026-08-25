@@ -97,6 +97,8 @@ test("keeps Markdown preview content read-only until switching to source and kee
   expect(documents.activePreview()).toBe(true)
   expect(documents.activePreviewContent()).toContain("Documento")
   expect(text).toBe("")
+  expect(documents.dirty()).toBe(false)
+  expect(documents.isTabDirty(0)).toBe(false)
 
   documents.togglePreview()
   expect(documents.activePreview()).toBe(false)

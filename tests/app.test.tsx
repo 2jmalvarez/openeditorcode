@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { KeyCodes } from "@opentui/core/testing"
 import { testRender } from "@opentui/solid"
 import { App } from "../src/workbench/App"
 import { configureLanguage } from "../src/localization"
@@ -150,6 +151,32 @@ test("opens the OEC manual as a read-only Markdown preview", async () => {
     expect(frame).toContain("MANUAL DE OEC")
     expect(frame).toContain("SOLO LECTURA")
     expect(frame).not.toContain("# Manual")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("toggles a Markdown file between preview and source with F4", async () => {
+  await writeFile(join(root, "README.md"), "# Documento\n\nContenido fuente", "utf8")
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await Bun.sleep(80)
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("README.md")
+    await Bun.sleep(80)
+    setup.mockInput.pressEnter()
+    await Bun.sleep(80)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("PREVIEW MARKDOWN")
+
+    setup.mockInput.pressKey(KeyCodes.F4)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("# Documento")
+    expect(setup.captureCharFrame()).not.toContain("PREVIEW MARKDOWN")
+
+    setup.mockInput.pressKey(KeyCodes.F4)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("PREVIEW MARKDOWN")
   } finally {
     setup.renderer.destroy()
   }

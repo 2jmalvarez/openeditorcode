@@ -22,7 +22,7 @@ const markdownStyle = SyntaxStyle.fromStyles({
 
 export function MarkdownPreview(props: { content: Accessor<string>; active: Accessor<boolean>; manual: Accessor<boolean> }) {
   return <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "column", backgroundColor: "#101419" }}>
-    <box style={{ height: 1, paddingX: 1, flexShrink: 0, backgroundColor: "#151c23" }}><text fg="#8ca0ae">{props.manual() ? "MANUAL DE OEC · SOLO LECTURA" : "PREVIEW MARKDOWN · Ctrl+Alt+M editar"}</text></box>
+    <box style={{ height: 1, paddingX: 1, flexShrink: 0, backgroundColor: "#151c23" }}><text fg="#8ca0ae">{props.manual() ? "MANUAL DE OEC · SOLO LECTURA" : "PREVIEW MARKDOWN · F4 editar"}</text></box>
     <scrollbox focused={props.active()} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, paddingX: 2, paddingY: 1 }}>
       <markdown content={props.content()} syntaxStyle={markdownStyle} conceal streaming={false} tableOptions={{ style: "grid", widthMode: "full", wrapMode: "word", selectable: true, borders: true, borderColor: "#30404d" }} />
     </scrollbox>
