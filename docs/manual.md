@@ -26,7 +26,7 @@ La paleta incluye “Calcular líneas del proyecto”; el conteo usa las reglas 
 
 ## Git y actualizaciones
 
-Git es opcional. Cambios muestra áreas STAGED y CAMBIOS, estadísticas `+/-` y diffs. `F5` en ese panel ejecuta `git fetch --quiet` y luego relee el estado local; puede desactivarse el fetch desde configuración. OEC puede vigilar cambios locales con una demora corta; también puede desactivarse.
+Git es opcional. Cambios muestra áreas STAGED y CAMBIOS, estadísticas `+/-` y diffs. El encabezado muestra la rama y su sincronización: `actualizado`, `↑N` pendiente de push o `↓N` pendiente de pull. `Enter` expande o contrae carpetas y abre diffs; `+` suma un archivo o toda una carpeta a STAGED y `-` quita cambios preparados o descarta cambios pendientes tras confirmar. Baja con `↓` desde el último cambio para escribir el mensaje de commit y pulsa `Enter` para confirmarlo. `F6` ejecuta pull, `F7` push y `F5` ejecuta `git fetch --quiet` antes de releer el estado local. El fetch puede desactivarse desde configuración. OEC puede vigilar cambios locales con una demora corta; también puede desactivarse.
 
 OEC consulta npm al iniciar, salvo que `updates.checkOnStartup` sea falso. La actualización interactiva solo está disponible cuando se inició con el lanzador npm. Conserva la carpeta de proyecto y toda la configuración de usuario, porque ésta nunca se guarda en el directorio de instalación.
 

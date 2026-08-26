@@ -12,6 +12,9 @@ Ctrl+B alterna el explorador; Ctrl+Alt+B alterna Cambios. Si el terminal no tien
 ## Búsqueda e ignorados
 Ctrl+F busca archivos desde el explorador o texto desde el editor. Ctrl+Alt+F busca texto en el proyecto. La raíz .gitignore se respeta de forma predeterminada y .git siempre está excluido. Ctrl+E modifica exclusiones solo durante la sesión; nunca se persisten.
 
+## Git
+En Cambios, Enter alterna carpetas y abre diffs. + suma archivos o carpetas completas a STAGED; - quita cambios preparados o descarta cambios pendientes tras confirmar. Baja con la flecha hasta el mensaje de commit y pulsa Enter para confirmar. F6 ejecuta pull y F7 push.
+
 ## Configuración
 Abra “Editar configuración de OEC” desde Ctrl+P. Windows usa %APPDATA%\\openeditorcode\\config.json; Linux usa $XDG_CONFIG_HOME/openeditorcode/config.json o ~/.config/openeditorcode/config.json. El esquema completo está en docs/oec-config.schema.json.
 
@@ -32,6 +35,9 @@ Ctrl+B toggles the explorer; Ctrl+Alt+B toggles Changes. When the terminal does 
 
 ## Search and ignored files
 Ctrl+F searches files from the explorer or text from the editor. Ctrl+Alt+F searches text in the project. The root .gitignore is respected by default and .git is always excluded. Ctrl+E changes exclusions only for the current session; they are never persisted.
+
+## Git
+In Changes, Enter toggles folders and opens diffs. + adds files or whole folders to STAGED; - removes staged changes or discards pending changes after confirmation. Move down to the commit message and press Enter to commit. F6 pulls and F7 pushes.
 
 ## Configuration
 Open “Edit OEC configuration” from Ctrl+P. Windows uses %APPDATA%\\openeditorcode\\config.json; Linux uses $XDG_CONFIG_HOME/openeditorcode/config.json or ~/.config/openeditorcode/config.json. Set appearance.language to auto, es, or en. auto follows the operating system language and falls back to English. The complete schema is in docs/oec-config.schema.json.

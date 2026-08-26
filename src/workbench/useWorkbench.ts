@@ -64,7 +64,12 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     imagesEnabled: initialConfig.preview.images,
   })
   const openDocument = (path: string) => activity.run("Abriendo archivo...", () => documents.openFile(path))
-  const saveDocument = () => activity.run("Guardando archivo...", documents.save)
+  async function saveDocument() {
+    const saved = await activity.run("Guardando archivo...", documents.save)
+    const changedPath = documents.externalChange()
+    if (!saved && changedPath) overlays.requestExternalChange(changedPath)
+    return saved
+  }
   const explorer = useExplorer({ root, setStatus, openFile: openDocument })
   const search = useSearch({ root, setStatus, runActivity: activity.run, respectGitignore: initialConfig.search.respectGitignore })
   const git = useGit({ root, setStatus, runActivity: activity.run, autoRefresh: initialConfig.git.autoRefresh, fetchOnRefresh: initialConfig.git.fetchOnRefresh })
@@ -167,32 +172,68 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function stageGitItem() {
-    if (await git.stageSelected()) setStatus("Archivo preparado.")
+    if (await git.stageSelected()) setStatus("Cambios preparados.")
   }
 
   async function unstageGitItem() {
-    if (await git.unstageSelected()) setStatus("Archivo retirado del área preparada.")
+    if (await git.unstageSelected()) setStatus("Cambios retirados del área preparada.")
   }
 
   function requestGitRevert() {
-    const file = git.selectedFile()
-    if (!file) return
-    if (file.area === "staged") return void unstageGitItem()
-    overlays.requestGitRevert(file)
+    const files = git.selectedFiles()
+    if (!files.length) return
+    if (files[0].area === "staged") return void unstageGitItem()
+    overlays.requestGitRevert(files)
   }
 
   async function acceptGitRevert() {
-    const file = overlays.pendingGitRevert()
-    if (!file) return overlays.close()
+    const files = overlays.pendingGitRevert()
+    if (!files.length) return overlays.close()
+    if (files.some((file) => documents.hasDirtyTabsAffectedBy(join(root, file.path), false))) {
+      overlays.close()
+      setStatus("No se pueden descartar cambios de Git: hay cambios sin guardar en una pestaña afectada.")
+      return
+    }
     try {
-      const discarded = file.status === "untracked"
-        ? await removeProjectEntry(root, join(root, file.path)).then(() => git.refresh()).then(() => true)
-        : await git.restoreSelected()
+      const untracked = files.filter((file) => file.status === "untracked")
+      const tracked = files.filter((file) => file.status !== "untracked")
+      const removed = await Promise.all(untracked.map(async (file) => removeProjectEntry(root, join(root, file.path))))
+      const restored = tracked.length === 0 || await git.restore(tracked)
+      const discarded = removed.length === untracked.length && restored
+      if (discarded) {
+        for (const file of files) documents.closeTabsAffectedBy(join(root, file.path), false)
+        if (!tracked.length) await git.refresh()
+      }
       setStatus(discarded ? "Cambios descartados." : "No se pudieron descartar los cambios.")
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudieron descartar los cambios.")
     }
     overlays.close()
+  }
+
+  async function commitGitChanges() {
+    if (!git.commitMessage().trim()) return setStatus("Escribe un mensaje de commit.")
+    if (!git.state().files.some((file) => file.area === "staged")) return setStatus("No hay cambios preparados para confirmar.")
+    setStatus(await git.commit() ? "Commit creado." : "No se pudo crear el commit.")
+  }
+
+  async function pullGitChanges() {
+    setStatus(await git.pull() ? "Cambios remotos integrados." : "No se pudieron integrar los cambios remotos.")
+  }
+
+  async function pushGitChanges() {
+    setStatus(await git.push() ? "Cambios enviados al remoto." : "No se pudieron enviar los cambios al remoto.")
+  }
+
+  async function acceptExternalChange() {
+    const path = overlays.pendingExternalChange()
+    if (!path) return overlays.close()
+    const choice = overlays.confirmChoice()
+    if (choice === 2) return overlays.close()
+    const resolved = choice === 0
+      ? await activity.run("Recargando archivo...", () => documents.reloadActiveFile(path))
+      : await activity.run("Sobrescribiendo archivo...", () => documents.save(true, path))
+    if (resolved) overlays.close()
   }
 
   async function refreshExplorer() {
@@ -363,7 +404,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     if (!canShowBothSidePanels(renderer.width, config().layout)) setExplorerVisible(false)
     setGitVisible(true)
     setActive("git")
-    git.selected() !== index && git.moveSelection(index - git.selected())
+    git.select(index)
     if (git.toggleSelectedFolder()) return
     const diff = await git.openSelected()
     if (diff) {
@@ -381,12 +422,12 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
 
   useKeyboardShortcuts({
     active, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
-    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptGitRevert, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo,
+    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptGitRevert, acceptExternalChange, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo,
     openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: openContextSearch, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
     focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, togglePreview: documents.togglePreview, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
-    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert,
+    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.commitFocused()) return void commitGitChanges(); if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, gitCommitFocused: git.commitFocused,
     openFileSearch: openContextSearch, fileSearchOpen: search.fileSearchOpen, closeFileSearch: search.closeFileSearch, moveFileSearchSelection: search.moveFileSelection, fileSearchResultsLength: () => search.fileResults().length, openFileSearchResult,
     openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion,
   })

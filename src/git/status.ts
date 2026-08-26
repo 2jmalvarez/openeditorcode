@@ -159,15 +159,39 @@ export async function fetchGit(root: string): Promise<boolean> {
 }
 
 export async function stageGitFile(root: string, file: GitFile): Promise<boolean> {
-  return runGitAsync(root, ["add", "--", file.path])
+  return stageGitFiles(root, [file])
 }
 
 export async function unstageGitFile(root: string, file: GitFile): Promise<boolean> {
-  return runGitAsync(root, ["restore", "--staged", "--", file.path])
+  return unstageGitFiles(root, [file])
 }
 
 export async function restoreGitFile(root: string, file: GitFile): Promise<boolean> {
-  return runGitAsync(root, ["checkout", "--", file.path])
+  return restoreGitFiles(root, [file])
+}
+
+export async function stageGitFiles(root: string, files: GitFile[]): Promise<boolean> {
+  return files.length > 0 && runGitAsync(root, ["add", "--", ...files.map((file) => file.path)])
+}
+
+export async function unstageGitFiles(root: string, files: GitFile[]): Promise<boolean> {
+  return files.length > 0 && runGitAsync(root, ["restore", "--staged", "--", ...files.map((file) => file.path)])
+}
+
+export async function restoreGitFiles(root: string, files: GitFile[]): Promise<boolean> {
+  return files.length > 0 && runGitAsync(root, ["checkout", "--", ...files.map((file) => file.path)])
+}
+
+export async function commitGitChanges(root: string, message: string): Promise<boolean> {
+  return Boolean(message.trim()) && runGitAsync(root, ["commit", "-m", message])
+}
+
+export async function pullGit(root: string): Promise<boolean> {
+  return runGitAsync(root, ["pull"])
+}
+
+export async function pushGit(root: string): Promise<boolean> {
+  return runGitAsync(root, ["push"])
 }
 
 export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff> {

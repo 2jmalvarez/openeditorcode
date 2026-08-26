@@ -12,6 +12,9 @@ type Props = {
   state: Accessor<GitState>
   tree: Accessor<GitTreeItem[]>
   selected: Accessor<number>
+  commitMessage: Accessor<string>
+  setCommitMessage: (value: string) => void
+  commitFocused: Accessor<boolean>
   setScroll: (scroll: ScrollBoxRenderable) => void
   onActivate: (index: number) => void
   width: Accessor<number>
@@ -19,6 +22,12 @@ type Props = {
 
 const labels: Record<GitFile["status"], string> = { modified: "M", added: "A", deleted: "D", renamed: "R", untracked: "?" }
 const colors: Record<GitFile["status"], string> = { modified: "#f2c66d", added: "#70d6a7", deleted: "#ef7b7b", renamed: "#8ed1ff", untracked: "#b39ddb" }
+
+function remoteLabel(status: string) {
+  const match = status.match(/^(?:(\d+) adelante)?(?:, )?(?:(\d+) atrás)?$/)
+  if (!match) return status
+  return [match[1] && `↑${match[1]}`, match[2] && `↓${match[2]}`].filter(Boolean).join(" ")
+}
 
 export function GitPane(props: Props) {
   const renderer = useRenderer()
@@ -37,12 +46,9 @@ export function GitPane(props: Props) {
   onCleanup(() => renderer.off("frame", syncRange))
 
   return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
-    <box style={{ height: 6, flexShrink: 0, paddingX: 1, paddingTop: 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
-      <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{t("app.changes")} {props.state().files.length}</text>
+    <box style={{ height: 3, flexShrink: 0, paddingX: 1, flexDirection: "column", justifyContent: "center", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
       <Show when={props.state().available} fallback={<text fg="#71808b">{props.state().message}</text>}>
-        <text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch.slice(0, 31)}</text>
-        <text fg="#71808b">{props.state().remoteStatus}</text>
-        <text fg="#71808b">{t("app.gitHelp")}</text>
+        <box style={{ flexDirection: "row" }}><text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch.slice(0, 24)}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{remoteLabel(props.state().remoteStatus)}</text></box>
       </Show>
     </box>
     <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0 }}>
@@ -60,5 +66,9 @@ export function GitPane(props: Props) {
       )}}</For>
       <Show when={range().bottom}><box style={{ height: range().bottom }} /></Show>
     </scrollbox>
+    <box style={{ flexShrink: 0, paddingX: 1, paddingBottom: 1, flexDirection: "column", border: ["top"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
+      <input focused={props.active() && props.commitFocused()} value={props.commitMessage()} onInput={props.setCommitMessage} placeholder={t("app.commitMessage")} style={{ backgroundColor: "#101419" }} />
+      <box style={{ flexDirection: "row" }}><text fg="#71808b">{t("app.gitHelp")}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{t("app.gitSyncHelp")}</text></box>
+    </box>
   </box>
 }

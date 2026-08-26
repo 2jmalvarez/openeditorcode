@@ -38,7 +38,7 @@ export function AppLayout(props: Props) {
         </box>
         </box>
       <Show when={props.gitVisible()}>
-        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} />
+        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} commitMessage={props.git.commitMessage} setCommitMessage={props.git.setCommitMessage} commitFocused={props.git.commitFocused} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} />
       </Show>
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
@@ -47,6 +47,6 @@ export function AppLayout(props: Props) {
         <text style={{ marginLeft: "auto" }} fg="#8ca0ae"><Show when={props.documents.filePath() && !props.documents.activePreview()}>{t("app.line")} {props.editor.cursor().line}:{props.editor.cursor().column}  |  </Show>v{props.appVersion}<Show when={props.updates.latestVersion()}> ↑ {props.updates.latestVersion()}</Show></text>
       </box>
     </box>
-    <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.overlays.newFileDirectory} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} pendingAction={props.overlays.pendingAction} pendingGitRevert={props.overlays.pendingGitRevert} exclusionQuery={props.search.exclusionQuery} setExclusionQuery={props.search.updateExclusionQuery} exclusionIndex={props.search.exclusionIndex} exclusionSuggestions={props.search.exclusionSuggestions} />
+    <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.overlays.newFileDirectory} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} pendingAction={props.overlays.pendingAction} pendingGitRevert={props.overlays.pendingGitRevert} pendingExternalChange={props.overlays.pendingExternalChange} exclusionQuery={props.search.exclusionQuery} setExclusionQuery={props.search.updateExclusionQuery} exclusionIndex={props.search.exclusionIndex} exclusionSuggestions={props.search.exclusionSuggestions} />
   </box>
 }

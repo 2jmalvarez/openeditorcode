@@ -159,8 +159,10 @@ Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview rende
 
 ## Cambios Git
 
-- `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Los archivos preparados se separan en **STAGED** y el resto en **CAMBIOS**; ambos grupos usan las mismas flechas, `Enter` y `Shift+Enter` que el explorador.
-- El encabezado muestra el total de entradas y cada cambio se numera y muestra sus líneas añadidas en verde y eliminadas en rojo. Un mismo archivo puede aparecer una vez en cada grupo; los binarios o estadísticas no disponibles se indican con `?`.
+- `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Los archivos preparados se separan en **STAGED** y el resto en **CAMBIOS**; ambos grupos usan flechas y `Enter` para expandir o contraer carpetas y abrir diffs.
+- El encabezado muestra la rama y su estado remoto: `actualizado`, `↑N` pendiente de push o `↓N` pendiente de pull. Cada cambio se numera y muestra sus líneas añadidas en verde y eliminadas en rojo. Un mismo archivo puede aparecer una vez en cada grupo; los binarios o estadísticas no disponibles se indican con `?`.
+- `+` suma el archivo o todo el contenido de una carpeta a **STAGED**. `-` quita archivos de **STAGED** o descarta los cambios de **CAMBIOS** tras confirmar.
+- Baja con `↓` desde el último cambio para escribir el mensaje de commit; `Enter` crea el commit. `F6` ejecuta pull y `F7` ejecuta push.
 - Con el panel **CAMBIOS** activo, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales y sus estadísticas aunque el fetch falle.
 - OEC muestra el estado remoto de la rama disponible localmente. La paleta incluye **Actualizar referencias remotas de Git** para ejecutar `git fetch --quiet` manualmente.
 - Los directorios sin seguimiento se expanden en archivos individuales. Abrir una entrada crea una pestaña `Δ` con el diff preparado o no preparado correspondiente, por lo que ambos pueden convivir para una misma ruta. Los diffs son de solo lectura y se pueden cerrar normalmente.

@@ -8,7 +8,6 @@ import type { Overlay, PendingAction } from "../workbench/types"
 import type { TreeItem } from "../explorer/tree"
 import type { Command } from "./types"
 import type { ExclusionSuggestion } from "../search/useSearchExclusions"
-import type { GitFile } from "../git/status"
 import { t } from "../localization"
 
 function groupedProjectResults(results: ProjectSearchResult[]) {
@@ -32,7 +31,8 @@ type Props = {
   confirmChoice: Accessor<number>
   pendingDeletion: Accessor<TreeItem | undefined>
   pendingAction: Accessor<PendingAction | undefined>
-  pendingGitRevert: Accessor<GitFile | undefined>
+  pendingGitRevert: Accessor<{ path: string }[]>
+  pendingExternalChange: Accessor<string | undefined>
   exclusionQuery: Accessor<string>
   setExclusionQuery: (value: string) => void
   exclusionIndex: Accessor<number>
@@ -101,9 +101,17 @@ export function Overlays(props: Props) {
     <Show when={props.overlay() === "git-revert-confirm"} fallback={<box />}>
       <box style={{ position: "absolute", top: "30%", left: "25%", width: "50%", height: 10, padding: 1, flexDirection: "column", backgroundColor: "#2a2020", border: true, borderColor: "#f2c66d" }}>
         <text fg="#f2c66d">{t("overlay.discardGit")}</text>
-        <text style={{ marginTop: 1 }} fg="#b8c7d1">{t("overlay.discardGitQuestion", { path: props.pendingGitRevert()?.path })}</text>
+        <text style={{ marginTop: 1 }} fg="#b8c7d1">{t("overlay.discardGitQuestion", { path: props.pendingGitRevert().length === 1 ? props.pendingGitRevert()[0].path : `${props.pendingGitRevert().length} archivos` })}</text>
         <text fg="#b8c7d1">{t("overlay.irreversible")}</text>
         <text style={{ marginTop: 1 }} fg="#8ca0ae">{t("overlay.actionHelp")}</text>
+      </box>
+    </Show>
+    <Show when={props.overlay() === "external-change-confirm"} fallback={<box />}>
+      <box style={{ position: "absolute", top: "28%", left: "25%", width: "50%", height: 12, padding: 1, flexDirection: "column", backgroundColor: "#2a2020", border: true, borderColor: "#f2c66d" }}>
+        <text fg="#f2c66d">{t("overlay.externalChange")}</text>
+        <text style={{ marginTop: 1 }} fg="#b8c7d1">{t("overlay.externalChangeQuestion", { path: props.pendingExternalChange() })}</text>
+        <box style={{ marginTop: 1, flexDirection: "column" }}><For each={[t("overlay.reload"), t("overlay.overwrite"), t("overlay.cancel")]}>{(label, index) => <box style={{ paddingX: 1, backgroundColor: index() === props.confirmChoice() ? "#6b5224" : undefined }}><text fg={index() === props.confirmChoice() ? "#ffffff" : "#d6e5dc"}>{index() === props.confirmChoice() ? "› " : "  "}{label}</text></box>}</For></box>
+        <text fg="#8ca0ae">{t("overlay.confirmHelp")}</text>
       </box>
     </Show>
   </>

@@ -1,6 +1,6 @@
 import { basename, join, relative } from "node:path"
 import { batch, createSignal } from "solid-js"
-import { createTextFile, readImageFile, readTextFile, writeTextFile } from "./files"
+import { createTextFile, ExternalFileChangedError, readImageFile, readTextFile, writeTextFile } from "./files"
 import type { OpenTab } from "./types"
 import type { GitDiff } from "../git/status"
 import { isImagePath, isMarkdownPath } from "./previews"
@@ -18,6 +18,7 @@ type Props = {
   readFile?: typeof readTextFile
   readConfig?: () => Promise<string>
   writeConfig?: (content: string) => Promise<void>
+  writeFile?: typeof writeTextFile
   markdownDefault?: "preview" | "source"
   imagesEnabled?: boolean
 }
@@ -30,10 +31,12 @@ export function pathIsAffected(entryPath: string, filePath: string, directory: b
 
 export function useDocuments(props: Props) {
   const readFile = props.readFile ?? readTextFile
+  const writeFile = props.writeFile ?? writeTextFile
   const [filePath, setFilePath] = createSignal<string>()
   const [tabs, setTabs] = createSignal<OpenTab[]>([])
   const [activeTab, setActiveTab] = createSignal(-1)
   const [savedContent, setSavedContent] = createSignal("")
+  const [externalChange, setExternalChange] = createSignal<string>()
   let openGeneration = 0
   const activeDiff = () => {
     const tab = tabs()[activeTab()]
@@ -169,12 +172,16 @@ export function useDocuments(props: Props) {
     loadTab(nextTabs.length - 1, nextTabs)
   }
 
-  async function save(): Promise<boolean> {
+  async function save(force = false, expectedPath?: string): Promise<boolean> {
     const path = filePath()
     if (activeManual()) { props.setStatus("El manual de OEC es de solo lectura."); return false }
     if (activeImage()) { props.setStatus("La imagen es de solo lectura."); return false }
     if (!path || activeDiff()) {
       props.setStatus("Selecciona un archivo antes de guardar.")
+      return false
+    }
+    if (expectedPath && path !== expectedPath) {
+      props.setStatus("El archivo en conflicto ya no está activo.")
       return false
     }
     try {
@@ -183,12 +190,14 @@ export function useDocuments(props: Props) {
       if (tab?.kind === "file" && tab.source === "config") {
         if (!props.writeConfig) return false
         await props.writeConfig(content)
-      } else await writeTextFile(props.root, path, content)
+      } else await writeFile(props.root, path, content, force ? undefined : { expectedContent: tab?.kind === "file" ? tab.savedContent : "" })
       setSavedContent(content)
       setTabs((current) => current.map((tab, index) => index === activeTab() && tab.kind === "file" ? { ...tab, content, savedContent: content } : tab))
+      setExternalChange(undefined)
       props.setStatus(`Guardado: ${basename(path)}`)
       return true
     } catch (error) {
+      if (error instanceof ExternalFileChangedError) setExternalChange(path)
       props.setStatus(error instanceof Error ? error.message : "No se pudo guardar el archivo.")
       return false
     }
@@ -204,7 +213,7 @@ export function useDocuments(props: Props) {
         if (tab.source === "config") {
           if (!props.writeConfig) return false
           await props.writeConfig(tab.content)
-        } else await writeTextFile(props.root, tab.path, tab.content)
+        } else await writeFile(props.root, tab.path, tab.content, { expectedContent: tab.savedContent })
         setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, savedContent: currentTab.content } : currentTab))
         if (index === activeTab()) setSavedContent(tab.content)
       } catch (error) {
@@ -214,6 +223,28 @@ export function useDocuments(props: Props) {
     }
     props.setStatus("Todos los cambios fueron guardados.")
     return true
+  }
+
+  async function reloadActiveFile(expectedPath?: string): Promise<boolean> {
+    const tab = tabs()[activeTab()]
+    if (!tab || tab.kind !== "file" || tab.source !== "project") return false
+    if (expectedPath && tab.path !== expectedPath) {
+      props.setStatus("El archivo en conflicto ya no está activo.")
+      return false
+    }
+    try {
+      const content = await readFile(props.root, tab.path)
+      const index = activeTab()
+      setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, content, savedContent: content } : currentTab))
+      setSavedContent(content)
+      if (tab.view === "source") props.setText(content)
+      setExternalChange(undefined)
+      props.setStatus(`Recargado: ${basename(tab.path)}`)
+      return true
+    } catch (error) {
+      props.setStatus(error instanceof Error ? error.message : "No se pudo recargar el archivo.")
+      return false
+    }
   }
 
   function closeFile() {
@@ -304,5 +335,5 @@ export function useDocuments(props: Props) {
     loadTab(index)
   }
 
-  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activePreview, activePreviewContent, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, syncContent, openFile, openConfig, openManual, openDiff, togglePreview, save, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activePreview, activePreviewContent, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openDiff, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
 }

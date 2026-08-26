@@ -14,6 +14,7 @@ type Props = {
   acceptConfirm: () => Promise<void>
   acceptDeletion: () => Promise<void>
   acceptGitRevert: () => Promise<void>
+  acceptExternalChange: () => Promise<void>
   quit: () => void
   refreshActivePanel: () => Promise<void>
   save: () => Promise<boolean>
@@ -57,6 +58,9 @@ type Props = {
   stageGitItem: () => Promise<void>
   unstageGitItem: () => Promise<void>
   requestGitRevert: () => void
+  pullGitChanges: () => Promise<void>
+  pushGitChanges: () => Promise<void>
+  gitCommitFocused: () => boolean
   openFileSearch: () => void
   fileSearchOpen: () => boolean
   closeFileSearch: () => void
@@ -100,6 +104,13 @@ export function useKeyboardShortcuts(props: Props) {
     }
     if (props.overlay() === "git-revert-confirm") {
       if (isEnter) return consume(key, () => void props.acceptGitRevert())
+      if (isEscape) return consume(key, props.closeOverlay)
+      return consume(key, () => undefined)
+    }
+    if (props.overlay() === "external-change-confirm") {
+      if (key.name === "up") return consume(key, () => props.setConfirmChoice((value) => Math.max(0, value - 1)))
+      if (key.name === "down") return consume(key, () => props.setConfirmChoice((value) => Math.min(2, value + 1)))
+      if (isEnter) return consume(key, () => void props.acceptExternalChange())
       if (isEscape) return consume(key, props.closeOverlay)
       return consume(key, () => undefined)
     }
@@ -169,6 +180,13 @@ export function useKeyboardShortcuts(props: Props) {
     }
     if (key.name === "tab") return consume(key, props.cycleFocus)
     if (props.active() === "git") {
+      if (keyName === "f6") return consume(key, () => void props.pullGitChanges())
+      if (keyName === "f7") return consume(key, () => void props.pushGitChanges())
+      if (props.gitCommitFocused()) {
+        if (key.name === "up") return consume(key, () => props.moveGitSelection(-1))
+        if (isEnter) return consume(key, () => void props.activateGitItem())
+        return
+      }
       if (ctrl && shift && isEnter) return consume(key, props.collapseAllGitFolders)
       if (shift && isEnter) return consume(key, props.collapseGitItem)
       if (key.name === "down") return consume(key, () => props.moveGitSelection(1))

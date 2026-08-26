@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { createTextFile, ensureInsideRoot, FileAccessError, MAX_FILE_BYTES, readTextFile, removeProjectEntry, writeTextFile } from "../src/documents/files"
+import { createTextFile, ensureInsideRoot, ExternalFileChangedError, FileAccessError, MAX_FILE_BYTES, readTextFile, removeProjectEntry, writeTextFile } from "../src/documents/files"
 import { fuzzyScore, filterItems } from "../src/search/file-index"
 import { countProjectLines, searchProjectText } from "../src/search/project-search"
 import { createTree } from "../src/explorer/tree"
@@ -32,6 +32,15 @@ describe("file access", () => {
     expect(await readTextFile(root, path)).toBe("first")
     await writeTextFile(root, path, "updated\ncontent")
     expect(await readTextFile(root, path)).toBe("updated\ncontent")
+  })
+
+  test("rejects a save when the file changed since it was opened", async () => {
+    const path = join(root, "notes.txt")
+    await writeFile(path, "opened", "utf8")
+    await writeFile(path, "changed elsewhere", "utf8")
+
+    await expect(writeTextFile(root, path, "local edit", { expectedContent: "opened" })).rejects.toBeInstanceOf(ExternalFileChangedError)
+    expect(await readTextFile(root, path)).toBe("changed elsewhere")
   })
 
   test("blocks paths outside the selected root", () => {

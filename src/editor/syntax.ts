@@ -16,7 +16,9 @@ const styleIds = Object.fromEntries(
 ) as Record<"keyword" | "string" | "comment" | "number" | "tag" | "property", number>
 
 const patterns = {
-  comment: /\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\//g,
+  slashComment: /\/\/[^\n]*/g,
+  hashComment: /#[^\n]*/g,
+  blockComment: /\/\*[\s\S]*?\*\//g,
   string: /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g,
   number: /\b(?:\d[\d_]*(?:\.\d+)?)\b/g,
   keyword: /\b(?:abstract|and|as|async|await|bool|break|case|catch|class|const|continue|def|default|else|enum|export|false|finally|for|from|function|if|import|in|interface|let|new|null|or|pass|private|protected|public|return|self|static|string|switch|this|throw|true|try|type|undefined|var|void|while)\b/g,
@@ -26,12 +28,15 @@ const patterns = {
 
 // Regex highlighting scales with the whole document; preserve editor responsiveness for large files.
 const MAX_HIGHLIGHTED_CHARACTERS = 200_000
+const slashCommentExtensions = new Set([".ts", ".tsx", ".js", ".jsx"])
+const hashCommentExtensions = new Set([".py", ".yml", ".yaml", ".sh"])
+const blockCommentExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".css"])
 
-function addMatches(editor: TextareaRenderable, text: string, expression: RegExp, styleId: number) {
+function addMatches(editor: TextareaRenderable, text: string, expression: RegExp, styleId: number, priority = 1) {
   for (const [lineIndex, line] of text.split("\n").entries()) {
     expression.lastIndex = 0
     for (let match = expression.exec(line); match; match = expression.exec(line)) {
-      editor.addHighlight(lineIndex, { start: match.index, end: match.index + match[0].length, styleId })
+      editor.addHighlight(lineIndex, { start: match.index, end: match.index + match[0].length, styleId, priority })
     }
   }
 }
@@ -42,8 +47,11 @@ export function highlightEditor(editor: TextareaRenderable | undefined, path: st
   const extension = extname(path || "").toLocaleLowerCase()
   if (text.length > MAX_HIGHLIGHTED_CHARACTERS || !new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".html", ".md", ".py", ".yml", ".yaml", ".sh"]).has(extension)) return
 
-  addMatches(editor, text, patterns.comment, styleIds.comment)
-  addMatches(editor, text, patterns.string, styleIds.string)
+  // Comments and strings must win when their ranges overlap token-like content.
+  if (slashCommentExtensions.has(extension)) addMatches(editor, text, patterns.slashComment, styleIds.comment, 3)
+  if (hashCommentExtensions.has(extension)) addMatches(editor, text, patterns.hashComment, styleIds.comment, 3)
+  if (blockCommentExtensions.has(extension)) addMatches(editor, text, patterns.blockComment, styleIds.comment, 3)
+  addMatches(editor, text, patterns.string, styleIds.string, 2)
   addMatches(editor, text, patterns.number, styleIds.number)
   addMatches(editor, text, patterns.keyword, styleIds.keyword)
   if (extension === ".html" || extension === ".tsx" || extension === ".jsx") addMatches(editor, text, patterns.tag, styleIds.tag)

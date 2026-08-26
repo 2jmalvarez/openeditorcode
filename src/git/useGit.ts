@@ -1,6 +1,6 @@
 import { watch } from "node:fs"
 import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
-import { fetchGit, readGitDiff, readGitState, restoreGitFile, stageGitFile, unstageGitFile, type GitDiff, type GitFile } from "./status"
+import { commitGitChanges, fetchGit, pullGit, pushGit, readGitDiff, readGitState, restoreGitFiles, stageGitFiles, unstageGitFiles, type GitDiff, type GitFile } from "./status"
 import { createGitTree } from "./tree"
 
 type Props = {
@@ -29,6 +29,9 @@ export function useGit(props: Props) {
   const [state, setState] = createSignal({ available: false, branch: "", remoteStatus: "", files: [] as GitFile[], message: "Comprobando Git..." })
   const [selected, setSelected] = createSignal(0)
   const [expanded, setExpanded] = createSignal<Set<string>>(new Set())
+  const [commitMessage, setCommitMessage] = createSignal("")
+  const [commitFocused, setCommitFocused] = createSignal(false)
+  let initializedExpansion = false
   let refreshing = false
   let queued = false
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -40,15 +43,18 @@ export function useGit(props: Props) {
     try {
       const next = await readGitState(props.root, controller.signal)
       setState(next)
-      setExpanded((current) => {
-        const nextExpanded = new Set(current)
-        for (const file of next.files) {
-          nextExpanded.add(file.area)
-          const parts = file.path.replace(/\\/g, "/").split("/")
-          for (let index = 1; index < parts.length; index += 1) nextExpanded.add(`${file.area}/${parts.slice(0, index).join("/")}`)
-        }
-        return nextExpanded
-      })
+      if (!initializedExpansion) {
+        initializedExpansion = true
+        setExpanded(() => {
+          const nextExpanded = new Set<string>()
+          for (const file of next.files) {
+            nextExpanded.add(file.area)
+            const parts = file.path.replace(/\\/g, "/").split("/")
+            for (let index = 1; index < parts.length; index += 1) nextExpanded.add(`${file.area}/${parts.slice(0, index).join("/")}`)
+          }
+          return nextExpanded
+        })
+      }
       setSelected((index) => Math.max(0, Math.min(index, createGitTree(next.files, expanded()).length - 1)))
     } finally {
       refreshing = false
@@ -67,7 +73,20 @@ export function useGit(props: Props) {
   }
 
   function moveSelection(direction: number) {
+    if (commitFocused()) {
+      if (direction < 0) setCommitFocused(false)
+      return
+    }
+    if (direction > 0 && selected() >= tree().length - 1) {
+      setCommitFocused(true)
+      return
+    }
     setSelected((index) => Math.max(0, Math.min(index + direction, tree().length - 1)))
+  }
+
+  function select(index: number) {
+    setCommitFocused(false)
+    setSelected(Math.max(0, Math.min(index, tree().length - 1)))
   }
 
   const tree = createMemo(() => createGitTree(state().files, expanded()))
@@ -88,6 +107,15 @@ export function useGit(props: Props) {
 
   function selectedFile() { return tree()[selected()]?.file }
 
+  function selectedFiles() {
+    const item = tree()[selected()]
+    if (!item) return []
+    if (item.file) return [item.file]
+    const [area, ...parts] = item.path.split("/")
+    const prefix = parts.join("/")
+    return state().files.filter((file) => file.area === area && (!prefix || file.path === prefix || file.path.startsWith(`${prefix}/`)))
+  }
+
   async function openSelected(): Promise<GitDiff | undefined> {
     const file = tree()[selected()]?.file
     if (!file) return
@@ -104,27 +132,47 @@ export function useGit(props: Props) {
   }
 
   async function stageSelected() {
-    const file = selectedFile()
-    if (!file || file.area !== "changes") return false
-    const staged = await stageGitFile(props.root, file)
+    const files = selectedFiles().filter((file) => file.area === "changes")
+    const staged = await stageGitFiles(props.root, files)
     if (staged) await refresh()
     return staged
   }
 
   async function unstageSelected() {
-    const file = selectedFile()
-    if (!file || file.area !== "staged") return false
-    const unstaged = await unstageGitFile(props.root, file)
+    const files = selectedFiles().filter((file) => file.area === "staged")
+    const unstaged = await unstageGitFiles(props.root, files)
     if (unstaged) await refresh()
     return unstaged
   }
 
-  async function restoreSelected() {
-    const file = selectedFile()
-    if (!file || file.area !== "changes" || file.status === "untracked") return false
-    const restored = await restoreGitFile(props.root, file)
+  async function restore(files: GitFile[]) {
+    const restorable = files.filter((file) => file.area === "changes" && file.status !== "untracked")
+    const restored = await restoreGitFiles(props.root, restorable)
     if (restored) await refresh()
     return restored
+  }
+
+  async function commit() {
+    const message = commitMessage().trim()
+    if (!message || !state().files.some((file) => file.area === "staged")) return false
+    const committed = await commitGitChanges(props.root, message)
+    if (committed) {
+      setCommitMessage("")
+      await refresh()
+    }
+    return committed
+  }
+
+  async function pull() {
+    const pulled = await pullGit(props.root)
+    if (pulled) await refresh()
+    return pulled
+  }
+
+  async function push() {
+    const pushed = await pushGit(props.root)
+    if (pushed) await refresh()
+    return pushed
   }
 
   onMount(() => {
@@ -144,5 +192,5 @@ export function useGit(props: Props) {
     })
   })
 
-  return { state, tree, selected, refresh, fetch, moveSelection, toggleSelectedFolder, collapseAllFolders, selectedFile, stageSelected, unstageSelected, restoreSelected, openSelected }
+  return { state, tree, selected, commitMessage, setCommitMessage, commitFocused, setCommitFocused, refresh, fetch, moveSelection, select, toggleSelectedFolder, collapseAllFolders, selectedFile, selectedFiles, stageSelected, unstageSelected, restore, commit, pull, push, openSelected }
 }

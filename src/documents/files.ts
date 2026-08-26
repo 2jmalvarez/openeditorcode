@@ -6,6 +6,11 @@ export const MAX_FILE_BYTES = 2 * 1024 * 1024
 export const MAX_IMAGE_BYTES = 16 * 1024 * 1024
 
 export class FileAccessError extends Error {}
+export class ExternalFileChangedError extends FileAccessError {}
+
+type WriteTextFileOptions = {
+  expectedContent?: string
+}
 
 function isInside(root: string, target: string): boolean {
   const pathFromRoot = relative(root, target)
@@ -83,12 +88,27 @@ export async function readImageFile(root: string, filePath: string): Promise<Uin
   return content
 }
 
-export async function writeTextFile(root: string, filePath: string, content: string): Promise<void> {
+export async function writeTextFile(root: string, filePath: string, content: string, options: WriteTextFileOptions = {}): Promise<void> {
   if (Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) {
     throw new FileAccessError("El archivo supera el límite de 2 MB.")
   }
 
   const safePath = await ensurePhysicallyInsideRoot(root, filePath)
+
+  if (options.expectedContent !== undefined) {
+    try {
+      const currentContent = await readTextFile(root, safePath)
+      if (currentContent !== options.expectedContent) {
+        throw new ExternalFileChangedError("El archivo cambió fuera de OEC. Recarga o confirma la sobrescritura.")
+      }
+    } catch (error) {
+      if (error instanceof ExternalFileChangedError) throw error
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new ExternalFileChangedError("El archivo cambió fuera de OEC. Recarga o confirma la sobrescritura.")
+      }
+      throw error
+    }
+  }
 
   await mkdir(dirname(safePath), { recursive: true })
   await ensureParentPhysicallyInsideRoot(root, safePath)

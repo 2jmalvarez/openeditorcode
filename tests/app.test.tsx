@@ -61,7 +61,8 @@ test("shows both side panels initially when the terminal is wide enough", async 
     await setup.renderOnce()
     const frame = setup.captureCharFrame()
     expect(frame).toContain("EXPLORADOR")
-    expect(frame).toContain("CAMBIOS 0")
+    expect(frame).toContain("Mensaje de commit...")
+    expect(frame).toContain("F6 pull | F7 push")
   } finally {
     setup.renderer.destroy()
   }
@@ -83,7 +84,7 @@ test("keeps the explorer and hides changes when a wide terminal becomes narrow",
   const setup = await testRender(() => <App root={root} />, { width: 160, height: 30 })
   try {
     await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("CAMBIOS 0")
+    expect(setup.captureCharFrame()).toContain("Mensaje de commit...")
 
     setup.renderer.resize(120, 30)
     await setup.renderOnce()

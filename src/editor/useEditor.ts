@@ -82,7 +82,11 @@ export function useEditor(props: Props) {
 
   function setLineWrap(mode: "none" | "word") {
     setWrapMode(mode)
-    if (renderable) renderable.wrapMode = mode
+    if (renderable) {
+      renderable.wrapMode = mode
+      // Wait for the textarea to rebuild visual rows before replacing its highlights.
+      metrics.scheduleHighlight(props.filePath(), renderable.plainText, 16)
+    }
     metrics.schedule()
     props.setStatus(mode === "word" ? "Ajuste de línea activado." : "Ajuste de línea desactivado.")
   }

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, unlink, writeFile } from "node:fs
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { alignDiff } from "../src/git/diff"
-import { parseGitNumstat, parseGitStatus, readGitDiff, readGitState, restoreGitFile, stageGitFile, unstageGitFile } from "../src/git/status"
+import { commitGitChanges, parseGitNumstat, parseGitStatus, readGitDiff, readGitState, restoreGitFile, stageGitFile, stageGitFiles, unstageGitFile, unstageGitFiles } from "../src/git/status"
 import type { OpenTab } from "../src/documents/types"
 import { createGitTree } from "../src/git/tree"
 import { fetchAndRefreshGit } from "../src/git/useGit"
@@ -113,6 +113,32 @@ test("stages and unstages a changed file", async () => {
 
   expect(await unstageGitFile(root, staged)).toBe(true)
   expect((await readGitState(root)).files).toContainEqual(expect.objectContaining({ path: "tracked.txt", area: "changes" }))
+})
+
+test("stages and unstages all files in a changed folder", async () => {
+  const root = await createRepository({ "one.txt": "one\n", "two.txt": "two\n" })
+  await writeFile(join(root, "one.txt"), "changed one\n", "utf8")
+  await writeFile(join(root, "two.txt"), "changed two\n", "utf8")
+  const changes = (await readGitState(root)).files
+
+  expect(await stageGitFiles(root, changes)).toBe(true)
+  const staged = (await readGitState(root)).files
+  expect(staged).toHaveLength(2)
+  expect(staged.every((file) => file.area === "staged")).toBe(true)
+
+  expect(await unstageGitFiles(root, staged)).toBe(true)
+  expect((await readGitState(root)).files.every((file) => file.area === "changes")).toBe(true)
+})
+
+test("creates a commit from prepared changes and rejects an empty message", async () => {
+  const root = await createRepository({ "tracked.txt": "original\n" })
+  await writeFile(join(root, "tracked.txt"), "changed\n", "utf8")
+  const changed = (await readGitState(root)).files[0]
+  expect(await stageGitFile(root, changed)).toBe(true)
+
+  expect(await commitGitChanges(root, "")).toBe(false)
+  expect(await commitGitChanges(root, "update tracked file")).toBe(true)
+  expect((await readGitState(root)).files).toEqual([])
 })
 
 test("restores a changed or deleted tracked file", async () => {

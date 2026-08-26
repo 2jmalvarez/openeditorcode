@@ -10,7 +10,8 @@ export function useOverlays() {
   const [confirmChoice, setConfirmChoice] = createSignal(2)
   const [pendingAction, setPendingAction] = createSignal<PendingAction>()
   const [pendingDeletion, setPendingDeletion] = createSignal<TreeItem>()
-  const [pendingGitRevert, setPendingGitRevert] = createSignal<GitFile>()
+  const [pendingGitRevert, setPendingGitRevert] = createSignal<GitFile[]>([])
+  const [pendingExternalChange, setPendingExternalChange] = createSignal<string>()
 
   function open(next: Exclude<Overlay, "confirm" | undefined>, directory?: string) {
     setOverlay(next)
@@ -31,9 +32,15 @@ export function useOverlays() {
     setOverlay("delete-confirm")
   }
 
-  function requestGitRevert(file: GitFile) {
-    setPendingGitRevert(file)
+  function requestGitRevert(files: GitFile[]) {
+    setPendingGitRevert(files)
     setOverlay("git-revert-confirm")
+  }
+
+  function requestExternalChange(path: string) {
+    setPendingExternalChange(path)
+    setConfirmChoice(2)
+    setOverlay("external-change-confirm")
   }
 
   function close() {
@@ -42,9 +49,10 @@ export function useOverlays() {
     setNewFileDirectory("")
     setPendingAction(undefined)
     setPendingDeletion(undefined)
-    setPendingGitRevert(undefined)
+    setPendingGitRevert([])
+    setPendingExternalChange(undefined)
     setConfirmChoice(2)
   }
 
-  return { overlay, newFileName, setNewFileName, newFileDirectory, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, pendingGitRevert, open, requestConfirm, requestDeletion, requestGitRevert, close }
+  return { overlay, newFileName, setNewFileName, newFileDirectory, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, pendingGitRevert, pendingExternalChange, open, requestConfirm, requestDeletion, requestGitRevert, requestExternalChange, close }
 }

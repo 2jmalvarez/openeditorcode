@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+import { ExternalFileChangedError } from "../src/documents/files"
 import { useDocuments } from "../src/documents/useDocuments"
 
 function deferred<T>() {
@@ -141,4 +142,51 @@ test("opens and saves the trusted OEC configuration separately from project file
   text = '{"schemaVersion":2,"edited":true}'
   expect(await documents.save()).toBe(true)
   expect(saved).toContain("edited")
+})
+
+test("keeps an edited buffer until the user resolves an external file change", async () => {
+  let text = ""
+  let status = ""
+  let disk = "opened"
+  const writes: Array<{ content: string; expectedContent?: string }> = []
+  const documents = useDocuments({
+    root: "root",
+    content: () => text,
+    getText: () => text,
+    setText: (value) => { text = value },
+    clearEditor: () => { text = "" },
+    blurEditor: () => undefined,
+    focusEditor: () => undefined,
+    focusExplorer: () => undefined,
+    setStatus: (value) => { status = value },
+    readFile: async () => disk,
+    writeFile: async (_root, _path, content, options) => {
+      writes.push({ content, expectedContent: options?.expectedContent })
+      if (options?.expectedContent !== undefined && disk !== options.expectedContent) {
+        throw new ExternalFileChangedError("changed externally")
+      }
+      disk = content
+    },
+  })
+
+  await documents.openFile("notes.txt")
+  text = "local edit"
+  documents.syncContent(text)
+  disk = "external edit"
+
+  expect(await documents.save()).toBe(false)
+  expect(documents.externalChange()).toBe("notes.txt")
+  expect(text).toBe("local edit")
+  expect(status).toContain("changed externally")
+
+  expect(await documents.reloadActiveFile()).toBe(true)
+  expect(text).toBe("external edit")
+  expect(documents.externalChange()).toBeUndefined()
+
+  text = "overwrite external"
+  documents.syncContent(text)
+  disk = "another external edit"
+  expect(await documents.save(true)).toBe(true)
+  expect(disk).toBe("overwrite external")
+  expect(writes.at(-1)).toEqual({ content: "overwrite external", expectedContent: undefined })
 })
