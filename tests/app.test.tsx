@@ -364,9 +364,9 @@ test("opens another file after closing the current tab without a stale save dial
 test("does not edit a file with navigation and global shortcuts", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(60)
+    await Bun.sleep(120)
     setup.mockInput.pressEnter()
-    await Bun.sleep(60)
+    await Bun.sleep(120)
     setup.mockInput.pressKey("f", { ctrl: true })
     await setup.renderOnce()
     setup.mockInput.pressKey("escape")

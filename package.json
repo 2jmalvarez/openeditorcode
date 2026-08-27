@@ -1,6 +1,6 @@
 {
   "name": "openeditorcode",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "description": "Editor de proyectos para la terminal, escrito con Bun y OpenTUI.",
   "license": "MIT",
   "repository": {
@@ -28,14 +28,14 @@
     "openeditorcode": "bin/oec.js"
   },
   "optionalDependencies": {
-    "@2jmalvarez/oec-linux-x64": "0.2.17",
-    "@2jmalvarez/oec-win32-x64": "0.2.17"
+    "@2jmalvarez/oec-linux-x64": "0.2.18",
+    "@2jmalvarez/oec-win32-x64": "0.2.18"
   },
   "scripts": {
     "dev": "bun --preload @opentui/solid/preload ./src/index.tsx",
     "start": "bun --preload @opentui/solid/preload ./src/index.tsx",
     "test": "bun test --preload @opentui/solid/preload",
-    "test:coverage": "bun test --preload @opentui/solid/preload --coverage",
+    "test:coverage": "bun test --preload @opentui/solid/preload --coverage --coverage-reporter=lcov",
     "typecheck": "bun x tsc --noEmit",
     "build": "bun run build.ts",
     "build:linux": "bun run build.ts linux-x64",
