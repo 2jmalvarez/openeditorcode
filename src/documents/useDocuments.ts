@@ -15,6 +15,7 @@ type Props = {
   focusEditor: () => void
   focusExplorer: () => void
   setStatus: (status: string) => void
+  reportError?: (failure: { source: string; operation: string; summary: string; details: string }) => void
   readFile?: typeof readTextFile
   readConfig?: () => Promise<string>
   writeConfig?: (content: string) => Promise<void>
@@ -27,6 +28,19 @@ export function pathIsAffected(entryPath: string, filePath: string, directory: b
   if (!directory) return filePath === entryPath
   const fromEntry = relative(entryPath, filePath)
   return fromEntry === "" || (!fromEntry.startsWith("..") && !fromEntry.startsWith("/") && !fromEntry.startsWith("\\"))
+}
+
+function normalizeLineEndings(content: string): string {
+  return content.replace(/\r\n?/g, "\n")
+}
+
+function contentIsEqual(left: string, right: string): boolean {
+  return normalizeLineEndings(left) === normalizeLineEndings(right)
+}
+
+function preserveLineEndings(content: string, savedContent: string): string {
+  const normalized = normalizeLineEndings(content)
+  return savedContent.includes("\r\n") ? normalized.replace(/\n/g, "\r\n") : normalized
 }
 
 export function useDocuments(props: Props) {
@@ -44,19 +58,20 @@ export function useDocuments(props: Props) {
   }
   const activeManual = () => { const tab = tabs()[activeTab()]; return tab?.kind === "manual" ? tab : undefined }
   const activeImage = () => { const tab = tabs()[activeTab()]; return tab?.kind === "image" ? tab : undefined }
+  const activeLogs = () => { const tab = tabs()[activeTab()]; return tab?.kind === "logs" ? tab : undefined }
   const activePreviewContent = () => { const tab = tabs()[activeTab()]; return tab?.kind === "manual" || tab?.kind === "file" && tab.view === "preview" ? tab.content : "" }
   const activePreview = () => { const tab = tabs()[activeTab()]; return Boolean(activeManual() || activeImage() || tab?.kind === "file" && tab.view === "preview") }
   const canTogglePreview = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && isMarkdownPath(tab.path) }
   const dirty = () => {
     const tab = tabs()[activeTab()]
     if (!filePath() || tab?.kind !== "file") return false
-    return tab.view === "preview" ? tab.content !== tab.savedContent : props.content() !== savedContent()
+    return tab.view === "preview" ? !contentIsEqual(tab.content, tab.savedContent) : !contentIsEqual(props.content(), savedContent())
   }
   const title = () => filePath() ?? ""
 
   function tabIsDirty(tab: OpenTab, index: number): boolean {
     if (tab.kind !== "file") return false
-    return index === activeTab() ? dirty() : tab.content !== tab.savedContent
+    return index === activeTab() ? dirty() : !contentIsEqual(tab.content, tab.savedContent)
   }
 
   function isTabDirty(index: number): boolean {
@@ -94,7 +109,7 @@ export function useDocuments(props: Props) {
       props.setText(tab.kind === "file" && tab.view === "source" ? tab.content : "")
     })
     props.focusEditor()
-    props.setStatus(tab.kind === "manual" ? "Manual de OEC abierto." : tab.kind === "image" ? `Preview: ${tab.path}` : tab.kind === "diff" ? `Cambios: ${tab.path}` : `Abierto: ${tab.path}`)
+      props.setStatus(tab.kind === "manual" ? "Manual de OEC abierto." : tab.kind === "image" ? `Preview: ${tab.path}` : tab.kind === "diff" ? `Cambios: ${tab.path}` : tab.kind === "logs" ? "Registro de errores abierto." : `Abierto: ${tab.path}`)
   }
 
   async function openFile(path: string): Promise<boolean> {
@@ -123,7 +138,9 @@ export function useDocuments(props: Props) {
       return true
     } catch (error) {
       if (generation !== openGeneration) return false
-      props.setStatus(error instanceof Error ? error.message : "No se pudo abrir el archivo.")
+      const summary = error instanceof Error ? error.message : "No se pudo abrir el archivo."
+      props.setStatus(summary)
+      props.reportError?.({ source: "Archivos", operation: "Abrir archivo", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       return false
     }
   }
@@ -144,7 +161,9 @@ export function useDocuments(props: Props) {
       return true
     } catch (error) {
       if (generation !== openGeneration) return false
-      props.setStatus(error instanceof Error ? error.message : "No se pudo abrir la configuración de OEC.")
+      const summary = error instanceof Error ? error.message : "No se pudo abrir la configuración de OEC."
+      props.setStatus(summary)
+      props.reportError?.({ source: "Configuración", operation: "Abrir configuración", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       return false
     }
   }
@@ -155,6 +174,16 @@ export function useDocuments(props: Props) {
     const existing = tabs().findIndex((tab) => tab.kind === "manual")
     if (existing >= 0) return loadTab(existing)
     const nextTabs: OpenTab[] = [...tabs(), { kind: "manual", path, content }]
+    setTabs(nextTabs)
+    loadTab(nextTabs.length - 1, nextTabs)
+  }
+
+  function openLogs(path = "REGISTRO") {
+    props.blurEditor()
+    syncActiveTab()
+    const existing = tabs().findIndex((tab) => tab.kind === "logs")
+    if (existing >= 0) return loadTab(existing)
+    const nextTabs: OpenTab[] = [...tabs(), { kind: "logs", path }]
     setTabs(nextTabs)
     loadTab(nextTabs.length - 1, nextTabs)
   }
@@ -176,6 +205,7 @@ export function useDocuments(props: Props) {
     const path = filePath()
     if (activeManual()) { props.setStatus("El manual de OEC es de solo lectura."); return false }
     if (activeImage()) { props.setStatus("La imagen es de solo lectura."); return false }
+    if (activeLogs()) { props.setStatus("El registro es de solo lectura."); return false }
     if (!path || activeDiff()) {
       props.setStatus("Selecciona un archivo antes de guardar.")
       return false
@@ -187,18 +217,21 @@ export function useDocuments(props: Props) {
     try {
       const content = props.getText()
       const tab = tabs()[activeTab()]
+      const contentToSave = tab?.kind === "file" ? preserveLineEndings(content, tab.savedContent) : content
       if (tab?.kind === "file" && tab.source === "config") {
         if (!props.writeConfig) return false
-        await props.writeConfig(content)
-      } else await writeFile(props.root, path, content, force ? undefined : { expectedContent: tab?.kind === "file" ? tab.savedContent : "" })
-      setSavedContent(content)
-      setTabs((current) => current.map((tab, index) => index === activeTab() && tab.kind === "file" ? { ...tab, content, savedContent: content } : tab))
+        await props.writeConfig(contentToSave)
+      } else await writeFile(props.root, path, contentToSave, force ? undefined : { expectedContent: tab?.kind === "file" ? tab.savedContent : "" })
+      setSavedContent(contentToSave)
+      setTabs((current) => current.map((tab, index) => index === activeTab() && tab.kind === "file" ? { ...tab, content, savedContent: contentToSave } : tab))
       setExternalChange(undefined)
       props.setStatus(`Guardado: ${basename(path)}`)
       return true
     } catch (error) {
       if (error instanceof ExternalFileChangedError) setExternalChange(path)
-      props.setStatus(error instanceof Error ? error.message : "No se pudo guardar el archivo.")
+      const summary = error instanceof Error ? error.message : "No se pudo guardar el archivo."
+      props.setStatus(summary)
+      if (!(error instanceof ExternalFileChangedError)) props.reportError?.({ source: "Archivos", operation: "Guardar archivo", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       return false
     }
   }
@@ -208,14 +241,15 @@ export function useDocuments(props: Props) {
     const currentTabs = tabs()
     for (let index = 0; index < currentTabs.length; index += 1) {
       const tab = currentTabs[index]
-      if (tab.kind !== "file" || tab.content === tab.savedContent) continue
+      if (tab.kind !== "file" || contentIsEqual(tab.content, tab.savedContent)) continue
+      const contentToSave = preserveLineEndings(tab.content, tab.savedContent)
       try {
         if (tab.source === "config") {
           if (!props.writeConfig) return false
-          await props.writeConfig(tab.content)
-        } else await writeFile(props.root, tab.path, tab.content, { expectedContent: tab.savedContent })
-        setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, savedContent: currentTab.content } : currentTab))
-        if (index === activeTab()) setSavedContent(tab.content)
+          await props.writeConfig(contentToSave)
+        } else await writeFile(props.root, tab.path, contentToSave, { expectedContent: tab.savedContent })
+        setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, savedContent: contentToSave } : currentTab))
+        if (index === activeTab()) setSavedContent(contentToSave)
       } catch (error) {
         props.setStatus(error instanceof Error ? error.message : `No se pudo guardar ${basename(tab.path)}.`)
         return false
@@ -322,7 +356,9 @@ export function useDocuments(props: Props) {
       props.setStatus(`Creado: ${path}`)
       return true
     } catch (error) {
-      props.setStatus(error instanceof Error ? error.message : "No se pudo crear el archivo.")
+      const summary = error instanceof Error ? error.message : "No se pudo crear el archivo."
+      props.setStatus(summary)
+      props.reportError?.({ source: "Archivos", operation: "Crear archivo", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       return false
     }
   }
@@ -335,5 +371,5 @@ export function useDocuments(props: Props) {
     loadTab(index)
   }
 
-  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activePreview, activePreviewContent, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openDiff, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
 }

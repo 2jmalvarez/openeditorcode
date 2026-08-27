@@ -46,9 +46,10 @@ export function GitPane(props: Props) {
   onCleanup(() => renderer.off("frame", syncRange))
 
   return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
-    <box style={{ height: 3, flexShrink: 0, paddingX: 1, flexDirection: "column", justifyContent: "center", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
+    <box style={{ minHeight: 3, flexShrink: 0, paddingX: 1, paddingY: 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
       <Show when={props.state().available} fallback={<text fg="#71808b">{props.state().message}</text>}>
-        <box style={{ flexDirection: "row" }}><text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch.slice(0, 24)}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{remoteLabel(props.state().remoteStatus)}</text></box>
+        <box style={{ minWidth: 0 }}><text wrapMode="char" fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.state().branch}</text></box>
+        <text style={{ alignSelf: "flex-end" }} fg="#71808b">{remoteLabel(props.state().remoteStatus)}</text>
       </Show>
     </box>
     <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0 }}>

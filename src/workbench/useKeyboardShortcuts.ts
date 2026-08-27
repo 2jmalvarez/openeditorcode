@@ -21,6 +21,7 @@ type Props = {
   undo: () => void
   redo: () => void
   openPalette: () => void
+  openLogs: () => void
   openNewFile: () => void
   openProjectSearch: () => void
   openTextSearch: () => void
@@ -153,6 +154,7 @@ export function useKeyboardShortcuts(props: Props) {
       return
     }
     if (ctrl && keyName === "q") return consume(key, props.quit)
+    if (keyName === "f12") return consume(key, props.openLogs)
     if (keyName === "f5") return consume(key, () => void props.refreshActivePanel())
     if (ctrl && keyName === "s") return consume(key, () => void props.save())
     if (props.active() === "editor" && ctrl && shift && keyName === "z") return consume(key, props.redo)

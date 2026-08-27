@@ -13,6 +13,7 @@ type Props = {
   setStatus: (status: string) => void
   runActivity: <T>(message: string, operation: () => Promise<T>) => Promise<T>
   respectGitignore?: boolean
+  reportError?: (failure: { source: string; operation: string; summary: string; details: string }) => void
 }
 
 export function useSearch(props: Props) {
@@ -77,9 +78,11 @@ export function useSearch(props: Props) {
         setSearchIndex(0)
         const partial = index.truncated ? " Resultado parcial: el índice alcanzó 50.000 entradas." : ""
         props.setStatus((results.length ? `${results.length} coincidencias en el proyecto.` : "No se encontraron coincidencias en el proyecto.") + partial)
-      } catch {
+      } catch (error) {
         if (generation !== searchGeneration) return
-        props.setStatus("No se pudo buscar en el proyecto.")
+        const summary = "No se pudo buscar en el proyecto."
+        props.setStatus(summary)
+        props.reportError?.({ source: "Búsqueda", operation: "Buscar en proyecto", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       } finally {
         if (generation === searchGeneration) setProjectSearching(false)
       }
@@ -94,8 +97,10 @@ export function useSearch(props: Props) {
         const summary = await countProjectLines(props.root, index.items)
         setLineCounts(summary.byPath)
         props.setStatus(`Proyecto: ${summary.lines.toLocaleString()} líneas en ${summary.files.toLocaleString()} archivos de texto.${index.truncated ? " Resultado parcial: el índice alcanzó 50.000 entradas." : ""}`)
-      } catch {
-        props.setStatus("No se pudieron calcular las líneas del proyecto.")
+      } catch (error) {
+        const summary = "No se pudieron calcular las líneas del proyecto."
+        props.setStatus(summary)
+        props.reportError?.({ source: "Búsqueda", operation: "Calcular líneas", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       }
     })
   }
@@ -127,8 +132,11 @@ export function useSearch(props: Props) {
         if (generation !== fileGeneration) return
         setFileResults(results)
         props.setStatus(results.length ? `${results.length} archivos encontrados.` : "No se encontraron archivos.")
-      } catch {
-        if (generation === fileGeneration) props.setStatus("No se pudieron buscar archivos.")
+      } catch (error) {
+        if (generation !== fileGeneration) return
+        const summary = "No se pudieron buscar archivos."
+        props.setStatus(summary)
+        props.reportError?.({ source: "Búsqueda", operation: "Buscar archivos", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       }
     })
   }

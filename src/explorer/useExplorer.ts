@@ -6,6 +6,7 @@ type Props = {
   root: string
   setStatus: (status: string) => void
   openFile: (path: string) => Promise<unknown>
+  reportError?: (failure: { source: string; operation: string; summary: string; details: string }) => void
 }
 
 export function useExplorer(props: Props) {
@@ -26,13 +27,16 @@ export function useExplorer(props: Props) {
       setTree(nextTree)
       setSelected((current) => Math.min(current, Math.max(0, nextTree.length - 1)))
     } catch (error) {
-      props.setStatus(error instanceof Error ? error.message : "No se pudo leer la carpeta.")
+      const summary = error instanceof Error ? error.message : "No se pudo leer la carpeta."
+      props.setStatus(summary)
+      props.reportError?.({ source: "Explorador", operation: "Leer carpeta", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
+      return false
     }
+    return true
   }
 
   async function refreshExplorer() {
-    await refreshTree()
-    props.setStatus("Explorador actualizado.")
+    if (await refreshTree()) props.setStatus("Explorador actualizado.")
   }
 
   async function collapseAllFolders() {

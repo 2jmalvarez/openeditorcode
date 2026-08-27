@@ -27,6 +27,15 @@ export type GitDiff = {
   current: string
 }
 
+export type GitFailure = {
+  operation: string
+  exitCode?: number
+  stdout: string
+  stderr: string
+}
+
+export type ReportGitFailure = (failure: GitFailure) => void
+
 const emptyState = (message: string): GitState => ({ available: false, branch: "", remoteStatus: "", files: [], message })
 
 async function runGit(root: string, args: string[], signal?: AbortSignal): Promise<{ stdout: string; success: boolean }> {
@@ -39,11 +48,15 @@ async function runGit(root: string, args: string[], signal?: AbortSignal): Promi
   }
 }
 
-async function runGitAsync(root: string, args: string[]): Promise<boolean> {
+async function runGitAsync(root: string, args: string[], operation: string, reportFailure?: ReportGitFailure): Promise<boolean> {
   try {
-    const process = Bun.spawn(["git", "-C", root, ...args], { stdout: "ignore", stderr: "pipe" })
-    return await process.exited === 0
-  } catch {
+    const process = Bun.spawn(["git", "-C", root, ...args], { stdout: "pipe", stderr: "pipe" })
+    const [stdout, stderr, exitCode] = await Promise.all([new Response(process.stdout).text(), new Response(process.stderr).text(), process.exited])
+    if (exitCode === 0) return true
+    reportFailure?.({ operation, exitCode, stdout, stderr })
+    return false
+  } catch (error) {
+    reportFailure?.({ operation, stdout: "", stderr: error instanceof Error ? error.stack ?? error.message : "No se pudo iniciar el proceso Git." })
     return false
   }
 }
@@ -154,44 +167,44 @@ async function remoteSummary(root: string, signal?: AbortSignal): Promise<string
   return "actualizado"
 }
 
-export async function fetchGit(root: string): Promise<boolean> {
-  return runGitAsync(root, ["fetch", "--quiet"])
+export async function fetchGit(root: string, reportFailure?: ReportGitFailure): Promise<boolean> {
+  return runGitAsync(root, ["fetch", "--quiet"], "git fetch", reportFailure)
 }
 
-export async function stageGitFile(root: string, file: GitFile): Promise<boolean> {
-  return stageGitFiles(root, [file])
+export async function stageGitFile(root: string, file: GitFile, reportFailure?: ReportGitFailure): Promise<boolean> {
+  return stageGitFiles(root, [file], reportFailure)
 }
 
-export async function unstageGitFile(root: string, file: GitFile): Promise<boolean> {
-  return unstageGitFiles(root, [file])
+export async function unstageGitFile(root: string, file: GitFile, reportFailure?: ReportGitFailure): Promise<boolean> {
+  return unstageGitFiles(root, [file], reportFailure)
 }
 
-export async function restoreGitFile(root: string, file: GitFile): Promise<boolean> {
-  return restoreGitFiles(root, [file])
+export async function restoreGitFile(root: string, file: GitFile, reportFailure?: ReportGitFailure): Promise<boolean> {
+  return restoreGitFiles(root, [file], reportFailure)
 }
 
-export async function stageGitFiles(root: string, files: GitFile[]): Promise<boolean> {
-  return files.length > 0 && runGitAsync(root, ["add", "--", ...files.map((file) => file.path)])
+export async function stageGitFiles(root: string, files: GitFile[], reportFailure?: ReportGitFailure): Promise<boolean> {
+  return files.length > 0 && runGitAsync(root, ["add", "--", ...files.map((file) => file.path)], "git add", reportFailure)
 }
 
-export async function unstageGitFiles(root: string, files: GitFile[]): Promise<boolean> {
-  return files.length > 0 && runGitAsync(root, ["restore", "--staged", "--", ...files.map((file) => file.path)])
+export async function unstageGitFiles(root: string, files: GitFile[], reportFailure?: ReportGitFailure): Promise<boolean> {
+  return files.length > 0 && runGitAsync(root, ["restore", "--staged", "--", ...files.map((file) => file.path)], "git restore --staged", reportFailure)
 }
 
-export async function restoreGitFiles(root: string, files: GitFile[]): Promise<boolean> {
-  return files.length > 0 && runGitAsync(root, ["checkout", "--", ...files.map((file) => file.path)])
+export async function restoreGitFiles(root: string, files: GitFile[], reportFailure?: ReportGitFailure): Promise<boolean> {
+  return files.length > 0 && runGitAsync(root, ["checkout", "--", ...files.map((file) => file.path)], "git checkout", reportFailure)
 }
 
-export async function commitGitChanges(root: string, message: string): Promise<boolean> {
-  return Boolean(message.trim()) && runGitAsync(root, ["commit", "-m", message])
+export async function commitGitChanges(root: string, message: string, reportFailure?: ReportGitFailure): Promise<boolean> {
+  return Boolean(message.trim()) && runGitAsync(root, ["commit", "-m", message], "git commit", reportFailure)
 }
 
-export async function pullGit(root: string): Promise<boolean> {
-  return runGitAsync(root, ["pull"])
+export async function pullGit(root: string, reportFailure?: ReportGitFailure): Promise<boolean> {
+  return runGitAsync(root, ["pull"], "git pull", reportFailure)
 }
 
-export async function pushGit(root: string): Promise<boolean> {
-  return runGitAsync(root, ["push"])
+export async function pushGit(root: string, reportFailure?: ReportGitFailure): Promise<boolean> {
+  return runGitAsync(root, ["push"], "git push", reportFailure)
 }
 
 export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff> {

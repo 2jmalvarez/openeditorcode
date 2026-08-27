@@ -1,6 +1,6 @@
 import { watch } from "node:fs"
 import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
-import { commitGitChanges, fetchGit, pullGit, pushGit, readGitDiff, readGitState, restoreGitFiles, stageGitFiles, unstageGitFiles, type GitDiff, type GitFile } from "./status"
+import { commitGitChanges, fetchGit, pullGit, pushGit, readGitDiff, readGitState, restoreGitFiles, stageGitFiles, unstageGitFiles, type GitDiff, type GitFile, type GitFailure } from "./status"
 import { createGitTree } from "./tree"
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
   runActivity: <T>(message: string, operation: () => Promise<T>) => Promise<T>
   autoRefresh?: boolean
   fetchOnRefresh?: boolean
+  reportFailure?: (failure: { source: string; operation: string; summary: string; details: string }) => void
 }
 
 export async function fetchAndRefreshGit(
@@ -36,6 +37,10 @@ export function useGit(props: Props) {
   let queued = false
   let timer: ReturnType<typeof setTimeout> | undefined
   const controller = new AbortController()
+
+  function reportGitFailure(failure: GitFailure) {
+    props.reportFailure?.({ source: "Git", operation: failure.operation, summary: `${failure.operation} falló${failure.exitCode === undefined ? "" : ` (código ${failure.exitCode})`}.`, details: [failure.stderr, failure.stdout].filter(Boolean).join("\n") || "Git no devolvió detalles." })
+  }
 
   async function readState() {
     if (refreshing) { queued = true; return }
@@ -128,26 +133,26 @@ export function useGit(props: Props) {
 
   async function fetch() {
     if (props.fetchOnRefresh === false) return refresh()
-    await props.runActivity("Actualizando referencias remotas y cambios de Git...", () => fetchAndRefreshGit(props.root, readState, props.setStatus))
+    await props.runActivity("Actualizando referencias remotas y cambios de Git...", () => fetchAndRefreshGit(props.root, readState, props.setStatus, (root) => fetchGit(root, reportGitFailure)))
   }
 
   async function stageSelected() {
     const files = selectedFiles().filter((file) => file.area === "changes")
-    const staged = await stageGitFiles(props.root, files)
+    const staged = await stageGitFiles(props.root, files, reportGitFailure)
     if (staged) await refresh()
     return staged
   }
 
   async function unstageSelected() {
     const files = selectedFiles().filter((file) => file.area === "staged")
-    const unstaged = await unstageGitFiles(props.root, files)
+    const unstaged = await unstageGitFiles(props.root, files, reportGitFailure)
     if (unstaged) await refresh()
     return unstaged
   }
 
   async function restore(files: GitFile[]) {
     const restorable = files.filter((file) => file.area === "changes" && file.status !== "untracked")
-    const restored = await restoreGitFiles(props.root, restorable)
+    const restored = await restoreGitFiles(props.root, restorable, reportGitFailure)
     if (restored) await refresh()
     return restored
   }
@@ -155,7 +160,7 @@ export function useGit(props: Props) {
   async function commit() {
     const message = commitMessage().trim()
     if (!message || !state().files.some((file) => file.area === "staged")) return false
-    const committed = await commitGitChanges(props.root, message)
+    const committed = await commitGitChanges(props.root, message, reportGitFailure)
     if (committed) {
       setCommitMessage("")
       await refresh()
@@ -164,13 +169,13 @@ export function useGit(props: Props) {
   }
 
   async function pull() {
-    const pulled = await pullGit(props.root)
+    const pulled = await pullGit(props.root, reportGitFailure)
     if (pulled) await refresh()
     return pulled
   }
 
   async function push() {
-    const pushed = await pushGit(props.root)
+    const pushed = await pushGit(props.root, reportGitFailure)
     if (pushed) await refresh()
     return pushed
   }

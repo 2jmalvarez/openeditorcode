@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, unlink, writeFile } from "node:fs
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { alignDiff } from "../src/git/diff"
-import { commitGitChanges, parseGitNumstat, parseGitStatus, readGitDiff, readGitState, restoreGitFile, stageGitFile, stageGitFiles, unstageGitFile, unstageGitFiles } from "../src/git/status"
+import { commitGitChanges, fetchGit, parseGitNumstat, parseGitStatus, readGitDiff, readGitState, restoreGitFile, stageGitFile, stageGitFiles, unstageGitFile, unstageGitFiles } from "../src/git/status"
 import type { OpenTab } from "../src/documents/types"
 import { createGitTree } from "../src/git/tree"
 import { fetchAndRefreshGit } from "../src/git/useGit"
@@ -250,4 +250,16 @@ test("refreshes local Git state even when fetch fails", async () => {
     "Actualizando referencias remotas y cambios de Git...",
     "Cambios de Git actualizados; no se pudieron actualizar las referencias remotas.",
   ])
+})
+
+test("reports Git stderr and exit code when fetch fails", async () => {
+  const root = await createRepository({ "tracked.txt": "tracked\n" })
+  const failures: Array<{ operation: string; exitCode?: number; stderr: string }> = []
+  await git(root, "remote", "add", "origin", "file:///repository-that-does-not-exist")
+
+  expect(await fetchGit(root, (failure) => failures.push(failure))).toBe(false)
+  expect(failures).toHaveLength(1)
+  expect(failures[0].operation).toBe("git fetch")
+  expect(failures[0].exitCode).not.toBe(0)
+  expect(failures[0].stderr).not.toBe("")
 })

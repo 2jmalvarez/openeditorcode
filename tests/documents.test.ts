@@ -78,6 +78,72 @@ test("ignores an obsolete file read error", async () => {
   expect(status).not.toContain("stale failure")
 })
 
+test("keeps CRLF files clean when opening and switching tabs", async () => {
+  let content = ""
+  let textareaText = ""
+  const documents = useDocuments({
+    root: "root",
+    content: () => content,
+    getText: () => textareaText,
+    setText: (value) => {
+      content = value
+      textareaText = value.replace(/\r\n?/g, "\n")
+    },
+    clearEditor: () => { content = ""; textareaText = "" },
+    blurEditor: () => undefined,
+    focusEditor: () => undefined,
+    focusExplorer: () => undefined,
+    setStatus: () => undefined,
+    readFile: async (_root, path) => path === "first.txt" ? "first line\r\nsecond line\r\n" : "second line\n",
+  })
+
+  await documents.openFile("first.txt")
+  expect(documents.dirty()).toBe(false)
+  expect(documents.hasDirtyTabs()).toBe(false)
+
+  await documents.openFile("second.txt")
+  expect(documents.isTabDirty(0)).toBe(false)
+  expect(documents.isTabDirty(1)).toBe(false)
+  expect(documents.hasDirtyTabs()).toBe(false)
+
+  documents.activateTab(0)
+  expect(documents.filePath()).toBe("first.txt")
+  expect(documents.dirty()).toBe(false)
+  expect(documents.hasDirtyTabs()).toBe(false)
+})
+
+test("preserves CRLF when saving edits made through the normalized textarea", async () => {
+  let content = ""
+  let textareaText = ""
+  let write: { content: string; expectedContent?: string } | undefined
+  const opened = "first line\r\nsecond line\r\n"
+  const documents = useDocuments({
+    root: "root",
+    content: () => content,
+    getText: () => textareaText,
+    setText: (value) => {
+      content = value
+      textareaText = value.replace(/\r\n?/g, "\n")
+    },
+    clearEditor: () => { content = ""; textareaText = "" },
+    blurEditor: () => undefined,
+    focusEditor: () => undefined,
+    focusExplorer: () => undefined,
+    setStatus: () => undefined,
+    readFile: async () => opened,
+    writeFile: async (_root, _path, value, options) => { write = { content: value, expectedContent: options?.expectedContent } },
+  })
+
+  await documents.openFile("first.txt")
+  content = "first line\nchanged line\n"
+  textareaText = content
+  documents.syncContent(content)
+
+  expect(await documents.save()).toBe(true)
+  expect(write).toEqual({ content: "first line\r\nchanged line\r\n", expectedContent: opened })
+  expect(documents.dirty()).toBe(false)
+})
+
 test("keeps Markdown preview content read-only until switching to source and keeps manuals immutable", async () => {
   let text = ""
   let status = ""
@@ -118,6 +184,25 @@ test("keeps Markdown preview content read-only until switching to source and kee
   documents.togglePreview()
   expect(status).toContain("solo lectura")
   expect(await documents.save()).toBe(false)
+})
+
+test("opens a single read-only log tab without retaining it in the editor", async () => {
+  let text = ""
+  let status = ""
+  const documents = useDocuments({
+    root: "root", content: () => text, getText: () => text, setText: (value) => { text = value }, clearEditor: () => { text = "" },
+    blurEditor: () => undefined, focusEditor: () => undefined, focusExplorer: () => undefined, setStatus: (value) => { status = value },
+  })
+
+  documents.openLogs()
+  documents.openLogs()
+
+  expect(documents.tabs()).toEqual([{ kind: "logs", path: "REGISTRO" }])
+  expect(documents.activeLogs()?.path).toBe("REGISTRO")
+  expect(documents.filePath()).toBeUndefined()
+  expect(documents.dirty()).toBe(false)
+  expect(await documents.save()).toBe(false)
+  expect(status).toContain("solo lectura")
 })
 
 test("opens and saves the trusted OEC configuration separately from project files", async () => {

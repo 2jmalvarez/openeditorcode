@@ -117,6 +117,8 @@ Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y 
 
 Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `F4` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
 
+Cuando una operación falla, OEC conserva el detalle técnico en el registro de sesión. El pie indica `F12` mientras haya errores sin leer; el registro es una pestaña central de solo lectura y no se persiste al cerrar OEC.
+
 ## Atajos
 
 | Atajo | Acción |
@@ -128,6 +130,7 @@ Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview rende
 | `Ctrl+Alt+B` | Mostrar u ocultar el control de cambios Git |
 | `Ctrl+Shift+Enter` | Contraer todas las carpetas del panel activo |
 | `F5` | Actualizar el panel activo; en Cambios revisa el estado local y ejecuta `git fetch` |
+| `F12` | Abrir el registro de errores de la sesión |
 | `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
 | `Shift+Enter` | Alternar la carpeta seleccionada en explorador o cambios |

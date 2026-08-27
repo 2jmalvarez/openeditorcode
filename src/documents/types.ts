@@ -4,4 +4,5 @@ export type FileTab = { kind: "file"; source: "project" | "config"; path: string
 export type ManualTab = { kind: "manual"; path: string; content: string }
 export type ImageTab = { kind: "image"; path: string; bytes: Uint8Array }
 export type DiffTab = { kind: "diff"; path: string; diff: GitDiff }
-export type OpenTab = FileTab | ManualTab | ImageTab | DiffTab
+export type LogTab = { kind: "logs"; path: string }
+export type OpenTab = FileTab | ManualTab | ImageTab | DiffTab | LogTab

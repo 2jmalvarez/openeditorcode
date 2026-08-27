@@ -71,7 +71,12 @@ Solo se editan archivos UTF-8 de hasta 2 MiB (2.097.152 bytes). Archivos con NUL
 | `Ctrl+N`, `Ctrl+S`, `Ctrl+W`, `Ctrl+Q` | Crear, guardar, cerrar, salir |
 | `Ctrl+F`, `Ctrl+Alt+F`, `Ctrl+E` | Buscar local/contextual, proyecto, exclusiones temporales |
 | `F5` | Actualizar panel activo |
+| `F12` | Abrir el registro de errores de la sesión |
 | `Ctrl+C`, `Ctrl+V`, `Ctrl+Z`, `Ctrl+Shift+Z` | Copiar, pegar, deshacer, rehacer |
 | `Esc` | Cerrar búsqueda o diálogo |
 
 Los overlays tienen prioridad sobre los atajos globales. En confirmaciones use flechas y `Enter`; en resultados use flechas y `Enter`.
+
+## Registro de errores
+
+Si falla una operación de Git, archivos u otro servicio del editor, el pie indica `F12`. Ese atajo abre una pestaña central de solo lectura con la operación, hora y detalle técnico. El registro se conserva solo durante la sesión.

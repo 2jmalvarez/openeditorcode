@@ -15,6 +15,9 @@ Ctrl+F busca archivos desde el explorador o texto desde el editor. Ctrl+Alt+F bu
 ## Git
 En Cambios, Enter alterna carpetas y abre diffs. + suma archivos o carpetas completas a STAGED; - quita cambios preparados o descarta cambios pendientes tras confirmar. Baja con la flecha hasta el mensaje de commit y pulsa Enter para confirmar. F6 ejecuta pull y F7 push.
 
+## Registro de errores
+Cuando falla una operación, el pie indica F12. F12 abre una pestaña de solo lectura con los detalles técnicos del registro de esta sesión.
+
 ## Configuración
 Abra “Editar configuración de OEC” desde Ctrl+P. Windows usa %APPDATA%\\openeditorcode\\config.json; Linux usa $XDG_CONFIG_HOME/openeditorcode/config.json o ~/.config/openeditorcode/config.json. El esquema completo está en docs/oec-config.schema.json.
 
@@ -38,6 +41,9 @@ Ctrl+F searches files from the explorer or text from the editor. Ctrl+Alt+F sear
 
 ## Git
 In Changes, Enter toggles folders and opens diffs. + adds files or whole folders to STAGED; - removes staged changes or discards pending changes after confirmation. Move down to the commit message and press Enter to commit. F6 pulls and F7 pushes.
+
+## Error log
+When an operation fails, the footer points to F12. F12 opens a read-only tab with the technical details recorded during this session.
 
 ## Configuration
 Open “Edit OEC configuration” from Ctrl+P. Windows uses %APPDATA%\\openeditorcode\\config.json; Linux uses $XDG_CONFIG_HOME/openeditorcode/config.json or ~/.config/openeditorcode/config.json. Set appearance.language to auto, es, or en. auto follows the operating system language and falls back to English. The complete schema is in docs/oec-config.schema.json.

@@ -211,6 +211,31 @@ test("shows changed file totals, numbering, and line statistics", async () => {
   }
 })
 
+test("wraps long branch names in the changes panel", async () => {
+  const branch = "feature/a-very-long-branch-name-that-must-remain-visible"
+  await git("init", "--quiet")
+  await git("config", "user.name", "OEC Tests")
+  await git("config", "user.email", "oec@example.test")
+  await git("add", ".")
+  await git("commit", "--quiet", "-m", "initial")
+  await git("branch", "-M", branch)
+
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    setup.mockInput.pressKey("b", { ctrl: true, meta: true })
+    let frame = ""
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await Bun.sleep(50)
+      await setup.renderOnce()
+      frame = setup.captureCharFrame()
+      if (frame.replace(/[^\w/-]/g, "").includes(branch)) break
+    }
+    expect(frame.replace(/[^\w/-]/g, "")).toContain(branch)
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
 test("types a local search query and opens its result", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {

@@ -17,6 +17,7 @@ import type { FocusTarget } from "./types"
 import { useUpdates } from "../updates/useUpdates"
 import { refreshFocusedPanel } from "./refresh"
 import { useActivity } from "./useActivity"
+import { useLogs } from "../logs/useLogs"
 import { canShowBothSidePanels, initialSidePanels } from "./layout"
 import type { ConfigPaths, ConfigRecovery, OecConfig } from "../config/types"
 import { readConfigText, saveConfig } from "../config/storage"
@@ -34,6 +35,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   const [gitVisible, setGitVisible] = createSignal(initialPanels.changes)
   const [status, setStatus] = createSignal(recovery ? `${t("config.restored")}. Backup: ${recovery.backup}` : t("app.explorer"))
   const activity = useActivity()
+  const logs = useLogs()
   let explorerScroll: ScrollBoxRenderable | undefined
   let gitScroll: ScrollBoxRenderable | undefined
   let exclusionsReturn: "project-search" | "file-search" = "file-search"
@@ -49,6 +51,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     focusEditor: () => setActive("editor"),
     focusExplorer: () => { setExplorerVisible(true); setActive("explorer") },
     setStatus,
+    reportError: logs.report,
     readConfig: async () => (await readConfigText(configPaths)) ?? "",
     writeConfig: async (content) => {
       const next = await saveConfig(configPaths, content)
@@ -70,12 +73,13 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     if (!saved && changedPath) overlays.requestExternalChange(changedPath)
     return saved
   }
-  const explorer = useExplorer({ root, setStatus, openFile: openDocument })
-  const search = useSearch({ root, setStatus, runActivity: activity.run, respectGitignore: initialConfig.search.respectGitignore })
-  const git = useGit({ root, setStatus, runActivity: activity.run, autoRefresh: initialConfig.git.autoRefresh, fetchOnRefresh: initialConfig.git.fetchOnRefresh })
+  const explorer = useExplorer({ root, setStatus, openFile: openDocument, reportError: logs.report })
+  const search = useSearch({ root, setStatus, runActivity: activity.run, respectGitignore: initialConfig.search.respectGitignore, reportError: logs.report })
+  const git = useGit({ root, setStatus, runActivity: activity.run, autoRefresh: initialConfig.git.autoRefresh, fetchOnRefresh: initialConfig.git.fetchOnRefresh, reportFailure: logs.report })
   const updates = useUpdates(initialConfig.updates.checkOnStartup)
 
   createEffect(on(editor.content, documents.syncContent, { defer: true }))
+  createEffect(() => { if (documents.activeLogs()) logs.markRead() })
 
   function openOverlay(kind: "command-palette" | "project-search" | "new-file") {
     overlays.open(kind, kind === "new-file" ? explorer.newFileDirectory() : undefined)
@@ -136,7 +140,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
 
   async function createNewFile() {
     await activity.run("Creando archivo...", async () => {
-      if (await documents.createFile(overlays.newFileDirectory(), overlays.newFileName().trim(), explorer.refreshTree)) {
+      if (await documents.createFile(overlays.newFileDirectory(), overlays.newFileName().trim(), async () => { await explorer.refreshTree() })) {
         search.invalidateIndex()
         overlays.close()
       }
@@ -161,7 +165,9 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
         setStatus(`${item.directory ? "Carpeta" : "Archivo"} eliminado: ${item.name}`)
       } catch (error) {
         overlays.close()
-        setStatus(error instanceof Error ? error.message : "No se pudo eliminar el elemento.")
+        const summary = error instanceof Error ? error.message : "No se pudo eliminar el elemento."
+        setStatus(summary)
+        logs.report({ source: "Archivos", operation: "Eliminar elemento", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
       }
     })
   }
@@ -214,15 +220,15 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   async function commitGitChanges() {
     if (!git.commitMessage().trim()) return setStatus("Escribe un mensaje de commit.")
     if (!git.state().files.some((file) => file.area === "staged")) return setStatus("No hay cambios preparados para confirmar.")
-    setStatus(await git.commit() ? "Commit creado." : "No se pudo crear el commit.")
+    setStatus(await activity.run("Creando commit...", git.commit) ? "Commit creado." : "No se pudo crear el commit.")
   }
 
   async function pullGitChanges() {
-    setStatus(await git.pull() ? "Cambios remotos integrados." : "No se pudieron integrar los cambios remotos.")
+    setStatus(await activity.run("Integrando cambios remotos...", git.pull) ? "Cambios remotos integrados." : "No se pudieron integrar los cambios remotos.")
   }
 
   async function pushGitChanges() {
-    setStatus(await git.push() ? "Cambios enviados al remoto." : "No se pudieron enviar los cambios al remoto.")
+    setStatus(await activity.run("Enviando cambios al remoto...", git.push) ? "Cambios enviados al remoto." : "No se pudieron enviar los cambios al remoto.")
   }
 
   async function acceptExternalChange() {
@@ -261,6 +267,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: t("command.exclusions"), shortcut: "Ctrl+E", run: openSearchExclusions },
     { title: t("command.config"), shortcut: t("command.palette"), run: () => void openOecConfig() },
     { title: t("command.manual"), shortcut: t("command.palette"), run: openManual },
+    { title: t("command.logs"), shortcut: "F12", run: openLogs },
     { title: documents.activePreview() ? "Editar Markdown" : "Ver preview Markdown", shortcut: "F4", run: documents.togglePreview },
     { title: t("command.save"), shortcut: "Ctrl+S", run: () => void saveDocument() },
     { title: t("command.close"), shortcut: "Ctrl+W", run: requestClose },
@@ -315,6 +322,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   function openManual() { documents.openManual("MANUAL.md", oecManual(language())) }
+  function openLogs() { documents.openLogs(); logs.markRead() }
 
   function closeSearchExclusions() {
     if (exclusionsReturn === "project-search") overlays.open("project-search")
@@ -423,7 +431,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   useKeyboardShortcuts({
     active, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
     closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptGitRevert, acceptExternalChange, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo,
-    openPalette: () => openOverlay("command-palette"), openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: openContextSearch, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
+    openPalette: () => openOverlay("command-palette"), openLogs, openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: openContextSearch, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
     focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, togglePreview: documents.togglePreview, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
@@ -443,8 +451,8 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
 
   return {
-    root, recovery, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, config, activity, explorer, git, documents, editor, overlays, search, updates,
-    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? `Cambios: ${documents.activeDiff()!.file.path}` : "Sin archivo abierto", activateExplorerAt, activateGitAt, openFileSearchResult, requestCloseTab,
+    root, recovery, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, config, activity, logs, explorer, git, documents, editor, overlays, search, updates,
+    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? `Cambios: ${documents.activeDiff()!.file.path}` : documents.activeLogs() ? "Registro" : "Sin archivo abierto", activateExplorerAt, activateGitAt, openFileSearchResult, requestCloseTab,
     paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value }, setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value },
   }
 }
