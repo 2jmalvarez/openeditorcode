@@ -1,6 +1,6 @@
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { APP_VERSION } from "../bootstrap/version"
-import { createEffect, createSignal, on, onCleanup, onMount } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js"
 import { useRenderer } from "@opentui/solid"
 import { basename, join } from "node:path"
 import type { Command } from "../dialogs/types"
@@ -19,16 +19,22 @@ import { refreshFocusedPanel } from "./refresh"
 import { useActivity } from "./useActivity"
 import { useLogs } from "../logs/useLogs"
 import { canShowBothSidePanels, initialSidePanels } from "./layout"
-import type { ConfigPaths, ConfigRecovery, OecConfig } from "../config/types"
-import { readConfigText, saveConfig } from "../config/storage"
+import type { ConfigPaths, ConfigRecovery, OecConfig, ProjectConfig } from "../config/types"
+import { loadProjectConfig, projectConfigPath, readConfigText, resolveConfig, saveConfig, saveProjectConfig } from "../config/storage"
 import { markConfigHealthy, markConfigStarting } from "../config/storage"
 import { serializeConfig } from "../config/defaults"
 import { oecManual } from "../docs/manual"
 import { configureLanguage, language, t } from "../localization"
+import { createSyntaxTheme } from "../editor/syntax"
+import { formatDocument } from "../editor/format"
+import { bindingLabel } from "./keybindings"
 
-export function useWorkbench(root: string, initialConfig: OecConfig, configPaths: ConfigPaths, recovery?: ConfigRecovery) {
+export function useWorkbench(root: string, initialConfig: OecConfig, configPaths: ConfigPaths, recovery?: ConfigRecovery, initialGlobalConfig = initialConfig, initialProjectConfig?: ProjectConfig, initialProjectConfigPath = projectConfigPath(root)) {
   const renderer = useRenderer()
-  const [config, setConfig] = createSignal(initialConfig)
+  const [globalConfig, setGlobalConfig] = createSignal(initialGlobalConfig)
+  const [projectConfig, setProjectConfig] = createSignal(initialProjectConfig)
+  const config = createMemo(() => resolveConfig(globalConfig(), projectConfig()))
+  const syntaxTheme = createMemo(() => createSyntaxTheme(config().editor.syntax.styles))
   const initialPanels = initialSidePanels(renderer.width, initialConfig)
   const [active, setActive] = createSignal<FocusTarget>(initialPanels.explorer ? "explorer" : "editor")
   const [explorerVisible, setExplorerVisible] = createSignal(initialPanels.explorer)
@@ -40,7 +46,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   let gitScroll: ScrollBoxRenderable | undefined
   let exclusionsReturn: "project-search" | "file-search" = "file-search"
   const overlays = useOverlays()
-  const editor = useEditor({ active, overlay: overlays.overlay, filePath: () => documents.filePath(), setStatus, wrapMode: initialConfig.editor.wrap })
+  const editor = useEditor({ active, overlay: overlays.overlay, filePath: () => documents.filePath(), setStatus, wrapMode: initialConfig.editor.wrap, syntaxTheme, vimEnabled: () => config().keyboard.profile === "vim" })
   const documents = useDocuments({
     root,
     content: editor.content,
@@ -53,25 +59,45 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     setStatus,
     reportError: logs.report,
     readConfig: async () => (await readConfigText(configPaths)) ?? "",
-    writeConfig: async (content) => {
-      const next = await saveConfig(configPaths, content)
+    writeConfig: async (source, content) => {
+      const next = source === "config-global" ? await saveConfig(configPaths, content) : await saveProjectConfig(root, content)
       if (process.env.OEC_CONFIG_ATTEMPT_ID) {
-        await markConfigStarting(configPaths, process.env.OEC_CONFIG_ATTEMPT_ID, serializeConfig(next))
+        await markConfigStarting(configPaths, process.env.OEC_CONFIG_ATTEMPT_ID, serializeConfig(config()))
         renderer.once("frame", () => void markConfigHealthy(configPaths, process.env.OEC_CONFIG_ATTEMPT_ID!))
       }
-      setConfig(next)
-      configureLanguage(next.appearance.language)
-      editor.setLineWrap(next.editor.wrap)
+      if (source === "config-global") setGlobalConfig(next as OecConfig)
+      else setProjectConfig(next as ProjectConfig)
+      const effective = resolveConfig(source === "config-global" ? next as OecConfig : globalConfig(), source === "config-project" ? next as ProjectConfig : projectConfig())
+      configureLanguage(effective.appearance.language)
+      editor.setLineWrap(effective.editor.wrap)
     },
     markdownDefault: initialConfig.preview.markdownDefault,
     imagesEnabled: initialConfig.preview.images,
   })
   const openDocument = (path: string) => activity.run("Abriendo archivo...", () => documents.openFile(path))
   async function saveDocument() {
+    if (config().editor.formatting.formatOnSave) await formatActiveDocument()
     const saved = await activity.run("Guardando archivo...", documents.save)
     const changedPath = documents.externalChange()
     if (!saved && changedPath) overlays.requestExternalChange(changedPath)
     return saved
+  }
+
+  async function formatActiveDocument(): Promise<boolean> {
+    const path = documents.activeProjectFile()
+    if (!path) { setStatus("El documento actual no se puede formatear."); return false }
+    const source = editor.currentText()
+    try {
+      const formatted = await activity.run("Formateando documento...", () => formatDocument(path, source, config()))
+      if (documents.activeProjectFile() !== path || editor.currentText() !== source) { setStatus("El documento cambió durante el formateo."); return false }
+      if (formatted === undefined) { setStatus("No hay formateador configurado para este archivo."); return false }
+      if (!editor.replaceCurrentText(formatted)) { setStatus("El documento ya tiene el formato configurado."); return true }
+      setStatus("Documento formateado.")
+      return true
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo formatear el documento.")
+      return false
+    }
   }
   const explorer = useExplorer({ root, setStatus, openFile: openDocument, reportError: logs.report })
   const search = useSearch({ root, setStatus, runActivity: activity.run, respectGitignore: initialConfig.search.respectGitignore, reportError: logs.report })
@@ -265,18 +291,21 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: active() === "explorer" ? t("command.searchFile") : t("command.searchText"), shortcut: "Ctrl+F", run: openContextSearch },
     { title: t("command.searchProject"), shortcut: "Ctrl+Alt+F", run: () => openOverlay("project-search") },
     { title: t("command.exclusions"), shortcut: "Ctrl+E", run: openSearchExclusions },
+    { title: "Abrir configuración", shortcut: t("command.palette"), run: openSettings },
     { title: t("command.config"), shortcut: t("command.palette"), run: () => void openOecConfig() },
+    { title: "Editar configuración del proyecto", shortcut: t("command.palette"), run: () => void openProjectConfig() },
     { title: t("command.manual"), shortcut: t("command.palette"), run: openManual },
     { title: t("command.logs"), shortcut: "F12", run: openLogs },
     { title: documents.activePreview() ? "Editar Markdown" : "Ver preview Markdown", shortcut: "F4", run: documents.togglePreview },
-    { title: t("command.save"), shortcut: "Ctrl+S", run: () => void saveDocument() },
-    { title: t("command.close"), shortcut: "Ctrl+W", run: requestClose },
+    { title: t("command.save"), shortcut: bindingLabel(config().keyboard.bindings, "file.save", "Ctrl+S"), run: () => void saveDocument() },
+    { title: t("command.close"), shortcut: bindingLabel(config().keyboard.bindings, "file.close", "Ctrl+W"), run: requestClose },
     { title: t("command.nextTab"), shortcut: "Shift+Tab", run: () => documents.changeTab(1) },
     { title: t("command.copy"), shortcut: "Ctrl+C", run: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)) },
     { title: t("command.paste"), shortcut: "Ctrl+V", run: () => void editor.paste() },
     { title: t("command.wrap"), shortcut: "Ctrl+L", run: toggleWrap },
     { title: t("command.undo"), shortcut: "Ctrl+Z", run: editor.undo },
     { title: t("command.redo"), shortcut: "Ctrl+Shift+Z", run: editor.redo },
+    { title: "Formatear documento", shortcut: bindingLabel(config().keyboard.bindings, "editor.formatDocument", "Alt+Shift+F"), run: () => void formatActiveDocument() },
     { title: t("command.countLines"), shortcut: t("command.palette"), run: () => void search.showProjectLineCount() },
     { title: `Configuración: ajuste de línea ${editor.wrapMode() === "word" ? "activado" : "desactivado"}`, shortcut: "Ctrl+Alt+W", run: toggleWrap },
     ...(updates.canUpdate() ? [{ title: `Actualizar OEC a v${updates.latestVersion()}`, shortcut: t("command.update"), run: requestUpdate }] : []),
@@ -318,7 +347,40 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function openOecConfig() {
-    await activity.run("Abriendo configuración de OEC...", () => documents.openConfig(configPaths.file))
+    await activity.run("Abriendo configuración global...", () => documents.openConfig(configPaths.file, "config-global"))
+  }
+
+  async function openProjectConfig() {
+    const loaded = await loadProjectConfig(root)
+    const content = loaded.config ? `${JSON.stringify(loaded.config, null, 2)}\n` : `${JSON.stringify({ schemaVersion: 3 }, null, 2)}\n`
+    await activity.run("Abriendo configuración del proyecto...", () => documents.openConfig(initialProjectConfigPath, "config-project", async () => content))
+  }
+
+  function openSettings() { overlays.open("settings") }
+
+  const settingsValues = () => [
+    config().editor.wrap === "word" ? "Palabra" : "Sin ajuste",
+    config().editor.lineNumbers ? "Mostrar" : "Ocultar",
+    config().editor.syntax.enabled ? "Activado" : "Desactivado",
+    config().editor.formatting.formatOnSave ? "Activado" : "Desactivado",
+    config().keyboard.profile === "vim" ? "Vim" : "Predeterminado",
+  ]
+
+  async function toggleSetting() {
+    const source = overlays.settingsScope()
+    const base = source === "global" ? structuredClone(globalConfig()) : (() => { const { formatters: _formatters, ...project } = structuredClone(config()); return project })()
+    const index = overlays.settingsIndex()
+    if (index === 0) base.editor.wrap = base.editor.wrap === "none" ? "word" : "none"
+    if (index === 1) base.editor.lineNumbers = !base.editor.lineNumbers
+    if (index === 2) base.editor.syntax.enabled = !base.editor.syntax.enabled
+    if (index === 3) base.editor.formatting.formatOnSave = !base.editor.formatting.formatOnSave
+    if (index === 4) base.keyboard.profile = base.keyboard.profile === "default" ? "vim" : "default"
+    try {
+      if (source === "global") setGlobalConfig(await saveConfig(configPaths, serializeConfig(base as OecConfig)))
+      else setProjectConfig(await saveProjectConfig(root, `${JSON.stringify(base, null, 2)}\n`))
+      editor.setLineWrap(config().editor.wrap)
+      setStatus("Configuración actualizada.")
+    } catch (error) { setStatus(error instanceof Error ? error.message : "No se pudo actualizar la configuración.") }
   }
 
   function openManual() { documents.openManual("MANUAL.md", oecManual(language())) }
@@ -437,7 +499,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
     moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.commitFocused()) return void commitGitChanges(); if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, gitCommitFocused: git.commitFocused,
     openFileSearch: openContextSearch, fileSearchOpen: search.fileSearchOpen, closeFileSearch: search.closeFileSearch, moveFileSearchSelection: search.moveFileSelection, fileSearchResultsLength: () => search.fileResults().length, openFileSearchResult,
-    openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion,
+    openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion, bindings: () => config().keyboard.bindings, formatDocument: formatActiveDocument, handleVimKey: editor.handleVimKey, settingsIndex: overlays.settingsIndex, setSettingsIndex: overlays.setSettingsIndex, settingsScope: overlays.settingsScope, setSettingsScope: overlays.setSettingsScope, toggleSetting, openSettingsJson: () => { const scope = overlays.settingsScope(); overlays.close(); if (scope === "global") void openOecConfig(); else void openProjectConfig() },
   })
 
   createEffect(() => explorerScroll?.scrollTo({ x: explorerScroll.scrollLeft, y: Math.max(0, (search.fileSearchOpen() ? search.fileSearchIndex() : explorer.selected()) - 4) }))
@@ -451,8 +513,8 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
 
   return {
-    root, recovery, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, config, activity, logs, explorer, git, documents, editor, overlays, search, updates,
+    root, recovery, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, config, syntaxTheme, activity, logs, explorer, git, documents, editor, overlays, search, updates,
     title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? `Cambios: ${documents.activeDiff()!.file.path}` : documents.activeLogs() ? "Registro" : "Sin archivo abierto", activateExplorerAt, activateGitAt, openFileSearchResult, requestCloseTab,
-    paletteResults: () => search.paletteResults(commands()), setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value }, setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value },
+    paletteResults: () => search.paletteResults(commands()), settingsValues, setExplorerScroll: (value: ScrollBoxRenderable) => { explorerScroll = value }, setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value },
   }
 }

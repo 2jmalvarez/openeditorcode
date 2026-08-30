@@ -2,7 +2,7 @@
 import { defaultTextareaKeyBindings, type TextareaRenderable } from "@opentui/core"
 import { createEffect, createSignal, onCleanup, onMount, Show, type Accessor } from "solid-js"
 import { useRenderer } from "@opentui/solid"
-import { syntaxStyle } from "./syntax"
+import type { SyntaxTheme } from "./syntax"
 import type { FocusTarget } from "../workbench/types"
 import { editorWidth } from "../workbench/layout"
 import type { OecConfig } from "../config/types"
@@ -22,6 +22,7 @@ type Props = {
   onCursorChange: () => void
   onUnmount: () => void
   config: Accessor<OecConfig>
+  syntaxTheme: Accessor<SyntaxTheme>
 }
 
 export function EditorPane(props: Props) {
@@ -88,13 +89,13 @@ export function EditorPane(props: Props) {
         initialValue={props.content()}
         focused={props.active() === "editor"}
         wrapMode={props.wrapMode()}
-        syntaxStyle={props.config().editor.syntaxHighlighting ? syntaxStyle : undefined}
+        syntaxStyle={props.config().editor.syntax.enabled ? props.syntaxTheme().style : undefined}
         keyBindings={[
           ...defaultTextareaKeyBindings,
           { name: "z", ctrl: true, action: "undo" },
           { name: "z", ctrl: true, shift: true, action: "redo" },
         ]}
-        style={{ flexGrow: 1, minWidth: 0, backgroundColor: "#101419", textColor: "#d6e5dc", cursorColor: "#70d6a7" }}
+        style={{ flexGrow: 1, minWidth: 0, backgroundColor: "#101419", textColor: props.config().editor.syntax.styles.default.foreground, cursorColor: "#70d6a7" }}
         onContentChange={props.onContentChange}
         onCursorChange={props.onCursorChange}
       />

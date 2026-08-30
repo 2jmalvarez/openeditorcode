@@ -1,11 +1,12 @@
 import type { TextareaRenderable } from "@opentui/core"
 import { createSignal, onCleanup } from "solid-js"
-import { highlightEditor } from "./syntax"
+import { highlightEditor, type SyntaxTheme } from "./syntax"
 
 type Props = {
   editor: () => TextareaRenderable | undefined
   filePath: () => string | undefined
   content: () => string
+  syntaxTheme: () => SyntaxTheme
 }
 
 export function visibleLineLabels(sources: number[], wraps: number[], scrollY: number, height: number): string {
@@ -66,7 +67,7 @@ export function useEditorMetrics(props: Props) {
     const currentGeneration = generation
     highlightTimer = setTimeout(() => {
       const editor = props.editor()
-      if (currentGeneration === generation && props.filePath() === path && editor && editor.plainText === text) highlightEditor(editor, path, text)
+      if (currentGeneration === generation && props.filePath() === path && editor && editor.plainText === text) highlightEditor(editor, path, text, props.syntaxTheme())
     }, delay)
   }
 

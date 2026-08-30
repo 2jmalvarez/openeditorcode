@@ -1,9 +1,10 @@
-import type { TextareaRenderable } from "@opentui/core"
+import type { KeyEvent, TextareaRenderable } from "@opentui/core"
 import { createEffect, createSignal } from "solid-js"
 import { readClipboard, selectedText } from "./clipboard"
 import { findMatches, type FindResult } from "./find"
 import { useEditorMetrics } from "./useEditorMetrics"
 import type { FocusTarget } from "../workbench/types"
+import type { SyntaxTheme } from "./syntax"
 
 type Props = {
   active: () => FocusTarget
@@ -11,6 +12,8 @@ type Props = {
   filePath: () => string | undefined
   setStatus: (status: string) => void
   wrapMode?: "none" | "word"
+  syntaxTheme: () => SyntaxTheme
+  vimEnabled: () => boolean
 }
 
 export function useEditor(props: Props) {
@@ -21,9 +24,11 @@ export function useEditor(props: Props) {
   const [findQuery, setFindQuery] = createSignal("")
   const [findResults, setFindResults] = createSignal<FindResult[]>([])
   const [findIndex, setFindIndex] = createSignal(0)
+  const [vimMode, setVimMode] = createSignal<"normal" | "insert" | "visual">("insert")
+  let vimPending = ""
   let renderable: TextareaRenderable | undefined
   let replacingText = false
-  const metrics = useEditorMetrics({ editor: () => renderable, filePath: props.filePath, content })
+  const metrics = useEditorMetrics({ editor: () => renderable, filePath: props.filePath, content, syntaxTheme: props.syntaxTheme })
 
   function setEditor(value: TextareaRenderable) {
     renderable = value
@@ -107,6 +112,55 @@ export function useEditor(props: Props) {
     }
   }
 
+  function replaceCurrentText(text: string): boolean {
+    if (!renderable || text === renderable.plainText) return false
+    renderable.replaceText(text)
+    setContent(renderable.plainText)
+    metrics.scheduleHighlight(props.filePath(), renderable.plainText, 0)
+    metrics.schedule()
+    return true
+  }
+
+  function syncVimMutation() {
+    if (!renderable) return
+    setContent(renderable.plainText)
+    metrics.scheduleHighlight(props.filePath(), renderable.plainText)
+    metrics.schedule()
+  }
+
+  function handleVimKey(key: KeyEvent): boolean {
+    if (!props.vimEnabled() || props.active() !== "editor" || !props.filePath() || !renderable) return false
+    const editor = renderable
+    const name = key.name.toLowerCase() === "return" ? "enter" : key.name.toLowerCase()
+    if (vimMode() === "insert") {
+      if (name !== "escape" && name !== "esc") return false
+      setVimMode("normal"); vimPending = ""; renderable.clearSelection(); return true
+    }
+    if (name === "escape" || name === "esc") { setVimMode("normal"); vimPending = ""; renderable.clearSelection(); return true }
+    const select = vimMode() === "visual"
+    const move = (action: () => boolean) => { action(); updateCursor(); metrics.schedule(); return true }
+    if (name === "h") return move(() => editor.moveCursorLeft({ select }))
+    if (name === "l") return move(() => editor.moveCursorRight({ select }))
+    if (name === "j") return move(() => editor.moveCursorDown({ select }))
+    if (name === "k") return move(() => editor.moveCursorUp({ select }))
+    if (name === "w") return move(() => editor.moveWordForward({ select }))
+    if (name === "b") return move(() => editor.moveWordBackward({ select }))
+    if (name === "0") { renderable.gotoLineStart(); updateCursor(); return true }
+    if (name === "$") { renderable.gotoLineEnd({ select }); updateCursor(); return true }
+    if (name === "v" && vimMode() === "normal") { setVimMode("visual"); return true }
+    if (name === "i" && vimMode() === "normal") { setVimMode("insert"); return true }
+    if (name === "a" && vimMode() === "normal") { renderable.moveCursorRight(); setVimMode("insert"); return true }
+    if (name === "u" && vimMode() === "normal") { undo(); return true }
+    if (name === "x" && vimMode() === "normal") { renderable.deleteChar(); syncVimMutation(); return true }
+    if (name === "d" && vimPending === "d") { vimPending = ""; renderable.deleteLine(); syncVimMutation(); return true }
+    if (name === "d" && vimMode() === "normal") { vimPending = "d"; return true }
+    if (name === "g" && vimPending === "g") { vimPending = ""; renderable.gotoBufferHome(); updateCursor(); return true }
+    if (name === "g" && vimMode() === "normal") { vimPending = "g"; return true }
+    if (name === "g" && key.shift && vimMode() === "normal") { renderable.gotoBufferEnd(); updateCursor(); return true }
+    vimPending = ""
+    return true
+  }
+
   function copy(copyToClipboard: (text: string) => boolean) {
     const text = selectedText(renderable)
     if (!text) return props.setStatus("Selecciona texto antes de copiar.")
@@ -175,5 +229,5 @@ export function useEditor(props: Props) {
     else renderable?.focus()
   })
 
-  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, metrics, setEditor, onContentChange, onCursorChange, undo, redo, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
+  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, vimMode, metrics, setEditor, onContentChange, onCursorChange, undo, redo, replaceCurrentText, handleVimKey, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
 }

@@ -219,11 +219,11 @@ test("opens and saves the trusted OEC configuration separately from project file
     focusExplorer: () => undefined,
     setStatus: () => undefined,
     readConfig: async () => '{"schemaVersion":2}',
-    writeConfig: async (content) => { saved = content },
+    writeConfig: async (_source, content) => { saved = content },
   })
 
   await documents.openConfig("config.json")
-  expect(documents.tabs()[0]).toMatchObject({ kind: "file", source: "config", view: "source" })
+  expect(documents.tabs()[0]).toMatchObject({ kind: "file", source: "config-global", view: "source" })
   text = '{"schemaVersion":2,"edited":true}'
   expect(await documents.save()).toBe(true)
   expect(saved).toContain("edited")

@@ -2,6 +2,7 @@ import { useKeyboard } from "@opentui/solid"
 import type { KeyEvent } from "@opentui/core"
 import { isControlPressed, isShiftPressed } from "../editor/keyboard"
 import type { FocusTarget, Overlay } from "./types"
+import { matchesCommand } from "./keybindings"
 
 type Props = {
   active: () => FocusTarget
@@ -76,6 +77,15 @@ type Props = {
   completeExclusion: () => void
   toggleExclusion: () => Promise<void>
   removeExclusion: () => Promise<void>
+  bindings: () => Record<string, string[]>
+  formatDocument: () => Promise<boolean>
+  handleVimKey: (key: KeyEvent) => boolean
+  settingsIndex: () => number
+  setSettingsIndex: (value: number | ((value: number) => number)) => void
+  settingsScope: () => "global" | "project"
+  setSettingsScope: (value: "global" | "project") => void
+  toggleSetting: () => Promise<void>
+  openSettingsJson: () => void
 }
 
 export function useKeyboardShortcuts(props: Props) {
@@ -91,6 +101,7 @@ export function useKeyboardShortcuts(props: Props) {
     const isEscape = keyName === "escape" || keyName === "esc"
     const shift = key.shift || isShiftPressed()
     const ctrl = key.ctrl || isControlPressed()
+    const matches = (command: string, fallback: string) => matchesCommand(key, props.bindings(), command, fallback, ctrl)
     if (props.overlay() === "confirm") {
       if (key.name === "up") return consume(key, () => props.setConfirmChoice((value) => Math.max(0, value - 1)))
       if (key.name === "down") return consume(key, () => props.setConfirmChoice((value) => Math.min(2, value + 1)))
@@ -113,6 +124,16 @@ export function useKeyboardShortcuts(props: Props) {
       if (key.name === "down") return consume(key, () => props.setConfirmChoice((value) => Math.min(2, value + 1)))
       if (isEnter) return consume(key, () => void props.acceptExternalChange())
       if (isEscape) return consume(key, props.closeOverlay)
+      return consume(key, () => undefined)
+    }
+    if (props.overlay() === "settings") {
+      if (isEscape) return consume(key, props.closeOverlay)
+      if (key.name === "down") return consume(key, () => props.setSettingsIndex((value) => Math.min(4, value + 1)))
+      if (key.name === "up") return consume(key, () => props.setSettingsIndex((value) => Math.max(0, value - 1)))
+      if (key.name === "left") return consume(key, () => props.setSettingsScope("global"))
+      if (key.name === "right") return consume(key, () => props.setSettingsScope("project"))
+      if (keyName === "e") return consume(key, props.openSettingsJson)
+      if (isEnter) return consume(key, () => void props.toggleSetting())
       return consume(key, () => undefined)
     }
     if (props.overlay() === "search-exclusions") {
@@ -153,26 +174,27 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter && props.fileSearchResultsLength()) return consume(key, () => void props.openFileSearchResult())
       return
     }
-    if (ctrl && keyName === "q") return consume(key, props.quit)
-    if (keyName === "f12") return consume(key, props.openLogs)
-    if (keyName === "f5") return consume(key, () => void props.refreshActivePanel())
-    if (ctrl && keyName === "s") return consume(key, () => void props.save())
-    if (props.active() === "editor" && ctrl && shift && keyName === "z") return consume(key, props.redo)
-    if (props.active() === "editor" && ctrl && keyName === "z") return consume(key, props.undo)
-    if (ctrl && keyName === "p") return consume(key, props.openPalette)
-    if (ctrl && keyName === "n") return consume(key, props.openNewFile)
-    if (ctrl && (key.option || key.meta) && keyName === "f") return consume(key, props.openProjectSearch)
-    if (ctrl && keyName === "f") return consume(key, props.active() === "explorer" ? props.openFileSearch : props.openTextSearch)
-    if (ctrl && shift && keyName === "left") return consume(key, props.focusLeft)
-    if (ctrl && shift && keyName === "right") return consume(key, props.focusRight)
-    if (ctrl && (key.option || key.meta) && keyName === "b") return consume(key, props.toggleGit)
-    if (keyName === "f4") return consume(key, props.togglePreview)
-    if (ctrl && keyName === "b") return consume(key, props.toggleExplorer)
-    if (shift && keyName === "tab") return consume(key, props.changeTab)
-    if (ctrl && ((key.option || key.meta) && keyName === "w" || keyName === "l")) return consume(key, props.toggleWrap)
-    if (ctrl && keyName === "w") return consume(key, props.requestClose)
-    if (props.active() === "editor" && ctrl && keyName === "c") return consume(key, props.copy)
-    if (ctrl && keyName === "v") return consume(key, () => void props.paste())
+    if (matches("app.quit", "ctrl+q")) return consume(key, props.quit)
+    if (matches("app.logs", "f12")) return consume(key, props.openLogs)
+    if (matches("panel.refresh", "f5")) return consume(key, () => void props.refreshActivePanel())
+    if (matches("file.save", "ctrl+s")) return consume(key, () => void props.save())
+    if (props.active() === "editor" && matches("editor.redo", "ctrl+shift+z")) return consume(key, props.redo)
+    if (props.active() === "editor" && matches("editor.undo", "ctrl+z")) return consume(key, props.undo)
+    if (matches("palette.open", "ctrl+p")) return consume(key, props.openPalette)
+    if (matches("file.new", "ctrl+n")) return consume(key, props.openNewFile)
+    if (matches("search.project", "ctrl+alt+f")) return consume(key, props.openProjectSearch)
+    if (matches("search.local", "ctrl+f")) return consume(key, props.active() === "explorer" ? props.openFileSearch : props.openTextSearch)
+    if (matches("navigation.focusLeft", "ctrl+shift+left")) return consume(key, props.focusLeft)
+    if (matches("navigation.focusRight", "ctrl+shift+right")) return consume(key, props.focusRight)
+    if (matches("panel.toggleGit", "ctrl+alt+b")) return consume(key, props.toggleGit)
+    if (matches("editor.preview", "f4")) return consume(key, props.togglePreview)
+    if (matches("panel.toggleExplorer", "ctrl+b")) return consume(key, props.toggleExplorer)
+    if (matches("file.nextTab", "shift+tab")) return consume(key, props.changeTab)
+    if (matches("editor.toggleWrap", "ctrl+l")) return consume(key, props.toggleWrap)
+    if (matches("file.close", "ctrl+w")) return consume(key, props.requestClose)
+    if (matches("editor.formatDocument", "alt+shift+f")) return consume(key, () => void props.formatDocument())
+    if (props.active() === "editor" && matches("editor.copy", "ctrl+c")) return consume(key, props.copy)
+    if (matches("editor.paste", "ctrl+v")) return consume(key, () => void props.paste())
     if (isEscape && props.editorFindOpen()) return consume(key, props.closeEditorFind)
     if (props.editorFindOpen()) {
       if (key.name === "down") return consume(key, () => props.moveEditorFindResult(1))
@@ -180,6 +202,7 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) return consume(key, props.acceptEditorFind)
       return
     }
+    if (props.handleVimKey(key)) return consume(key, () => undefined)
     if (key.name === "tab") return consume(key, props.cycleFocus)
     if (props.active() === "git") {
       if (keyName === "f6") return consume(key, () => void props.pullGitChanges())

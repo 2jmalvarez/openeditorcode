@@ -74,7 +74,7 @@ OEC mantiene su configuración fuera de los proyectos y fuera de la instalación
 - Linux: `${XDG_CONFIG_HOME:-~/.config}/openeditorcode/config.json`.
 - Entornos administrados o pruebas: `OEC_CONFIG_DIR` permite indicar el directorio de configuración.
 
-Abre **Editar configuración de OEC** desde `Ctrl+P`. El archivo se valida al guardar y usa el esquema distribuido en [`docs/oec-config.schema.json`](docs/oec-config.schema.json). Incluye preferencias de idioma, layout, ajuste y números de línea, resaltado, respeto de `.gitignore`, actualización automática de Git, búsqueda de actualizaciones y previews.
+Abre **Abrir configuración** desde `Ctrl+P` para modificar preferencias comunes desde la TUI o editar el JSON avanzado. El archivo se valida al guardar y usa el esquema distribuido en [`docs/oec-config.schema.json`](docs/oec-config.schema.json). Incluye tema de sintaxis, formateo, atajos y el perfil Vim básico. Un proyecto puede sobrescribir preferencias en `.oec/config.json`; esos valores tienen prioridad sobre la configuración global.
 
 El idioma predeterminado es el del sistema. `appearance.language` acepta `"auto"`, `"es"` y `"en"`.
 

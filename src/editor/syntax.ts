@@ -1,19 +1,19 @@
 import { SyntaxStyle, type TextareaRenderable } from "@opentui/core"
 import { extname } from "node:path"
+import type { SyntaxTokenStyle } from "../config/types"
 
-export const syntaxStyle = SyntaxStyle.fromStyles({
-  default: { fg: "#d6e5dc" },
-  keyword: { fg: "#79c0ff", bold: true },
-  string: { fg: "#a5d6a7" },
-  comment: { fg: "#7d8590", italic: true, dim: true },
-  number: { fg: "#e3b341" },
-  tag: { fg: "#ffab70", bold: true },
-  property: { fg: "#d2a8ff" },
+type HighlightToken = "keyword" | "string" | "comment" | "number" | "tag" | "property"
+export type SyntaxTheme = { style: SyntaxStyle; ids: Record<HighlightToken, number> }
+
+export function createSyntaxTheme(styles: Record<string, SyntaxTokenStyle>): SyntaxTheme {
+  const style = SyntaxStyle.fromStyles(Object.fromEntries(Object.entries(styles).map(([name, value]) => [name, { fg: value.foreground, bold: value.bold, italic: value.italic, dim: value.dim }])))
+  return { style, ids: Object.fromEntries(["keyword", "string", "comment", "number", "tag", "property"].map((name) => [name, style.getStyleId(name)!])) as Record<HighlightToken, number> }
+}
+
+const fallbackTheme = createSyntaxTheme({
+  default: { foreground: "#d6e5dc" }, keyword: { foreground: "#79c0ff", bold: true }, string: { foreground: "#a5d6a7" },
+  comment: { foreground: "#7d8590", italic: true, dim: true }, number: { foreground: "#e3b341" }, tag: { foreground: "#ffab70", bold: true }, property: { foreground: "#d2a8ff" },
 })
-
-const styleIds = Object.fromEntries(
-  ["keyword", "string", "comment", "number", "tag", "property"].map((name) => [name, syntaxStyle.getStyleId(name)!]),
-) as Record<"keyword" | "string" | "comment" | "number" | "tag" | "property", number>
 
 const patterns = {
   slashComment: /\/\/[^\n]*/g,
@@ -41,19 +41,19 @@ function addMatches(editor: TextareaRenderable, text: string, expression: RegExp
   }
 }
 
-export function highlightEditor(editor: TextareaRenderable | undefined, path: string | undefined, text: string) {
+export function highlightEditor(editor: TextareaRenderable | undefined, path: string | undefined, text: string, theme = fallbackTheme) {
   if (!editor) return
   editor.clearAllHighlights()
   const extension = extname(path || "").toLocaleLowerCase()
   if (text.length > MAX_HIGHLIGHTED_CHARACTERS || !new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".html", ".md", ".py", ".yml", ".yaml", ".sh"]).has(extension)) return
 
   // Comments and strings must win when their ranges overlap token-like content.
-  if (slashCommentExtensions.has(extension)) addMatches(editor, text, patterns.slashComment, styleIds.comment, 3)
-  if (hashCommentExtensions.has(extension)) addMatches(editor, text, patterns.hashComment, styleIds.comment, 3)
-  if (blockCommentExtensions.has(extension)) addMatches(editor, text, patterns.blockComment, styleIds.comment, 3)
-  addMatches(editor, text, patterns.string, styleIds.string, 2)
-  addMatches(editor, text, patterns.number, styleIds.number)
-  addMatches(editor, text, patterns.keyword, styleIds.keyword)
-  if (extension === ".html" || extension === ".tsx" || extension === ".jsx") addMatches(editor, text, patterns.tag, styleIds.tag)
-  if (extension === ".json" || extension === ".yml" || extension === ".yaml" || extension === ".css") addMatches(editor, text, patterns.property, styleIds.property)
+  if (slashCommentExtensions.has(extension)) addMatches(editor, text, patterns.slashComment, theme.ids.comment, 3)
+  if (hashCommentExtensions.has(extension)) addMatches(editor, text, patterns.hashComment, theme.ids.comment, 3)
+  if (blockCommentExtensions.has(extension)) addMatches(editor, text, patterns.blockComment, theme.ids.comment, 3)
+  addMatches(editor, text, patterns.string, theme.ids.string, 2)
+  addMatches(editor, text, patterns.number, theme.ids.number)
+  addMatches(editor, text, patterns.keyword, theme.ids.keyword)
+  if (extension === ".html" || extension === ".tsx" || extension === ".jsx") addMatches(editor, text, patterns.tag, theme.ids.tag)
+  if (extension === ".json" || extension === ".yml" || extension === ".yaml" || extension === ".css") addMatches(editor, text, patterns.property, theme.ids.property)
 }

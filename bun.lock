@@ -9,12 +9,13 @@
         "@opentui/solid": "^0.5.1",
         "@types/bun": "1.3.14",
         "ignore": "^7.0.5",
+        "prettier": "^3.9.6",
         "solid-js": "^1.9.9",
         "typescript": "^5.8.3",
       },
       "optionalDependencies": {
-        "@2jmalvarez/oec-linux-x64": "0.2.18",
-        "@2jmalvarez/oec-win32-x64": "0.2.18",
+        "@2jmalvarez/oec-linux-x64": "0.2.19",
+        "@2jmalvarez/oec-win32-x64": "0.2.19",
       },
     },
   },
@@ -208,6 +209,8 @@
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
     "pkg-up": ["pkg-up@3.1.0", "", { "dependencies": { "find-up": "^3.0.0" } }, "sha512-nDywThFk1i4BQK4twPQ6TA4RT8bDY96yeuCVBWL3ePARCiEKDRSrNGbFIgUJpLp+XeIR65v8ra7WuJOFUBtkMA=="],
+
+    "prettier": ["prettier@3.9.6", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g=="],
 
     "reselect": ["reselect@4.1.8", "", {}, "sha512-ab9EmR80F/zQTMNeneUr4cv+jSwPJgIlvEmVwLerwrWVbpLlBuls9XHzIeTFy4cegU2NHBp3va0LKOzU5qFEYQ=="],
 

@@ -1,16 +1,34 @@
 {
   "name": "openeditorcode",
-  "version": "0.2.18",
-  "description": "Editor de proyectos para la terminal, escrito con Bun y OpenTUI.",
-  "license": "MIT",
+  "version": "0.2.19",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/2jmalvarez/openeditorcode.git"
   },
+  "devDependencies": {
+    "@opentui/core": "^0.5.1",
+    "@opentui/solid": "^0.5.1",
+    "@types/bun": "1.3.14",
+    "ignore": "^7.0.5",
+    "prettier": "^3.9.6",
+    "solid-js": "^1.9.9",
+    "typescript": "^5.8.3"
+  },
+  "optionalDependencies": {
+    "@2jmalvarez/oec-linux-x64": "0.2.19",
+    "@2jmalvarez/oec-win32-x64": "0.2.19"
+  },
+  "bin": {
+    "oec": "bin/oec.js",
+    "openeditorcode": "bin/oec.js"
+  },
   "bugs": {
     "url": "https://github.com/2jmalvarez/openeditorcode/issues"
   },
-  "homepage": "https://github.com/2jmalvarez/openeditorcode#readme",
+  "description": "Editor de proyectos para la terminal, escrito con Bun y OpenTUI.",
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
     "bin/",
     "docs/",
@@ -18,19 +36,12 @@
     "README.md",
     "LICENSE"
   ],
+  "homepage": "https://github.com/2jmalvarez/openeditorcode#readme",
+  "license": "MIT",
   "man": [
     "man/oec.1",
     "man/openeditorcode.1"
   ],
-  "type": "module",
-  "bin": {
-    "oec": "bin/oec.js",
-    "openeditorcode": "bin/oec.js"
-  },
-  "optionalDependencies": {
-    "@2jmalvarez/oec-linux-x64": "0.2.18",
-    "@2jmalvarez/oec-win32-x64": "0.2.18"
-  },
   "scripts": {
     "dev": "bun --preload @opentui/solid/preload ./src/index.tsx",
     "start": "bun --preload @opentui/solid/preload ./src/index.tsx",
@@ -45,15 +56,5 @@
     "smoke:check": "bun run scripts/executable-smoke.ts",
     "smoke:tui": "bun run scripts/tui-smoke.ts"
   },
-  "engines": {
-    "node": ">=18"
-  },
-  "devDependencies": {
-    "@opentui/core": "^0.5.1",
-    "@opentui/solid": "^0.5.1",
-    "@types/bun": "1.3.14",
-    "ignore": "^7.0.5",
-    "solid-js": "^1.9.9",
-    "typescript": "^5.8.3"
-  }
+  "type": "module"
 }

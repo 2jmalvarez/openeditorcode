@@ -18,7 +18,7 @@ type Props = {
   reportError?: (failure: { source: string; operation: string; summary: string; details: string }) => void
   readFile?: typeof readTextFile
   readConfig?: () => Promise<string>
-  writeConfig?: (content: string) => Promise<void>
+  writeConfig?: (source: "config-global" | "config-project", content: string) => Promise<void>
   writeFile?: typeof writeTextFile
   markdownDefault?: "preview" | "source"
   imagesEnabled?: boolean
@@ -61,6 +61,7 @@ export function useDocuments(props: Props) {
   const activeLogs = () => { const tab = tabs()[activeTab()]; return tab?.kind === "logs" ? tab : undefined }
   const activePreviewContent = () => { const tab = tabs()[activeTab()]; return tab?.kind === "manual" || tab?.kind === "file" && tab.view === "preview" ? tab.content : "" }
   const activePreview = () => { const tab = tabs()[activeTab()]; return Boolean(activeManual() || activeImage() || tab?.kind === "file" && tab.view === "preview") }
+  const activeProjectFile = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && tab.view === "source" ? tab.path : undefined }
   const canTogglePreview = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && isMarkdownPath(tab.path) }
   const dirty = () => {
     const tab = tabs()[activeTab()]
@@ -145,17 +146,18 @@ export function useDocuments(props: Props) {
     }
   }
 
-  async function openConfig(path: string): Promise<boolean> {
+  async function openConfig(path: string, source: "config-global" | "config-project" = "config-global", readContent = props.readConfig): Promise<boolean> {
     if (!props.readConfig) return false
     const generation = ++openGeneration
     try {
       props.blurEditor()
       syncActiveTab()
-      const existing = tabs().findIndex((tab) => tab.kind === "file" && tab.source === "config")
+      const existing = tabs().findIndex((tab) => tab.kind === "file" && tab.source === source)
       if (existing >= 0) { loadTab(existing); return true }
-      const content = await props.readConfig()
+      const content = await readContent?.()
+      if (content === undefined) return false
       if (generation !== openGeneration) return false
-      const nextTabs: OpenTab[] = [...tabs(), { kind: "file", source: "config", path, content, savedContent: content, view: "source" }]
+      const nextTabs: OpenTab[] = [...tabs(), { kind: "file", source, path, content, savedContent: content, view: "source" }]
       setTabs(nextTabs)
       loadTab(nextTabs.length - 1, nextTabs)
       return true
@@ -218,9 +220,9 @@ export function useDocuments(props: Props) {
       const content = props.getText()
       const tab = tabs()[activeTab()]
       const contentToSave = tab?.kind === "file" ? preserveLineEndings(content, tab.savedContent) : content
-      if (tab?.kind === "file" && tab.source === "config") {
+      if (tab?.kind === "file" && (tab.source === "config-global" || tab.source === "config-project")) {
         if (!props.writeConfig) return false
-        await props.writeConfig(contentToSave)
+        await props.writeConfig(tab.source, contentToSave)
       } else await writeFile(props.root, path, contentToSave, force ? undefined : { expectedContent: tab?.kind === "file" ? tab.savedContent : "" })
       setSavedContent(contentToSave)
       setTabs((current) => current.map((tab, index) => index === activeTab() && tab.kind === "file" ? { ...tab, content, savedContent: contentToSave } : tab))
@@ -244,9 +246,9 @@ export function useDocuments(props: Props) {
       if (tab.kind !== "file" || contentIsEqual(tab.content, tab.savedContent)) continue
       const contentToSave = preserveLineEndings(tab.content, tab.savedContent)
       try {
-        if (tab.source === "config") {
+        if (tab.source === "config-global" || tab.source === "config-project") {
           if (!props.writeConfig) return false
-          await props.writeConfig(contentToSave)
+          await props.writeConfig(tab.source, contentToSave)
         } else await writeFile(props.root, tab.path, contentToSave, { expectedContent: tab.savedContent })
         setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, savedContent: contentToSave } : currentTab))
         if (index === activeTab()) setSavedContent(contentToSave)
@@ -371,5 +373,5 @@ export function useDocuments(props: Props) {
     loadTab(index)
   }
 
-  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
 }

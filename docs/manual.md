@@ -32,7 +32,7 @@ OEC consulta npm al iniciar, salvo que `updates.checkOnStartup` sea falso. La ac
 
 ## Configuración
 
-La paleta ofrece **Editar configuración de OEC**. El archivo se abre como un documento autorizado externo y se valida al guardar. Está en `%APPDATA%\\openeditorcode\\config.json` en Windows y `${XDG_CONFIG_HOME:-~/.config}/openeditorcode/config.json` en Linux. `OEC_CONFIG_DIR` permite elegir otro directorio para pruebas o instalaciones administradas.
+La paleta ofrece **Abrir configuración**: una pantalla TUI para las preferencias habituales, con `E` para abrir el JSON avanzado. La configuración global está en `%APPDATA%\\openeditorcode\\config.json` en Windows y `${XDG_CONFIG_HOME:-~/.config}/openeditorcode/config.json` en Linux. `.oec/config.json` puede sobrescribir valores para el proyecto abierto. `OEC_CONFIG_DIR` permite elegir otro directorio para pruebas o instalaciones administradas.
 
 El formato exacto se define en `docs/oec-config.schema.json`. Claves desconocidas, JSON inválido, versiones de esquema no compatibles o valores fuera de rango son incompatibles. El archivo de fábrica es:
 
@@ -40,16 +40,20 @@ El formato exacto se define en `docs/oec-config.schema.json`. Claves desconocida
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "appearance": { "theme": "oec-dark", "language": "auto" },
   "layout": { "explorerWidth": 40, "changesWidth": 44, "minEditorWidth": 60, "explorerStartup": "visible", "changesStartup": "auto", "narrowSidePanels": "single", "findPanelMaxWidth": 48, "diffOrientation": "auto", "diffStackBelow": 120 },
-  "editor": { "wrap": "none", "lineNumbers": true, "syntaxHighlighting": true },
+  "editor": { "wrap": "none", "lineNumbers": true, "syntax": { "enabled": true, "styles": { "default": { "foreground": "#d6e5dc" }, "keyword": { "foreground": "#79c0ff", "bold": true }, "string": { "foreground": "#a5d6a7" }, "comment": { "foreground": "#7d8590", "italic": true, "dim": true }, "number": { "foreground": "#e3b341" }, "tag": { "foreground": "#ffab70", "bold": true }, "property": { "foreground": "#d2a8ff" } } }, "formatting": { "formatOnSave": false, "defaultFormatter": "prettier", "byExtension": { ".ts": "prettier" }, "prettier": { "printWidth": 100, "tabWidth": 2, "useTabs": false, "semi": true, "singleQuote": false } } },
+  "keyboard": { "profile": "default", "bindings": { "editor.formatDocument": ["alt+shift+f"] } },
+  "formatters": { "external": {} },
   "search": { "respectGitignore": true },
   "git": { "autoRefresh": true, "fetchOnRefresh": true },
   "updates": { "checkOnStartup": true },
   "preview": { "markdownDefault": "preview", "images": true, "imageProtocol": "auto" }
 }
 ```
+
+`editor.syntax.styles` permite personalizar los colores y atributos de `default`, `keyword`, `string`, `comment`, `number`, `tag` y `property`. Prettier formatea JS, TS, JSON, CSS, HTML, Markdown y YAML. Formateadores externos se declaran globalmente y se seleccionan por extensión; un proyecto no puede declarar ejecutables. `keyboard.bindings` sobrescribe atajos por identificador de comando y `keyboard.profile: "vim"` habilita modos Normal, Insert y Visual básicos.
 
 Las escrituras son atómicas. Si el archivo no se puede interpretar, o si OEC termina anormalmente antes de completar un primer frame con una configuración en prueba, OEC reemplaza `config.bkp.json` con el archivo problemático, restaura `config.json` a fábrica y relanza una única vez. El backup siempre se sobrescribe, no se rota. El siguiente inicio muestra la ruta del backup. Si también falla con fábrica, OEC no entra en un bucle y conserva el backup.
 

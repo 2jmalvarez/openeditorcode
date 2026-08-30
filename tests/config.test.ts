@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { factoryConfig, serializeConfig } from "../src/config/defaults"
-import { parseConfig } from "../src/config/schema"
+import { parseConfig, parseProjectConfig, resolveConfig } from "../src/config/schema"
 import { configPaths, loadConfig, saveConfig } from "../src/config/storage"
 
 const directories: string[] = []
@@ -51,11 +51,11 @@ test("rejects unknown configuration keys without replacing valid saved settings"
   expect(parseConfig(await readFile(target.file, "utf8")).layout.explorerWidth).toBe(48)
 })
 
-test("migrates schema v1 configuration to preview-enabled schema v2", () => {
+test("migrates schema v1 configuration to the current schema", () => {
   const legacy = factoryConfig() as unknown as Record<string, unknown>
   legacy.schemaVersion = 1
   delete legacy.preview
-  expect(parseConfig(JSON.stringify(legacy))).toMatchObject({ schemaVersion: 2, preview: { markdownDefault: "preview", images: true, imageProtocol: "auto" } })
+  expect(parseConfig(JSON.stringify(legacy))).toMatchObject({ schemaVersion: 3, preview: { markdownDefault: "preview", images: true, imageProtocol: "auto" }, keyboard: { profile: "default" }, editor: { syntax: { enabled: true }, formatting: { formatOnSave: false } } })
 })
 
 test("accepts automatic and explicit language preferences", () => {
@@ -67,4 +67,16 @@ test("accepts automatic and explicit language preferences", () => {
   const config = factoryConfig()
   const invalid = { ...config, appearance: { ...config.appearance, language: "fr" } }
   expect(() => parseConfig(JSON.stringify(invalid))).toThrow()
+})
+
+test("project configuration overrides only its declared settings", () => {
+  const project = parseProjectConfig(JSON.stringify({ schemaVersion: 3, editor: { formatting: { formatOnSave: true } }, keyboard: { profile: "vim" } }))
+  const config = resolveConfig(factoryConfig(), project)
+  expect(config.editor.formatting.formatOnSave).toBe(true)
+  expect(config.keyboard.profile).toBe("vim")
+  expect(config.editor.lineNumbers).toBe(true)
+})
+
+test("rejects formatter commands in project configuration", () => {
+  expect(() => parseProjectConfig(JSON.stringify({ schemaVersion: 3, formatters: { external: {} } }))).toThrow()
 })

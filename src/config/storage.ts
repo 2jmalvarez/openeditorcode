@@ -3,8 +3,8 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { factoryConfig, serializeConfig } from "./defaults"
-import { parseConfig } from "./schema"
-import type { ConfigPaths, ConfigRecovery, OecConfig } from "./types"
+import { parseConfig, parseProjectConfig, resolveConfig } from "./schema"
+import type { ConfigPaths, ConfigRecovery, OecConfig, ProjectConfig } from "./types"
 import { t } from "../localization"
 
 const MAX_CONFIG_BYTES = 256 * 1024
@@ -15,6 +15,8 @@ export function configPaths(env = process.env, platform = process.platform): Con
     : join(env.XDG_CONFIG_HOME || join(env.HOME || homedir(), ".config"), "openeditorcode"))
   return { directory, file: join(directory, "config.json"), backup: join(directory, "config.bkp.json"), state: join(directory, "startup-state.json"), notice: join(directory, "recovery-notice.json") }
 }
+
+export function projectConfigPath(root: string): string { return join(root, ".oec", "config.json") }
 
 export async function atomicWrite(file: string, content: string): Promise<void> {
   await mkdir(dirname(file), { recursive: true })
@@ -64,6 +66,22 @@ export async function saveConfig(paths: ConfigPaths, text: string): Promise<OecC
   await atomicWrite(paths.file, serializeConfig(config))
   return config
 }
+
+export async function loadProjectConfig(root: string): Promise<{ config?: ProjectConfig; path: string }> {
+  const path = projectConfigPath(root)
+  try { return { config: parseProjectConfig(await readFile(path, "utf8")), path } } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { path }
+    throw error
+  }
+}
+
+export async function saveProjectConfig(root: string, text: string): Promise<ProjectConfig> {
+  const config = parseProjectConfig(text)
+  await atomicWrite(projectConfigPath(root), `${JSON.stringify(config, null, 2)}\n`)
+  return config
+}
+
+export { resolveConfig }
 
 export function configHash(text: string): string { return createHash("sha256").update(text).digest("hex") }
 

@@ -12,6 +12,8 @@ export function useOverlays() {
   const [pendingDeletion, setPendingDeletion] = createSignal<TreeItem>()
   const [pendingGitRevert, setPendingGitRevert] = createSignal<GitFile[]>([])
   const [pendingExternalChange, setPendingExternalChange] = createSignal<string>()
+  const [settingsIndex, setSettingsIndex] = createSignal(0)
+  const [settingsScope, setSettingsScope] = createSignal<"global" | "project">("global")
 
   function open(next: Exclude<Overlay, "confirm" | undefined>, directory?: string) {
     setOverlay(next)
@@ -19,6 +21,7 @@ export function useOverlays() {
       setNewFileName("")
       setNewFileDirectory(directory ?? "")
     }
+    if (next === "settings") setSettingsIndex(0)
   }
 
   function requestConfirm(action: PendingAction) {
@@ -54,5 +57,5 @@ export function useOverlays() {
     setConfirmChoice(2)
   }
 
-  return { overlay, newFileName, setNewFileName, newFileDirectory, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, pendingGitRevert, pendingExternalChange, open, requestConfirm, requestDeletion, requestGitRevert, requestExternalChange, close }
+  return { overlay, newFileName, setNewFileName, newFileDirectory, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, pendingGitRevert, pendingExternalChange, settingsIndex, setSettingsIndex, settingsScope, setSettingsScope, open, requestConfirm, requestDeletion, requestGitRevert, requestExternalChange, close }
 }

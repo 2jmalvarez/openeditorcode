@@ -37,6 +37,9 @@ type Props = {
   setExclusionQuery: (value: string) => void
   exclusionIndex: Accessor<number>
   exclusionSuggestions: Accessor<ExclusionSuggestion[]>
+  settingsIndex: Accessor<number>
+  settingsScope: Accessor<"global" | "project">
+  settingsValues: Accessor<string[]>
 }
 
 export function Overlays(props: Props) {
@@ -112,6 +115,14 @@ export function Overlays(props: Props) {
         <text style={{ marginTop: 1 }} fg="#b8c7d1">{t("overlay.externalChangeQuestion", { path: props.pendingExternalChange() })}</text>
         <box style={{ marginTop: 1, flexDirection: "column" }}><For each={[t("overlay.reload"), t("overlay.overwrite"), t("overlay.cancel")]}>{(label, index) => <box style={{ paddingX: 1, backgroundColor: index() === props.confirmChoice() ? "#6b5224" : undefined }}><text fg={index() === props.confirmChoice() ? "#ffffff" : "#d6e5dc"}>{index() === props.confirmChoice() ? "› " : "  "}{label}</text></box>}</For></box>
         <text fg="#8ca0ae">{t("overlay.confirmHelp")}</text>
+      </box>
+    </Show>
+    <Show when={props.overlay() === "settings"} fallback={<box />}>
+      <box style={{ position: "absolute", top: "16%", left: "20%", width: "60%", height: 17, padding: 1, flexDirection: "column", backgroundColor: "#17202a", border: true, borderColor: "#70d6a7" }}>
+        <box style={{ flexDirection: "row" }}><text fg="#70d6a7"><strong>CONFIGURACIÓN</strong></text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{props.settingsScope() === "global" ? "GLOBAL" : "PROYECTO"}</text></box>
+        <text style={{ marginTop: 1 }} fg="#8ca0ae">Los cambios se guardan en el JSON del ámbito activo.</text>
+        <For each={["Ajuste de línea", "Números de línea", "Resaltado de sintaxis", "Formatear al guardar", "Perfil de teclado"]}>{(label, index) => <box style={{ marginTop: 1, paddingX: 1, flexDirection: "row", backgroundColor: index() === props.settingsIndex() ? "#28404a" : undefined }}><text fg={index() === props.settingsIndex() ? "#ffffff" : "#d6e5dc"}>{index() === props.settingsIndex() ? "› " : "  "}{label}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{props.settingsValues()[index()]}</text></box>}</For>
+        <text style={{ marginTop: 1 }} fg="#8ca0ae">↑↓ seleccionar  Enter cambiar  ←→ ámbito  E editar JSON  Esc cerrar</text>
       </box>
     </Show>
   </>

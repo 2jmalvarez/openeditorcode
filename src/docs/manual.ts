@@ -19,7 +19,7 @@ En Cambios, Enter alterna carpetas y abre diffs. + suma archivos o carpetas comp
 Cuando falla una operación, el pie indica F12. F12 abre una pestaña de solo lectura con los detalles técnicos del registro de esta sesión.
 
 ## Configuración
-Abra “Editar configuración de OEC” desde Ctrl+P. Windows usa %APPDATA%\\openeditorcode\\config.json; Linux usa $XDG_CONFIG_HOME/openeditorcode/config.json o ~/.config/openeditorcode/config.json. El esquema completo está en docs/oec-config.schema.json.
+Abra “Abrir configuración” desde Ctrl+P para usar la pantalla TUI o pulse E para editar el JSON. Windows usa %APPDATA%\\openeditorcode\\config.json; Linux usa $XDG_CONFIG_HOME/openeditorcode/config.json o ~/.config/openeditorcode/config.json. El proyecto puede sobrescribir preferencias en .oec/config.json. El esquema completo está en docs/oec-config.schema.json.
 
 Una configuración inválida o que impide iniciar OEC se copia a config.bkp.json (el mismo backup se sobrescribe en cada recuperación) y se restaura la configuración de fábrica. Las actualizaciones npm no modifican este directorio.
 
@@ -46,7 +46,7 @@ In Changes, Enter toggles folders and opens diffs. + adds files or whole folders
 When an operation fails, the footer points to F12. F12 opens a read-only tab with the technical details recorded during this session.
 
 ## Configuration
-Open “Edit OEC configuration” from Ctrl+P. Windows uses %APPDATA%\\openeditorcode\\config.json; Linux uses $XDG_CONFIG_HOME/openeditorcode/config.json or ~/.config/openeditorcode/config.json. Set appearance.language to auto, es, or en. auto follows the operating system language and falls back to English. The complete schema is in docs/oec-config.schema.json.
+Open “Open configuration” from Ctrl+P to use the TUI screen or press E to edit JSON. Windows uses %APPDATA%\\openeditorcode\\config.json; Linux uses $XDG_CONFIG_HOME/openeditorcode/config.json or ~/.config/openeditorcode/config.json. A project can override preferences in .oec/config.json. Set appearance.language to auto, es, or en. auto follows the operating system language and falls back to English. The complete schema is in docs/oec-config.schema.json.
 
 An invalid configuration or one that prevents OEC from starting is copied to config.bkp.json (the same backup is overwritten on every recovery) and factory settings are restored. npm updates do not modify this directory.
 

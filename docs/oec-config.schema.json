@@ -1,17 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "OpenEditorCode configuration",
+  "title": "OpenEditorCode global configuration",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "appearance", "layout", "editor", "search", "git", "updates", "preview"],
+  "required": ["schemaVersion", "appearance", "layout", "editor", "keyboard", "formatters", "search", "git", "updates", "preview"],
   "properties": {
-    "schemaVersion": { "const": 2 },
+    "schemaVersion": { "const": 3 },
     "appearance": { "type": "object", "additionalProperties": false, "required": ["theme", "language"], "properties": { "theme": { "const": "oec-dark" }, "language": { "enum": ["auto", "es", "en"] } } },
-    "layout": { "type": "object", "additionalProperties": false, "required": ["explorerWidth", "changesWidth", "minEditorWidth", "explorerStartup", "changesStartup", "narrowSidePanels", "findPanelMaxWidth", "diffOrientation", "diffStackBelow"], "properties": { "explorerWidth": { "type": "integer", "minimum": 24, "maximum": 80 }, "changesWidth": { "type": "integer", "minimum": 32, "maximum": 80 }, "minEditorWidth": { "type": "integer", "minimum": 32, "maximum": 160 }, "explorerStartup": { "enum": ["visible", "hidden"] }, "changesStartup": { "enum": ["auto", "visible", "hidden"] }, "narrowSidePanels": { "const": "single" }, "findPanelMaxWidth": { "type": "integer", "minimum": 24, "maximum": 80 }, "diffOrientation": { "enum": ["auto", "horizontal", "vertical"] }, "diffStackBelow": { "type": "integer", "minimum": 60, "maximum": 240 } } },
-    "editor": { "type": "object", "additionalProperties": false, "required": ["wrap", "lineNumbers", "syntaxHighlighting"], "properties": { "wrap": { "enum": ["none", "word"] }, "lineNumbers": { "type": "boolean" }, "syntaxHighlighting": { "type": "boolean" } } },
-    "search": { "type": "object", "additionalProperties": false, "required": ["respectGitignore"], "properties": { "respectGitignore": { "type": "boolean" } } },
-    "git": { "type": "object", "additionalProperties": false, "required": ["autoRefresh", "fetchOnRefresh"], "properties": { "autoRefresh": { "type": "boolean" }, "fetchOnRefresh": { "type": "boolean" } } },
-    "updates": { "type": "object", "additionalProperties": false, "required": ["checkOnStartup"], "properties": { "checkOnStartup": { "type": "boolean" } } },
-    "preview": { "type": "object", "additionalProperties": false, "required": ["markdownDefault", "images", "imageProtocol"], "properties": { "markdownDefault": { "enum": ["preview", "source"] }, "images": { "type": "boolean" }, "imageProtocol": { "enum": ["auto", "kitty", "sixel", "blocks"] } } }
+    "layout": { "type": "object" },
+    "editor": { "type": "object", "additionalProperties": false, "required": ["wrap", "lineNumbers", "syntax", "formatting"], "properties": { "wrap": { "enum": ["none", "word"] }, "lineNumbers": { "type": "boolean" }, "syntax": { "type": "object", "required": ["enabled", "styles"], "properties": { "enabled": { "type": "boolean" }, "styles": { "type": "object", "additionalProperties": { "type": "object", "required": ["foreground"], "properties": { "foreground": { "pattern": "^#[0-9a-fA-F]{6}$" }, "bold": { "type": "boolean" }, "italic": { "type": "boolean" }, "dim": { "type": "boolean" } } } } }, "formatting": { "type": "object", "required": ["formatOnSave", "defaultFormatter", "byExtension", "prettier"], "properties": { "formatOnSave": { "type": "boolean" }, "defaultFormatter": { "enum": ["prettier", "none"] }, "byExtension": { "type": "object", "additionalProperties": { "type": "string" } }, "prettier": { "type": "object", "required": ["printWidth", "tabWidth", "useTabs", "semi", "singleQuote"] } } } } },
+    "keyboard": { "type": "object", "additionalProperties": false, "required": ["profile", "bindings"], "properties": { "profile": { "enum": ["default", "vim"] }, "bindings": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } } } },
+    "formatters": { "type": "object", "additionalProperties": false, "required": ["external"], "properties": { "external": { "type": "object", "additionalProperties": { "type": "object", "required": ["command", "args", "extensions", "timeoutMs"] } } } },
+    "search": { "type": "object" }, "git": { "type": "object" }, "updates": { "type": "object" }, "preview": { "type": "object" }
   }
 }
