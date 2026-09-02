@@ -54,14 +54,14 @@ export function ExplorerPane(props: Props) {
   onCleanup(() => renderer.off("frame", syncRange))
 
   return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, overflow: "hidden", flexDirection: "column", border: ["right"], borderColor: "#30404d" }}>
-    <box style={{ paddingX: 1, paddingTop: 1 }}><text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{t("app.explorer")}</text></box>
+    <box style={{ flexShrink: 0, paddingX: 1, paddingTop: 1 }}><text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{t("app.explorer")}</text></box>
     <Show when={props.fileSearchOpen()}>
       <box style={{ paddingX: 1, flexDirection: "column" }}>
         <input focused={props.active()} value={props.fileQuery()} onInput={props.onFileQuery} placeholder={t("app.searchFile")} style={{ backgroundColor: "#17202a" }} />
         <text fg="#71808b">{t("app.results", { count: props.fileResults().length })} | Ctrl+E</text>
       </box>
     </Show>
-    <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, paddingX: 1 }}>
+    <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, paddingX: 1 }}>
       <Show when={props.fileSearchOpen()} fallback={<>
         <Show when={range().top}><box style={{ height: range().top }} /></Show>
         <For each={rows()}>{(item, itemIndex) => { const logicalIndex = () => range().start + itemIndex(); return (
