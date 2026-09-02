@@ -2,7 +2,7 @@
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, type Accessor } from "solid-js"
 import { useRenderer } from "@opentui/solid"
-import { alignDiff, type DiffCell, type DiffRow } from "./diff"
+import { alignDiff, diffOverviewMarkers, type DiffCell, type DiffRow } from "./diff"
 import type { GitDiff } from "./status"
 import { t } from "../localization"
 
@@ -34,17 +34,27 @@ function DiffLine(props: { cell: DiffCell | undefined; row: DiffRow; side: Side 
   </text>
 }
 
+function DiffOverview(props: { rows: DiffRow[]; side: Side }) {
+  const palette = colors[props.side]
+  return <box style={{ position: "relative", width: 1, flexShrink: 0, overflow: "hidden", backgroundColor: "#151a20" }}>
+    <For each={diffOverviewMarkers(props.rows, props.side)}>{(marker) => <box style={{ position: "absolute", top: `${marker.start * 100}%`, width: 1, height: `${marker.size * 100}%`, minHeight: 1, backgroundColor: palette.text }} />}</For>
+  </box>
+}
+
 function VersionPane(props: { title: string; rows: DiffRow[]; side: Side; scroll: (value: ScrollBoxRenderable) => void }) {
   const palette = colors[props.side]
   return <box style={{ flexGrow: 1, flexBasis: 0, minHeight: 0, minWidth: 0, flexDirection: "column", border: true, borderColor: "#30404d" }}>
     <box style={{ height: 1, flexShrink: 0, paddingX: 1, backgroundColor: "#151c23" }}><text fg={palette.text}>{props.title}</text></box>
-    <scrollbox ref={props.scroll} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, paddingX: 1 }}>
-      <For each={props.rows}>{(row) => {
-        const cell = row[props.side]
-        const changed = props.side === "previous" ? row.kind === "removed" || row.kind === "modified" : row.kind === "added" || row.kind === "modified"
-        return <box style={{ height: 1, overflow: "hidden", backgroundColor: changed ? palette.row : cell ? undefined : "#151a20" }}><DiffLine cell={cell} row={row} side={props.side} /></box>
-      }}</For>
-    </scrollbox>
+    <box style={{ flexGrow: 1, minHeight: 0, minWidth: 0, flexDirection: "row" }}>
+      <scrollbox ref={props.scroll} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, minWidth: 0, paddingX: 1 }}>
+        <For each={props.rows}>{(row) => {
+          const cell = row[props.side]
+          const changed = props.side === "previous" ? row.kind === "removed" || row.kind === "modified" : row.kind === "added" || row.kind === "modified"
+          return <box style={{ height: 1, overflow: "hidden", backgroundColor: changed ? palette.row : cell ? undefined : "#151a20" }}><DiffLine cell={cell} row={row} side={props.side} /></box>
+        }}</For>
+      </scrollbox>
+      <DiffOverview rows={props.rows} side={props.side} />
+    </box>
   </box>
 }
 

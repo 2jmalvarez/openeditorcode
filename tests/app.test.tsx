@@ -82,6 +82,9 @@ test("renders aligned diff rows with removal and addition markers", async () => 
     expect(frame).toContain("- const total = oldValue;")
     expect(frame).toContain("+ const total = newValue;")
     expect(frame).toContain("+ inserted")
+    const backgrounds = setup.captureSpans().lines.flatMap((line) => line.spans.map((span) => span.bg.toInts().slice(0, 3)))
+    expect(backgrounds).toContainEqual([239, 123, 123])
+    expect(backgrounds).toContainEqual([112, 214, 167])
   } finally {
     setup.renderer.destroy()
   }

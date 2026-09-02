@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test"
 import { mkdir, mkdtemp, readFile, rename, rm, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { alignDiff } from "../src/git/diff"
+import { alignDiff, diffOverviewMarkers } from "../src/git/diff"
 import { commitGitChanges, fetchGit, parseGitNumstat, parseGitStatus, readGitDiff, readGitState, restoreGitFile, stageGitFile, stageGitFiles, unstageGitFile, unstageGitFiles } from "../src/git/status"
 import type { OpenTab } from "../src/documents/types"
 import { createGitTree } from "../src/git/tree"
@@ -199,6 +199,13 @@ test("marks only the replaced fragment inside modified lines", () => {
 test("represents completely added and removed files", () => {
   expect(alignDiff("", "one\ntwo\n").map((row) => row.kind)).toEqual(["added", "added"])
   expect(alignDiff("one\ntwo\n", "").map((row) => row.kind)).toEqual(["removed", "removed"])
+})
+
+test("groups contiguous changes into proportional overview markers", () => {
+  const rows = alignDiff("a\nold\nc\n", "a\nnew\nextra\nc\n")
+  expect(diffOverviewMarkers(rows, "previous")).toEqual([{ start: 0.25, size: 0.25 }])
+  expect(diffOverviewMarkers(rows, "current")).toEqual([{ start: 0.25, size: 0.5 }])
+  expect(diffOverviewMarkers(alignDiff("same\n", "same\n"), "current")).toEqual([])
 })
 
 test("distinguishes file and diff tabs for the same path", () => {

@@ -5,6 +5,7 @@ export type DiffRow = {
   previous?: DiffCell
   current?: DiffCell
 }
+export type DiffOverviewMarker = { start: number; size: number }
 
 type Operation = { kind: "equal" | "remove" | "add"; text: string; number: number; currentNumber?: number }
 
@@ -178,4 +179,22 @@ export function alignDiff(previous: string, current: string): DiffRow[] {
   }
 
   return result
+}
+
+export function diffOverviewMarkers(rows: DiffRow[], side: "previous" | "current"): DiffOverviewMarker[] {
+  const markers: DiffOverviewMarker[] = []
+  const changed = (row: DiffRow) => side === "previous"
+    ? row.kind === "removed" || row.kind === "modified"
+    : row.kind === "added" || row.kind === "modified"
+
+  for (let index = 0; index < rows.length;) {
+    if (!changed(rows[index]!)) {
+      index += 1
+      continue
+    }
+    const start = index
+    while (index < rows.length && changed(rows[index]!)) index += 1
+    markers.push({ start: start / rows.length, size: (index - start) / rows.length })
+  }
+  return markers
 }
