@@ -156,17 +156,49 @@ test("restores a changed or deleted tracked file", async () => {
 
 test("aligns removed and added lines into matching diff rows", () => {
   expect(alignDiff("one\ntwo\nthree\n", "one\nchanged\nthree\n")).toEqual([
-    [
-      { number: 1, text: "one", changed: false },
-      { number: 2, text: "two", changed: true },
-      { number: 3, text: "three", changed: false },
-    ],
-    [
-      { number: 1, text: "one", changed: false },
-      { number: 2, text: "changed", changed: true },
-      { number: 3, text: "three", changed: false },
-    ],
+    { kind: "unchanged", previous: { number: 1, text: "one", segments: [{ text: "one", changed: false }] }, current: { number: 1, text: "one", segments: [{ text: "one", changed: false }] } },
+    { kind: "modified", previous: { number: 2, text: "two", segments: [{ text: "two", changed: true }] }, current: { number: 2, text: "changed", segments: [{ text: "changed", changed: true }] } },
+    { kind: "unchanged", previous: { number: 3, text: "three", segments: [{ text: "three", changed: false }] }, current: { number: 3, text: "three", segments: [{ text: "three", changed: false }] } },
   ])
+})
+
+test("uses placeholders to align inserted and removed lines", () => {
+  const inserted = alignDiff("one\ntwo\nthree\n", "one\nnew a\nnew b\ntwo\nthree\n")
+  expect(inserted.map((row) => [row.kind, row.previous?.number, row.current?.number])).toEqual([
+    ["unchanged", 1, 1],
+    ["added", undefined, 2],
+    ["added", undefined, 3],
+    ["unchanged", 2, 4],
+    ["unchanged", 3, 5],
+  ])
+
+  const removed = alignDiff("one\nold a\nold b\ntwo\n", "one\ntwo\n")
+  expect(removed.map((row) => [row.kind, row.previous?.number, row.current?.number])).toEqual([
+    ["unchanged", 1, 1],
+    ["removed", 2, undefined],
+    ["removed", 3, undefined],
+    ["unchanged", 4, 2],
+  ])
+})
+
+test("keeps separate change blocks and pairs uneven replacements", () => {
+  const rows = alignDiff("a\nold one\nold two\nc\nold three\ne\n", "a\nnew one\nc\nnew three\ne\n")
+  expect(rows.map((row) => row.kind)).toEqual(["unchanged", "modified", "removed", "unchanged", "modified", "unchanged"])
+  expect(rows[3]).toMatchObject({ previous: { text: "c", number: 4 }, current: { text: "c", number: 3 } })
+})
+
+test("marks only the replaced fragment inside modified lines", () => {
+  const row = alignDiff("const total = oldValue;\n", "const total = newValue;\n")[0]!
+  expect(row).toEqual({
+    kind: "modified",
+    previous: { number: 1, text: "const total = oldValue;", segments: [{ text: "const total = ", changed: false }, { text: "old", changed: true }, { text: "Value;", changed: false }] },
+    current: { number: 1, text: "const total = newValue;", segments: [{ text: "const total = ", changed: false }, { text: "new", changed: true }, { text: "Value;", changed: false }] },
+  })
+})
+
+test("represents completely added and removed files", () => {
+  expect(alignDiff("", "one\ntwo\n").map((row) => row.kind)).toEqual(["added", "added"])
+  expect(alignDiff("one\ntwo\n", "").map((row) => row.kind)).toEqual(["removed", "removed"])
 })
 
 test("distinguishes file and diff tabs for the same path", () => {

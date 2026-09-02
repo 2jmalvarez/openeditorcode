@@ -1,18 +1,49 @@
 /** @jsxImportSource @opentui/solid */
 import type { ScrollBoxRenderable } from "@opentui/core"
-import { createEffect, createSignal, For, onCleanup, onMount, type Accessor } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, type Accessor } from "solid-js"
 import { useRenderer } from "@opentui/solid"
-import { alignDiff, type DiffLine } from "./diff"
+import { alignDiff, type DiffCell, type DiffRow } from "./diff"
 import type { GitDiff } from "./status"
 import { t } from "../localization"
 
 type Props = { diff: Accessor<GitDiff | undefined>; orientation: Accessor<"auto" | "horizontal" | "vertical">; stackBelow: Accessor<number> }
 
-function VersionPane(props: { title: string; lines: DiffLine[]; color: string; scroll: (value: ScrollBoxRenderable) => void }) {
+type Side = "previous" | "current"
+
+const colors = {
+  previous: { text: "#ef7b7b", row: "#302025", fragment: "#65313b" },
+  current: { text: "#70d6a7", row: "#193128", fragment: "#245c43" },
+}
+
+function marker(row: DiffRow, side: Side): string {
+  if (side === "previous" && (row.kind === "removed" || row.kind === "modified")) return "-"
+  if (side === "current" && (row.kind === "added" || row.kind === "modified")) return "+"
+  return " "
+}
+
+function DiffLine(props: { cell: DiffCell | undefined; row: DiffRow; side: Side }) {
+  const cell = props.cell
+  const row = props.row
+  const side = props.side
+  const palette = colors[side]
+  const number = cell ? String(cell.number).padStart(4, " ") : "    "
+  return <text>
+    <span ref={(value) => { value.fg = cell ? "#60717f" : "#3d4851" }}>{number}</span>
+    <span ref={(value) => { value.fg = marker(row, side) === " " ? "#3d4851" : palette.text }}>{` ${marker(row, side)} `}</span>
+    <For each={cell?.segments ?? []}>{(segment) => <span ref={(value) => { value.fg = row.kind === "unchanged" ? "#d6e5dc" : palette.text; value.bg = segment.changed ? palette.fragment : undefined }}>{segment.text}</span>}</For>
+  </text>
+}
+
+function VersionPane(props: { title: string; rows: DiffRow[]; side: Side; scroll: (value: ScrollBoxRenderable) => void }) {
+  const palette = colors[props.side]
   return <box style={{ flexGrow: 1, flexBasis: 0, minHeight: 0, minWidth: 0, flexDirection: "column", border: true, borderColor: "#30404d" }}>
-    <box style={{ height: 1, flexShrink: 0, paddingX: 1, backgroundColor: "#151c23" }}><text fg={props.color}>{props.title}</text></box>
+    <box style={{ height: 1, flexShrink: 0, paddingX: 1, backgroundColor: "#151c23" }}><text fg={palette.text}>{props.title}</text></box>
     <scrollbox ref={props.scroll} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, paddingX: 1 }}>
-      <For each={props.lines}>{(line) => <box style={{ backgroundColor: line.changed ? props.color === "#ef7b7b" ? "#302025" : "#193128" : undefined }}><text fg={line.changed ? props.color : "#d6e5dc"}>{String(line.number).padStart(4, " ")}  {line.text}</text></box>}</For>
+      <For each={props.rows}>{(row) => {
+        const cell = row[props.side]
+        const changed = props.side === "previous" ? row.kind === "removed" || row.kind === "modified" : row.kind === "added" || row.kind === "modified"
+        return <box style={{ height: 1, overflow: "hidden", backgroundColor: changed ? palette.row : cell ? undefined : "#151a20" }}><DiffLine cell={cell} row={row} side={props.side} /></box>
+      }}</For>
     </scrollbox>
   </box>
 }
@@ -45,11 +76,11 @@ export function DiffPane(props: Props) {
   onCleanup(() => { renderer.off("resize", updateLayout); renderer.off("frame", syncScroll) })
   createEffect(() => { props.orientation(); props.stackBelow(); updateLayout(renderer.width) })
 
-  const diffLines = () => alignDiff(props.diff()!.previous, props.diff()!.current)
+  const diffRows = createMemo(() => alignDiff(props.diff()!.previous, props.diff()!.current))
   return <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "column", backgroundColor: "#101419" }}>
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: vertical() ? "column" : "row" }}>
-      <VersionPane title={t("app.previous")} lines={diffLines()[0]} color="#ef7b7b" scroll={(value) => { previousScroll = value; previousY = value.scrollTop }} />
-      <VersionPane title={t("app.new")} lines={diffLines()[1]} color="#70d6a7" scroll={(value) => { currentScroll = value; currentY = value.scrollTop }} />
+      <VersionPane title={t("app.previous")} rows={diffRows()} side="previous" scroll={(value) => { previousScroll = value; previousY = value.scrollTop }} />
+      <VersionPane title={t("app.new")} rows={diffRows()} side="current" scroll={(value) => { currentScroll = value; currentY = value.scrollTop }} />
     </box>
   </box>
 }

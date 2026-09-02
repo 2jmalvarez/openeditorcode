@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { KeyCodes } from "@opentui/core/testing"
 import { testRender } from "@opentui/solid"
 import { App } from "../src/workbench/App"
+import { DiffPane } from "../src/git/DiffPane"
 import { configureLanguage } from "../src/localization"
 
 let root = ""
@@ -63,6 +64,24 @@ test("shows both side panels initially when the terminal is wide enough", async 
     expect(frame).toContain("EXPLORADOR")
     expect(frame).toContain("Mensaje de commit...")
     expect(frame).toContain("F6 pull | F7 push")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
+test("renders aligned diff rows with removal and addition markers", async () => {
+  const diff = {
+    file: { path: "sample.ts", status: "modified" as const, area: "changes" as const, additions: 2, deletions: 1 },
+    previous: "before\nconst total = oldValue;\nafter\n",
+    current: "before\nconst total = newValue;\ninserted\nafter\n",
+  }
+  const setup = await testRender(() => <DiffPane diff={() => diff} orientation={() => "horizontal"} stackBelow={() => 120} />, { width: 120, height: 12 })
+  try {
+    await setup.renderOnce()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("- const total = oldValue;")
+    expect(frame).toContain("+ const total = newValue;")
+    expect(frame).toContain("+ inserted")
   } finally {
     setup.renderer.destroy()
   }
