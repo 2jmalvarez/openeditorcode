@@ -1,185 +1,195 @@
 # openeditorcode (OEC)
 
-Editor de proyectos de codigo abierto para consola. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
+English | [Español](README.es.md)
 
-La referencia completa está en [docs/manual.md](docs/manual.md); la instalación npm también ofrece `man oec` en Unix. Desde OEC, `Ctrl+P` incluye **Editar configuración de OEC** y **Abrir manual de OEC**.
+An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
-## Vista principal
+The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open OEC settings** and **Open OEC manual**.
 
-Al iniciar sin documentos abiertos, OEC muestra el explorador y, cuando hay al menos 144 columnas disponibles, también el panel de cambios. `Ctrl+B` y `Ctrl+Alt+B` muestran u ocultan cada lateral, mientras que `Ctrl+Shift+←/→` mueve el foco entre paneles. Debajo se muestran los demás atajos organizados por capacidad. Si el área central queda más angosta que el explorador, la ayuda se oculta y solo se muestra `OEC` en vertical.
+## Main view
 
-![Pantalla principal de OpenEditorCode](docs/images/welcome-screen.png)
+When launched with no open documents, OEC shows the Explorer and, with at least 144 columns available, the Changes pane as well. `Ctrl+B` and `Ctrl+Alt+B` show or hide each side pane, while `Ctrl+Shift+Left/Right` moves focus between panes. The remaining shortcuts are organized by capability below. If the center area becomes narrower than the Explorer, the help text is hidden and only vertical `OEC` is shown.
 
-## Características
+![OpenEditorCode main screen](docs/images/welcome-screen.png)
 
-- Explorador virtualizado con iconos por tipo de archivo, selección por teclado y scroll vertical que sigue la selección incluso en proyectos grandes.
-- Explorador operable con ratón: clic para seleccionar, expandir carpetas o abrir archivos.
-- Creación de archivos en la carpeta seleccionada, sin sobrescribir archivos existentes.
-- Varias pestañas abiertas, cambio circular y pestañas clicables con cierre mediante `×`, incluidos diffs Git identificados con `Δ`.
-- Editor multilinea con números de línea, resaltado básico para archivos de código, ajuste de línea, deshacer y rehacer.
-- Preview Markdown de solo lectura por defecto, con `F4` para alternar entre preview y edición; el manual interno nunca se puede editar.
-- Preview de PNG, JPEG, WebP y GIF en Kitty/Sixel cuando están disponibles, con fallback de bloques de terminal.
-- Copia mediante OSC 52 y pegado desde el portapapeles de Windows, Wayland o X11.
-- Búsqueda local lineal con resultados, navegación por flechas y aplicación con `Enter`.
-- Búsqueda global concurrente, persistente y agrupada por archivo, con índice reutilizable de hasta 50.000 entradas.
-- Conteo de líneas por archivo y total del proyecto.
-- Confirmación modal para cambios sin guardar.
-- Eliminación confirmada de archivos y carpetas desde el explorador.
-- Panel de cambios Git virtualizado, con numeración, total de archivos y estadísticas de líneas añadidas/eliminadas, actualización automática local y vista diff de solo lectura.
-- Navegación y atajos globales aislados del textarea para evitar modificaciones involuntarias al abrir, cerrar o cambiar archivos.
-- Protección contra rutas externas, binarios y archivos de más de 2 MB.
+## Features
 
-## Requisitos
+- Virtualized Explorer with file-type icons, keyboard selection, and vertical scrolling that follows selection in large projects.
+- Keyboard-first UI with complementary mouse support in the Explorer, search results, Git changes, and tabs.
+- Create files in the selected folder without overwriting existing files.
+- Multiple open tabs, circular tab switching, clickable close buttons, and `Delta` Git diff tabs.
+- Multi-line editor with line numbers, basic code highlighting, line wrapping, undo/redo, and preserved LF/CRLF line endings.
+- Built-in formatting with `Alt+Shift+F`, Prettier for common web formats, optional format on save, and configurable external formatters.
+- Read-only Markdown preview by default, with `F4` to switch between preview and editing; the built-in manual is always read-only.
+- PNG, JPEG, WebP, and GIF previews using Kitty or Sixel when available, with terminal blocks as a fallback.
+- OSC 52 copy and system clipboard paste on Windows, Wayland, and X11.
+- Local literal search and project-wide concurrent search backed by a reusable index of up to 50,000 entries.
+- Per-file and indexed-project line counts.
+- Modal confirmation for unsaved work, deletion, and external file changes detected before saving.
+- Virtualized Git Changes pane with staging, commits, pull/push, aligned read-only diffs, intra-line highlighting, and overview markers.
+- Session-only error log available through `F12`.
+- Protection against paths outside the project root, symlinks/junctions that escape it, invalid UTF-8, binary files, and files over 2 MiB.
 
-- Windows x64 o Linux x64 con glibc (Ubuntu, Debian, Fedora y derivados).
-- Bun 1.3 o posterior para desarrollo.
-- Git instalado para el panel de cambios Git.
-- En Linux, `wl-paste` (Wayland), `xclip` o `xsel` para pegar desde el portapapeles.
+## Requirements
 
-## Instalación
+- Windows x64 or Linux x64 with glibc (Ubuntu, Debian, Fedora, and derivatives).
+- Node.js 18+ and npm to install and launch OEC from npm.
+- Bun 1.3+ for development only.
+- Git for the Git Changes pane.
+- On Linux, `wl-paste` (Wayland), `xclip`, or `xsel` to paste from the system clipboard.
 
-Instala OEC globalmente desde npm:
+## Installation
+
+Install OEC globally from npm:
 
 ```bash
 npm install -g openeditorcode
 ```
 
-Después, abre el editor en el directorio actual o indica la carpeta del proyecto:
+Then launch the editor in the current directory or provide a project folder:
 
 ```bash
 oec
-oec /ruta/del/proyecto
+oec /path/to/project
 openeditorcode
-openeditorcode /ruta/del/proyecto
+openeditorcode /path/to/project
 ```
 
-`oec` y `openeditorcode` son comandos equivalentes.
+`oec` and `openeditorcode` are equivalent commands. Use `--` before a project path that starts with a hyphen.
 
-También puedes consultar la ayuda y la versión sin iniciar la interfaz:
+You can also inspect help and version information without starting the interface:
 
 ```bash
 oec --help
+oec -h
 oec --version
+oec -V
 ```
 
-OEC comprueba actualizaciones en segundo plano después de iniciar. Si hay una versión nueva, la muestra junto a la versión actual y añade **Actualizar OEC** a `Ctrl+P`. La actualización cierra el editor antes de reemplazar el ejecutable y vuelve a abrir el mismo proyecto al finalizar.
+OEC checks for updates in the background after startup. If a new version is found, it is displayed alongside the current version. **Update OEC** is available in `Ctrl+P` only when OEC was launched through the npm launcher; it closes the editor, installs the latest package, and reopens the same project.
 
-La instalación npm incluye únicamente el lanzador y el binario de la plataforma actual; las dependencias de compilación no se instalan globalmente.
+The npm installation includes only the launcher and the current platform binary; build dependencies are not installed globally.
 
-## Configuración e idioma
+## Configuration and language
 
-OEC mantiene su configuración fuera de los proyectos y fuera de la instalación npm, por lo que se conserva al actualizar:
+OEC stores configuration outside projects and the npm installation, so it survives updates:
 
 - Windows: `%APPDATA%\openeditorcode\config.json`.
 - Linux: `${XDG_CONFIG_HOME:-~/.config}/openeditorcode/config.json`.
-- Entornos administrados o pruebas: `OEC_CONFIG_DIR` permite indicar el directorio de configuración.
+- Managed environments or tests: `OEC_CONFIG_DIR` sets the configuration directory.
 
-Abre **Abrir configuración** desde `Ctrl+P` para modificar preferencias comunes desde la TUI o editar el JSON avanzado. El archivo se valida al guardar y usa el esquema distribuido en [`docs/oec-config.schema.json`](docs/oec-config.schema.json). Incluye tema de sintaxis, formateo, atajos y el perfil Vim básico. Un proyecto puede sobrescribir preferencias en `.oec/config.json`; esos valores tienen prioridad sobre la configuración global.
+Open the command palette with `Ctrl+P` and select **Open settings** to change common preferences in the TUI or edit the advanced JSON. Use up/down arrows to select a preference, `Enter` to change it, left/right arrows to switch between the global and project scopes, `E` to edit the JSON for the active scope, and `Esc` to close settings. Saved configuration is validated; see [`docs/oec-config.schema.json`](docs/oec-config.schema.json) for the distributed schema. It includes syntax theme, formatting, keyboard bindings, and a basic Vim profile. A project can override preferences in `.oec/config.json`; those values take priority, but project configuration cannot declare external formatter executables.
 
-El idioma predeterminado es el del sistema. `appearance.language` acepta `"auto"`, `"es"` y `"en"`.
+Default shortcuts listed below can be overridden through `keyboard.bindings`. `keyboard.profile: "vim"` enables basic Normal, Insert, and Visual modes; it is not a complete Vim emulation. The supported Normal/Visual navigation is `h`, `j`, `k`, `l`, `w`, `b`, `0`, and `$`; Normal mode also supports `i`, `a`, `v`, `u`, `x`, `dd`, and `gg`.
 
-Las configuraciones de versiones anteriores se migran automáticamente. Si el JSON es inválido, tiene valores incompatibles o impide iniciar OEC, se conserva la versión problemática en `config.bkp.json` y se restaura `config.json` con valores de fábrica. El backup es único y se reemplaza en cada recuperación; OEC muestra un aviso al iniciar tras una restauración.
+The default language follows the operating system. `appearance.language` accepts `"auto"`, `"es"`, and `"en"`.
 
-Las exclusiones que se agregan con `Ctrl+E` son deliberadamente temporales: no se escriben ni en `.gitignore` ni en `config.json`.
+Earlier configuration versions are migrated automatically. If JSON is invalid, has incompatible values, or prevents OEC from starting, the problematic version is preserved in `config.bkp.json` and `config.json` is restored with factory settings. The single backup is replaced on each recovery; OEC displays a notice after a restore.
 
-## Ejecutar
+Exclusions added through `Ctrl+E` are intentionally temporary: they are not written to `.gitignore` or `config.json`.
 
-Desde la carpeta del proyecto `openeditorcode`:
+## Run from source
+
+From the `openeditorcode` project folder:
 
 ```powershell
 bun install
 bun run dev
 ```
 
-Para abrir otro proyecto durante el desarrollo:
+To open another project during development:
 
 ```powershell
-bun run dev -- C:\ruta\del\proyecto
+bun run dev -- C:\path\to\project
 ```
 
-Sin argumento, abre el directorio actual. Tras compilar para Windows, el ejecutable queda en `packages\oec-win32-x64\bin\oec.exe`:
+Without an argument, OEC opens the current directory. After a Windows build, the executable is at `packages\oec-win32-x64\bin\oec.exe`:
 
 ```powershell
-.\openeditorcode\packages\oec-win32-x64\bin\oec.exe
+.\packages\oec-win32-x64\bin\oec.exe
 ```
 
-## Uso básico
+## Basic use
 
-1. Pulsa `Ctrl+B` para mostrar u ocultar el explorador.
-2. Usa las flechas para mover la selección.
-3. Pulsa `Enter` para expandir una carpeta o abrir un archivo.
-4. Usa `Tab` para alternar entre explorador, editor y cambios.
-5. Guarda con `Ctrl+S`.
+1. Press `Ctrl+B` to show or hide the Explorer.
+2. Use arrow keys to move the selection.
+3. Press `Enter` to expand a folder or open a file.
+4. Use `Tab` to switch between Explorer, Editor, and Changes.
+5. Save with `Ctrl+S`.
 
-Al cerrar una pestaña modificada, el diálogo muestra **Guardar**, **Guardar y cerrar** y **Cerrar sin guardar** (opción predeterminada). Usa flechas arriba/abajo y confirma con `Enter`.
+When closing a modified tab, the dialog offers **Save**, **Save and close**, and **Close without saving** (the default). Use up/down arrows and confirm with `Enter`. If a file changes outside OEC before saving, choose whether to reload it, overwrite it, or cancel.
 
-`Ctrl+F` es contextual: en el explorador filtra archivos de todo el proyecto por nombre y en el editor busca dentro del archivo abierto. `Esc` cancela y limpia cualquiera de las dos búsquedas. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
+`Ctrl+F` is contextual: in Explorer it filters project files by name, and in Editor it searches the open file. `Esc` cancels and clears either search. Project search preserves its query, results, and selection when opening a result, reuses its index for the session, and clears with `Esc` from the modal.
 
-Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `F4` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
+Markdown (`.md`, `.markdown`, `.mdown`, and `.mkd`) opens as rendered preview by default. `F4` switches between editable source and preview while retaining unsaved changes. The manual opened from the palette always remains read-only. PNG, JPEG, WebP, and GIF open as read-only previews; OEC prefers Kitty or Sixel when supported and falls back to terminal blocks.
 
-Cuando una operación falla, OEC conserva el detalle técnico en el registro de sesión. El pie indica `F12` mientras haya errores sin leer; el registro es una pestaña central de solo lectura y no se persiste al cerrar OEC.
+When an operation fails, OEC keeps the operation, time, and technical details in the session log. The footer displays `F12` while unread errors exist; `F12` or **Open session error log** from the palette opens a read-only central tab that is not persisted after OEC closes.
 
-## Atajos
+## Command palette
 
-| Atajo | Acción |
+Press `Ctrl+P` to open the command palette, then type to filter commands, use arrows to select one, and press `Enter` to run it. It provides access to common actions, including opening global or project settings, the built-in manual, the session error log, project line counting, and refreshing Git remote references. When available, it also offers the npm-based OEC update.
+
+## Shortcuts
+
+| Shortcut | Action |
 | --- | --- |
-| `Ctrl+P` | Paleta de comandos, atajos y configuración |
-| `Ctrl+Shift+←` | Mover el foco al panel de la izquierda |
-| `Ctrl+Shift+→` | Mover el foco al panel de la derecha |
-| `Ctrl+B` | Mostrar u ocultar el explorador de archivos |
-| `Ctrl+Alt+B` | Mostrar u ocultar el control de cambios Git |
-| `Ctrl+Shift+Enter` | Contraer todas las carpetas del panel activo |
-| `F5` | Actualizar el panel activo; en Cambios revisa el estado local y ejecuta `git fetch` |
-| `F12` | Abrir el registro de errores de la sesión |
-| `Supr` | Eliminar el archivo o carpeta seleccionado |
-| `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
-| `Shift+Enter` | Alternar la carpeta seleccionada en explorador o cambios |
-| `Ctrl+F` | Buscar archivos por nombre en el Explorador o texto en el Editor |
-| `Ctrl+Alt+F` | Buscar texto en todos los archivos del proyecto |
-| `Ctrl+E` | Editar exclusiones temporales desde un buscador de proyecto |
-| `Ctrl+S` | Guardar archivo actual |
-| `Ctrl+W` | Cerrar pestaña actual |
-| `Shift+Tab` | Ir a la pestaña siguiente |
-| `Ctrl+C` | Copiar el texto seleccionado |
-| `Ctrl+V` | Pegar desde el portapapeles de Windows |
-| `Ctrl+Z` | Deshacer el último cambio |
-| `Ctrl+Shift+Z` | Rehacer el último cambio |
-| `Ctrl+Alt+W` | Alternar ajuste de línea |
-| `F4` | Alternar preview y edición de Markdown |
-| `Ctrl+L` | Ajustar líneas al ancho para ver el contenido completo |
-| `Ctrl+Q` | Salir |
-| `Tab` | Alternar explorador, editor y control de cambios |
-| `Esc` | Cerrar una búsqueda o diálogo |
+| `Ctrl+P` | Command palette, shortcuts, and configuration |
+| `Ctrl+Shift+Left` | Move focus to the left pane |
+| `Ctrl+Shift+Right` | Move focus to the right pane |
+| `Ctrl+B` | Show or hide the Explorer |
+| `Ctrl+Alt+B` | Show or hide Git Changes |
+| `Ctrl+Shift+Enter` | Collapse all folders in the active pane |
+| `F5` | Refresh the active pane; in Changes, fetch and reread local status |
+| `F12` | Open the session error log |
+| `Delete` | Delete the selected file or folder |
+| `Ctrl+N` | Create a file in the selected folder |
+| `Shift+Enter` | Toggle the selected folder in Explorer or Changes |
+| `Ctrl+F` | Search file names in Explorer or text in Editor |
+| `Ctrl+Alt+F` | Search text in all project files |
+| `Ctrl+E` | Edit temporary exclusions from a project search |
+| `Ctrl+S` | Save the current file |
+| `Ctrl+W` | Close the current tab |
+| `Shift+Tab` | Go to the next tab |
+| `Ctrl+C` | Copy selected text |
+| `Ctrl+V` | Paste from the system clipboard |
+| `Ctrl+Z` | Undo the last change |
+| `Ctrl+Shift+Z` | Redo the last change |
+| `Alt+Shift+F` | Format the current document |
+| `Ctrl+L` | Toggle line wrapping |
+| `F4` | Toggle Markdown preview and editing |
+| `Ctrl+Q` | Quit |
+| `Tab` | Switch Explorer, Editor, and Changes |
+| `Esc` | Close a search or dialog |
 
-## Búsqueda y conteo
+## Search and counts
 
-- `Ctrl+F` en el Explorador: escribe parte del nombre o ruta para filtrar archivos de todo el proyecto, incluso dentro de carpetas cerradas. Usa flechas para elegir uno, `Enter` para abrirlo y `Esc` para volver al árbol.
-- `Ctrl+F` en el Editor: escribe el texto para ver todas las coincidencias locales. Usa flechas para elegir una y `Enter` para llevar el cursor a su inicio.
-- `Ctrl+Alt+F`: escribe el texto y pulsa `Enter` para buscar en todo el proyecto. El primer uso construye un índice en memoria; los siguientes lo reutilizan. Tras obtener resultados, usa flechas para elegir uno y `Enter` para abrir el archivo en la línea coincidente.
-- `Ctrl+E` dentro de la búsqueda de archivos o la búsqueda global abre las exclusiones de la sesión. Estas parten de `.gitignore`, autocompletan patrones y carpetas, y permiten incluir o excluir rutas sin modificar `.gitignore`. `.git` nunca se incluye.
-- `Ctrl+P`: ejecuta **Calcular líneas del proyecto**. El explorador mostrará el conteo a la derecha de cada archivo y el pie mostrará el total final.
-- El pie muestra un indicador giratorio mientras OEC abre, guarda, crea o elimina archivos, indexa, busca, cuenta líneas o actualiza el panel activo.
+- `Ctrl+F` in Explorer: type part of a name or path to filter project files, including files inside collapsed folders. Use arrows to choose one, `Enter` to open it, and `Esc` to return to the tree.
+- `Ctrl+F` in Editor: type text to see local matches. Use arrows to choose one and `Enter` to move the cursor to its start.
+- `Ctrl+Alt+F`: type text and press `Enter` to search the project. The first search builds an in-memory index and later searches reuse it. After results arrive, use arrows to choose one and `Enter` to open the matching line.
+- `Ctrl+E` in file or project search opens session exclusions. They start from the root `.gitignore`, autocomplete patterns and folders, and allow including or excluding paths without changing `.gitignore`. `.git` is never included.
+- `Ctrl+P`: run **Calculate project lines**. Explorer shows counts next to files and the footer shows the indexed total. Counts and search can be partial when the 50,000-entry index limit is reached.
+- The footer shows a spinner while OEC opens, saves, creates, or deletes files, indexes, searches, counts lines, or refreshes the active pane.
 
-## Cambios Git
+## Git Changes
 
-- `Ctrl+Alt+B` muestra el panel **CAMBIOS**. Los archivos preparados se separan en **STAGED** y el resto en **CAMBIOS**; ambos grupos usan flechas y `Enter` para expandir o contraer carpetas y abrir diffs.
-- El encabezado muestra la rama y su estado remoto: `actualizado`, `↑N` pendiente de push o `↓N` pendiente de pull. Cada cambio se numera y muestra sus líneas añadidas en verde y eliminadas en rojo. Un mismo archivo puede aparecer una vez en cada grupo; los binarios o estadísticas no disponibles se indican con `?`.
-- `+` suma el archivo o todo el contenido de una carpeta a **STAGED**. `-` quita archivos de **STAGED** o descarta los cambios de **CAMBIOS** tras confirmar.
-- Baja con `↓` desde el último cambio para escribir el mensaje de commit; `Enter` crea el commit. `F6` ejecuta pull y `F7` ejecuta push.
-- Con el panel **CAMBIOS** activo, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales y sus estadísticas aunque el fetch falle.
-- OEC muestra el estado remoto de la rama disponible localmente. La paleta incluye **Actualizar referencias remotas de Git** para ejecutar `git fetch --quiet` manualmente.
-- Los directorios sin seguimiento se expanden en archivos individuales. Abrir una entrada crea una pestaña `Δ` con el diff preparado o no preparado correspondiente, por lo que ambos pueden convivir para una misma ruta. Los diffs son de solo lectura y se pueden cerrar normalmente.
+- Git is optional. `Ctrl+Alt+B` shows the **CHANGES** pane when the project is a Git repository. Staged files are separated into **STAGED** and the rest into **CHANGES**; use arrows to select entries and `Enter` to expand or collapse folders and open diffs.
+- The header shows the branch and remote status: `up to date`, `↑N` pending push, or `↓N` pending pull. Each change is numbered and shows green added and red removed lines. A file can appear once in each group; binaries or unavailable statistics show `?`.
+- `+` stages a file or all contents of a folder. `-` unstages files in **STAGED** or discards **CHANGES** after confirmation.
+- Move down from the last change to write the commit message; `Enter` creates the commit. `F6` pulls and `F7` pushes.
+- With **CHANGES** active, `F5` runs `git fetch` and rereads local changes and statistics even when fetch fails.
+- OEC displays the remote status available locally. The palette includes **Refresh Git remote references** to run `git fetch --quiet` manually.
+- Untracked directories expand into individual files. Opening an entry creates a read-only `Delta` tab for its staged or unstaged diff, so both can coexist for one path. Close a diff tab with `Ctrl+W`. Diffs align changed lines, highlight changed fragments, synchronize scrolling, and show overview markers. `layout.diffOrientation` accepts `auto`, `horizontal`, or `vertical`; in `auto`, `layout.diffStackBelow` selects the terminal width at which the two versions stack vertically.
 
-## Límites de seguridad
+## Safety limits
 
-- Todas las rutas se validan contra la carpeta raíz seleccionada.
-- No se abren ni procesan archivos binarios.
-- El límite de lectura y análisis es 2 MB por archivo.
-- Los previews de imágenes aceptan PNG, JPEG, WebP y GIF hasta 16 MB; formatos dañados o no compatibles se informan sin cerrar OEC.
-- Los guardados usan un archivo temporal antes de reemplazar el original.
-- Los archivos y carpetas definidos en `.gitignore` se muestran en gris y se excluyen del conteo y de los buscadores de proyecto. Las búsquedas permiten excepciones temporales durante la sesión; la carpeta `.git` permanece oculta y excluida siempre.
+- All paths are validated against the selected project root; symlinks and junctions cannot escape it.
+- Only UTF-8 text files are opened and processed; binaries and files containing NUL are rejected.
+- Reading and analysis are limited to 2 MiB per file.
+- Image previews accept PNG, JPEG, WebP, and GIF up to 16 MiB; damaged or unsupported formats are reported without closing OEC.
+- Saves use a temporary file before replacing the original and preserve its line-ending convention.
+- The root `.gitignore` is shown in gray in Explorer and is excluded from counts and project searches by default. Nested `.gitignore` files, `.git/info/exclude`, and global Git exclusions are not read. Temporary search exclusions can change this for the session; `.git` remains hidden and excluded.
 
-## Desarrollo, pruebas y distribución
+## Development, tests, and distribution
 
 ```powershell
 bun run typecheck
@@ -189,4 +199,4 @@ bun run build
 bun run smoke:tui
 ```
 
-`bun run build` genera el binario de la plataforma actual. También puedes ejecutar `bun run build:windows` o `bun run build:linux`. La CI exige cobertura mínima sobre la lógica de producto y arranca el ejecutable compilado hasta verificar su primer frame. La publicación de npm valida versiones, contenido de paquetes y binarios antes de distribuirlos según el sistema operativo. Consulta `AGENTS.md` para la arquitectura y pautas de mantenimiento.
+`bun run build` generates the current platform binary. You can also run `bun run build:windows` or `bun run build:linux`. For release/package checks, use `bun run preflight`, `bun run smoke:check`, and `bun run pack:check`. CI runs configured coverage thresholds and starts the compiled executable through its first frame. npm publishing validates versions, package contents, and binaries before distributing the platform-specific packages. See `AGENTS.md` for architecture and maintenance guidance.

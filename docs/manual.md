@@ -14,7 +14,7 @@ El explorador se muestra inicialmente. Cambios se muestra también si el ancho d
 
 Los archivos abiertos se muestran en pestañas. `*` significa que el contenido difiere del último guardado. `Ctrl+S` guarda, `Ctrl+W` cierra y `Shift+Tab` selecciona la siguiente pestaña. Al cerrar, salir o actualizar con cambios sin guardar OEC pide guardar o descartar. Los diffs Git (`Delta`) son de solo lectura.
 
-El editor ofrece ajuste de línea (`Ctrl+L` o `Ctrl+Alt+W`), deshacer (`Ctrl+Z`), rehacer (`Ctrl+Shift+Z`), copia OSC 52 (`Ctrl+C`) y pegado (`Ctrl+V`). Resalta TS, TSX, JS, JSX, JSON, CSS, HTML, Markdown, Python, YAML y shell hasta 200.000 caracteres.
+El editor ofrece ajuste de línea (`Ctrl+L`), formateo (`Alt+Shift+F`), deshacer (`Ctrl+Z`), rehacer (`Ctrl+Shift+Z`), copia OSC 52 (`Ctrl+C`) y pegado (`Ctrl+V`). Resalta TS, TSX, JS, JSX, JSON, CSS, HTML, Markdown, Python, YAML y shell hasta 200.000 caracteres.
 
 ## Búsqueda y rutas ignoradas
 
@@ -32,7 +32,7 @@ OEC consulta npm al iniciar, salvo que `updates.checkOnStartup` sea falso. La ac
 
 ## Configuración
 
-La paleta ofrece **Abrir configuración**: una pantalla TUI para las preferencias habituales, con `E` para abrir el JSON avanzado. La configuración global está en `%APPDATA%\\openeditorcode\\config.json` en Windows y `${XDG_CONFIG_HOME:-~/.config}/openeditorcode/config.json` en Linux. `.oec/config.json` puede sobrescribir valores para el proyecto abierto. `OEC_CONFIG_DIR` permite elegir otro directorio para pruebas o instalaciones administradas.
+La paleta ofrece **Abrir configuración**: una pantalla TUI para las preferencias habituales. Use `↑/↓` para seleccionar, `Enter` para cambiar, `←/→` para alternar entre el ámbito global y proyecto, `E` para abrir el JSON avanzado y `Esc` para cerrar. La configuración global está en `%APPDATA%\\openeditorcode\\config.json` en Windows y `${XDG_CONFIG_HOME:-~/.config}/openeditorcode/config.json` en Linux. `.oec/config.json` puede sobrescribir valores para el proyecto abierto. `OEC_CONFIG_DIR` permite elegir otro directorio para pruebas o instalaciones administradas.
 
 El formato exacto se define en `docs/oec-config.schema.json`. Claves desconocidas, JSON inválido, versiones de esquema no compatibles o valores fuera de rango son incompatibles. El archivo de fábrica es:
 
