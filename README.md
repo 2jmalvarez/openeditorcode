@@ -2,6 +2,8 @@
 
 English | [Español](README.es.md)
 
+Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
+
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
 The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open OEC settings** and **Open OEC manual**.
