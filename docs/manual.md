@@ -1,6 +1,6 @@
 # Manual de OpenEditorCode
 
-Referencia para la release **0.2.23**.
+Referencia para la release **0.2.24**.
 
 ## Propósito y uso
 
@@ -18,7 +18,7 @@ npm install -g openeditorcode
 
 El aviso de instalacion usa el idioma del sistema operativo: espanol (`es`) para variantes espanolas e ingles (`en`) para el resto. npm puede ocultar la salida de scripts lifecycle; `npm install -g openeditorcode --foreground-scripts` permite verla. `--ignore-scripts` impide ejecutar el aviso. Para desinstalar este metodo, use `npm uninstall -g openeditorcode`.
 
-La alternativa directa esta disponible desde **0.2.23** y solo admite Linux x64 con glibc, incluido WSL con una distribucion compatible. Requiere Bash, curl y utilidades estandar de Linux como `sha256sum`; no requiere Node.js, npm ni Bun. No admite Windows nativo, macOS ni ARM64. Verifica el checksum SHA-256 y la version informada por el binario antes de instalarlo. Sus mensajes usan espanol para variantes espanolas e ingles para el resto.
+La alternativa directa esta disponible desde **0.2.24** y solo admite Linux x64 con glibc, incluido WSL con una distribucion compatible. Requiere Bash, curl y utilidades estandar de Linux como `sha256sum`; no requiere Node.js, npm ni Bun. No admite Windows nativo, macOS ni ARM64. Verifica el checksum SHA-256 y la version informada por el binario antes de instalarlo. Sus mensajes usan espanol para variantes espanolas e ingles para el resto.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash
@@ -30,7 +30,7 @@ Opciones del instalador: `--version <VERSION>` elige una release publicada y `--
 curl -fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash -s -- --version <VERSION> --no-modify-path
 ```
 
-Reemplace `<VERSION>` por una version de release a partir de `0.2.23`, sin los signos angulares. Sin `--version`, se instala la ultima release estable de GitHub. Los aliases `oec` y `openeditorcode` se instalan en `~/.local/bin`. Reinicie el shell tras configurar PATH o ejecute `export PATH="$HOME/.local/bin:$PATH"` en Bash/Zsh para la sesion actual. Con `--no-modify-path`, configure PATH manualmente si es necesario.
+Reemplace `<VERSION>` por una version de release a partir de `0.2.24`, sin los signos angulares. Sin `--version`, se instala la ultima release estable de GitHub. Los aliases `oec` y `openeditorcode` se instalan en `~/.local/bin`. Reinicie el shell tras configurar PATH o ejecute `export PATH="$HOME/.local/bin:$PATH"` en Bash/Zsh para la sesion actual. Con `--no-modify-path`, configure PATH manualmente si es necesario.
 
 Cierre OEC y repita el instalador para actualizar la misma instalacion directa, sin ejecutar npm ni crear una segunda instalacion npm. Evite mezclar metodos para no tener comandos en conflicto en PATH. Desinstale los aliases directos y su marcador de propiedad con `rm -f "$HOME/.local/bin/oec" "$HOME/.local/bin/openeditorcode" "$HOME/.local/bin/.oec-install-sh.sha256"` y retire la entrada PATH agregada por el instalador del archivo de inicio del shell solo si ya no la necesita. Ambos metodos conservan la configuracion del usuario al desinstalar.
 

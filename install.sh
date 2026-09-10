@@ -2,12 +2,13 @@
 set -euo pipefail
 
 # Keep all execution inside main: a truncated curl pipe cannot run half a script.
-main() {
-  local locale=${LC_ALL:-${LC_MESSAGES:-${LANG:-en}}} language=en
+main() (
+  # Subshell-scoped state survives errexit unwinding until the EXIT trap runs.
+  locale=${LC_ALL:-${LC_MESSAGES:-${LANG:-en}}} language=en
   case "$locale" in es|es_*|es.*|es-*) language=es ;; esac
   say() { if [[ $language == es ]]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi; }
   fail() { say "Error: $1" "Error: $2" >&2; exit 1; }
-  local version='' modify_path=true
+  version='' modify_path=true
   while (($#)); do
     case "$1" in
       --version)
@@ -22,18 +23,18 @@ main() {
       *) fail "Unknown option: $1" "Opcion desconocida: $1" ;;
     esac
   done
-  local version_pattern='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$'
+  version_pattern='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$'
   [[ -z $version || $version =~ $version_pattern ]] || fail 'Invalid version.' 'Version no valida.'
   [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || fail \
     'Only Linux x64 and x64 WSL are supported.' 'Solo se admite Linux x64 y WSL x64.'
-  local command
+  command=''
   for command in curl sha256sum mktemp chmod mv cp ln readlink mkdir rmdir rm awk grep; do
     command -v "$command" >/dev/null || fail "Required command: $command" "Comando requerido: $command"
   done
   [[ ${HOME:-} == /* && -d $HOME ]] || fail 'HOME must be an existing absolute directory.' 'HOME debe ser un directorio absoluto existente.'
-  local bin="$HOME/.local/bin" marker="$HOME/.local/bin/.oec-install-sh.sha256"
-  local base=https://github.com/2jmalvarez/openeditorcode/releases asset=oec-linux-x64
-  local tmp='' lock='' replacing=false had_install=false
+  bin="$HOME/.local/bin" marker="$HOME/.local/bin/.oec-install-sh.sha256"
+  base=https://github.com/2jmalvarez/openeditorcode/releases asset=oec-linux-x64
+  tmp='' lock='' replacing=false had_install=false
   cleanup() {
     local status=$?
     trap - EXIT
@@ -72,7 +73,7 @@ main() {
   fi
   download() { curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 "$@"; }
   if [[ -z $version ]]; then
-    local latest
+    latest=''
     latest=$(download --output /dev/null --write-out '%{url_effective}' "$base/latest") || \
       fail 'Cannot resolve latest release.' 'No se puede resolver la ultima release.'
     [[ $latest == "$base/tag/v"* ]] || fail 'Unexpected release URL.' 'URL de release inesperada.'
@@ -84,7 +85,7 @@ main() {
     ! download --output "$tmp/SHA256SUMS" "$base/download/v$version/SHA256SUMS"; then
     fail 'Release download failed; existing installation unchanged.' 'Fallo la descarga; instalacion existente sin cambios.'
   fi
-  local expected actual reported
+  expected='' actual='' reported=''
   expected=$(awk -v name="$asset" '$2 == name { print $1 }' "$tmp/SHA256SUMS")
   [[ $expected =~ ^[0-9a-fA-F]{64}$ ]] || fail 'Missing or invalid checksum.' 'Checksum ausente o no valido.'
   actual=$(sha256sum < "$tmp/$asset"); actual=${actual%% *}
@@ -103,9 +104,9 @@ main() {
   if [[ $had_install == false ]]; then ln -s oec "$bin/openeditorcode"; fi
   replacing=false
 
-  local rc='' line='' shell_name=${SHELL:-}
+  rc='' line='' shell_name=${SHELL:-}
   shell_name=${shell_name##*/}
-  local needs_path=true
+  needs_path=true
   case ":${PATH:-}:" in *":$bin:"*|*":$bin/:"*) needs_path=false ;; esac
   if [[ $modify_path == true && $needs_path == true ]]; then
     # Expand HOME and PATH when the user's shell reads its config, not now.
@@ -132,6 +133,6 @@ main() {
     say 'Open a new shell, or add ~/.local/bin to PATH. Config and projects were preserved.' 'Abra un nuevo shell o agregue ~/.local/bin a PATH. Configuracion y proyectos conservados.'
   fi
   cleanup
-}
+)
 
 main "$@"

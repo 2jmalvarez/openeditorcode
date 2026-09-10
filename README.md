@@ -4,7 +4,7 @@ English | [Español](README.es.md)
 
 Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
-Documentation for release **0.2.23**.
+Documentation for release **0.2.24**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
@@ -55,7 +55,7 @@ The installation notice follows the OS language: Spanish (`es`) for Spanish loca
 
 ### Direct installation (Linux x64 / WSL only)
 
-Available since **0.2.23**, this method requires Linux x64 with glibc (including a compatible WSL distribution), Bash, curl and standard Linux utilities including `sha256sum`, but no Node.js, npm or Bun. It does not support native Windows, macOS or ARM64. The installer verifies the release binary's SHA-256 checksum and reported version before installation. Its messages use Spanish for Spanish locales and English otherwise.
+Available since **0.2.24**, this method requires Linux x64 with glibc (including a compatible WSL distribution), Bash, curl and standard Linux utilities including `sha256sum`, but no Node.js, npm or Bun. It does not support native Windows, macOS or ARM64. The installer verifies the release binary's SHA-256 checksum and reported version before installation. Its messages use Spanish for Spanish locales and English otherwise.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash
@@ -67,7 +67,7 @@ To select a published version or leave shell startup files unchanged:
 curl -fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash -s -- --version <VERSION> --no-modify-path
 ```
 
-Replace `<VERSION>` with a release version starting at `0.2.23`; do not type the angle brackets. Without `--version`, the installer selects the latest stable GitHub release. Both command aliases, `oec` and `openeditorcode`, are installed in `~/.local/bin`. Restart your shell after PATH setup, or run `export PATH="$HOME/.local/bin:$PATH"` in Bash/Zsh for the current session. With `--no-modify-path`, add that directory to PATH yourself if needed.
+Replace `<VERSION>` with a release version starting at `0.2.24`; do not type the angle brackets. Without `--version`, the installer selects the latest stable GitHub release. Both command aliases, `oec` and `openeditorcode`, are installed in `~/.local/bin`. Restart your shell after PATH setup, or run `export PATH="$HOME/.local/bin:$PATH"` in Bash/Zsh for the current session. With `--no-modify-path`, add that directory to PATH yourself if needed.
 
 Close OEC and repeat the installer command to update the same direct installation; it does not run npm or create a second npm installation. Choose one installation method to avoid competing commands on PATH. To remove the direct installation and its ownership marker, run `rm -f "$HOME/.local/bin/oec" "$HOME/.local/bin/openeditorcode" "$HOME/.local/bin/.oec-install-sh.sha256"`; remove any installer-added PATH entry from your shell startup file only if it is no longer needed. User configuration is preserved. For an npm installation, use `npm uninstall -g openeditorcode` instead.
 

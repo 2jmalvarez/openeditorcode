@@ -115,6 +115,20 @@ for failure in replace replace-signal; do
   [[ $(sha256sum < "$HOME/.local/bin/oec") == "$(< "$HOME/.local/bin/.oec-install-sh.sha256")" ]]
   assert_clean
 done
+export MOCK_FAILURE=replace MOCK_VERSION=3.0.0
+# A separate Bash keeps errexit enabled; the wrapper forces nested scope unwinding.
+status=0
+bash -c '
+  set -euo pipefail
+  run_installer() { source "$1" --version 3.0.0 --no-modify-path; }
+  run_installer "$1"
+' bash "$root/install.sh" > "$temp/output" 2>&1 || status=$?
+[[ $status == 1 ]]
+grep -Fxq 'Installation did not complete.' "$temp/output"
+[[ $("$HOME/.local/bin/oec" --version) == 2.0.0 ]]
+[[ $(sha256sum < "$HOME/.local/bin/oec") == "$(< "$HOME/.local/bin/.oec-install-sh.sha256")" ]]
+[[ $(readlink -- "$HOME/.local/bin/openeditorcode") == oec ]]
+assert_clean
 export MOCK_FAILURE='' MOCK_VERSION=2.0.0
 install --version 2.0.0 --no-modify-path
 
