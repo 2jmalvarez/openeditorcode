@@ -13,7 +13,17 @@ Ctrl+B alterna el explorador; Ctrl+Alt+B alterna Cambios. Si el terminal no tien
 Ctrl+F busca archivos desde el explorador o texto desde el editor. Ctrl+Alt+F busca texto en el proyecto. La raíz .gitignore se respeta de forma predeterminada y .git siempre está excluido. Ctrl+E modifica exclusiones solo durante la sesión; nunca se persisten.
 
 ## Git
-En Cambios, Enter alterna carpetas y abre diffs. + suma archivos o carpetas completas a STAGED; - quita cambios preparados o descarta cambios pendientes tras confirmar. Baja con la flecha hasta el mensaje de commit y pulsa Enter para confirmar. F6 ejecuta pull y F7 push.
+En la vista local de Cambios, Enter alterna carpetas y abre diffs. + suma archivos o carpetas completas a STAGED; - quita cambios preparados o descarta cambios pendientes tras confirmar. Baja con la flecha hasta el mensaje de commit y pulsa Enter para confirmar. F6 ejecuta pull y F7 push. Las mutaciones Git (stage, unstage, descarte, commit, pull y push) están bloqueadas al navegar historial o ramas.
+
+Con foco en Git, F8 abre en el panel derecho el historial completo de la rama actual. Los commits se cargan por páginas al navegar, sin límite total. F9 lista las ramas locales y remotas conocidas; las remotas son referencias disponibles localmente, no una consulta en vivo al servidor.
+
+Enter sobre una rama abre sus commits sin hacer checkout; sobre un commit abre sus archivos modificados; sobre un archivo abre un diff histórico de solo lectura en una pestaña, manteniendo el panel derecho. Con foco en Git, Esc vuelve de archivos a historial, luego a ramas si se llegó desde esa lista y finalmente a cambios locales. Las pestañas diff abiertas se conservan.
+
+F5 en Git ejecuta fetch y vuelve a leer el estado local incluso si falla fetch; también refresca la vista histórica si corresponde, sin reemplazarla por cambios locales.
+
+En un diff local, staged o histórico, F4 abre el archivo actual del proyecto sin cerrar el diff. No abre ni restaura la versión histórica. Si el archivo no existe, muestra un aviso y no lo recrea. Fuera de diffs, F4 mantiene la alternancia de preview y edición de Markdown; el manual permanece de solo lectura.
+
+Ctrl+P incluye los comandos adicionales “Git: ver historial de commits” (F8), “Git: ver todas las ramas” (F9) y, con un diff activo, “Abrir archivo del proyecto” (F4), además de la actualización de referencias remotas.
 
 ## Registro de errores
 Cuando falla una operación, el pie indica F12. F12 abre una pestaña de solo lectura con los detalles técnicos del registro de esta sesión.
@@ -40,7 +50,17 @@ Ctrl+B toggles the explorer; Ctrl+Alt+B toggles Changes. When the terminal does 
 Ctrl+F searches files from the explorer or text from the editor. Ctrl+Alt+F searches text in the project. The root .gitignore is respected by default and .git is always excluded. Ctrl+E changes exclusions only for the current session; they are never persisted.
 
 ## Git
-In Changes, Enter toggles folders and opens diffs. + adds files or whole folders to STAGED; - removes staged changes or discards pending changes after confirmation. Move down to the commit message and press Enter to commit. F6 pulls and F7 pushes.
+In the local Changes view, Enter toggles folders and opens diffs. + adds files or whole folders to STAGED; - removes staged changes or discards pending changes after confirmation. Move down to the commit message and press Enter to commit. F6 pulls and F7 pushes. Git mutations (stage, unstage, discard, commit, pull, and push) are blocked while browsing history or branches.
+
+With Git focused, F8 opens the current branch's complete history in the right pane. Commits load in pages as you navigate, with no total limit. F9 lists known local and remote branches; remote branches are locally available references, not a live server query.
+
+Enter on a branch opens its commits without checkout; on a commit it opens its changed files; on a file it opens a read-only historical diff in a tab while keeping the right pane open. With Git focused, Esc returns from files to history, then to branches if you came from that list, and finally to local changes. Open diff tabs are preserved.
+
+F5 in Git fetches and rereads local status even if fetch fails; it also refreshes the historical view when applicable, without replacing it with local changes.
+
+In a local, staged, or historical diff, F4 opens the current project file without closing the diff. It does not open or restore the historical version. If the file does not exist, a notice is shown and the file is not recreated. Outside diffs, F4 still toggles Markdown preview and editing; the manual remains read-only.
+
+Ctrl+P includes the additional commands “Git: ver historial de commits” (view commit history, F8), “Git: ver todas las ramas” (view all known branches, F9), and, with a diff active, “Abrir archivo del proyecto” (open the project file, F4), alongside refreshing remote references. These are the current palette labels.
 
 ## Error log
 When an operation fails, the footer points to F12. F12 opens a read-only tab with the technical details recorded during this session.

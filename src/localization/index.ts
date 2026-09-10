@@ -6,7 +6,7 @@ export type LanguagePreference = "auto" | SupportedLanguage
 const messages = {
   es: {
     "cli.usage": "Uso: oec [OPCIONES] [PROYECTO]",
-    "cli.help": "Uso: oec [OPCIONES] [PROYECTO]\n\n  -h, --help       Mostrar esta ayuda\n  -V, --version    Mostrar versión\n\nConsulte man oec o docs/manual.md para la referencia completa.",
+    "cli.help": "Uso: oec [OPCIONES] [PROYECTO]\n\n  -h, --help         Mostrar esta ayuda\n  -v, -V, --version  Mostrar versión\n\nConsulte man oec o docs/manual.md para la referencia completa.",
     "config.invalidJson": "El archivo no contiene JSON válido.",
     "config.invalid": "La configuración no es compatible.",
     "config.keys": "La configuración tiene claves desconocidas o faltantes.",
@@ -20,7 +20,7 @@ const messages = {
     "config.updates": "La configuración de actualizaciones no es válida.",
     "config.tooLarge": "El archivo supera el límite de 256 KB.",
     "config.restored": "CONFIGURACIÓN RESTAURADA",
-    "app.explorer": "EXPLORADOR",
+    "app.explorer": "Explorador",
     "app.changes": "CAMBIOS",
     "app.previous": "ANTERIOR",
     "app.new": "NUEVO",
@@ -122,7 +122,7 @@ const messages = {
   },
   en: {
     "cli.usage": "Usage: oec [OPTIONS] [PROJECT]",
-    "cli.help": "Usage: oec [OPTIONS] [PROJECT]\n\n  -h, --help       Show this help\n  -V, --version    Show version\n\nSee man oec or docs/manual.md for the full reference.",
+    "cli.help": "Usage: oec [OPTIONS] [PROJECT]\n\n  -h, --help         Show this help\n  -v, -V, --version  Show version\n\nSee man oec or docs/manual.md for the full reference.",
     "config.invalidJson": "The file does not contain valid JSON.",
     "config.invalid": "The configuration is not compatible.",
     "config.keys": "The configuration has unknown or missing keys.",
@@ -136,7 +136,7 @@ const messages = {
     "config.updates": "The update configuration is invalid.",
     "config.tooLarge": "The file exceeds the 256 KB limit.",
     "config.restored": "CONFIGURATION RESTORED",
-    "app.explorer": "EXPLORER",
+    "app.explorer": "Explorer",
     "app.changes": "CHANGES",
     "app.previous": "PREVIOUS",
     "app.new": "NEW",

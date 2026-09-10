@@ -1,8 +1,7 @@
 import { basename, join, relative } from "node:path"
 import { batch, createSignal } from "solid-js"
 import { createTextFile, ExternalFileChangedError, readImageFile, readTextFile, writeTextFile } from "./files"
-import type { OpenTab } from "./types"
-import type { GitDiff } from "../git/status"
+import type { GitDiff, OpenTab } from "./types"
 import { isImagePath, isMarkdownPath } from "./previews"
 
 type Props = {
@@ -102,6 +101,8 @@ export function useDocuments(props: Props) {
   function loadTab(index: number, nextTabs = tabs()) {
     const tab = nextTabs[index]
     if (!tab) return
+    // A completed navigation supersedes any pending asynchronous opening.
+    openGeneration += 1
     props.blurEditor()
     batch(() => {
       setActiveTab(index)
@@ -113,13 +114,22 @@ export function useDocuments(props: Props) {
       props.setStatus(tab.kind === "manual" ? "Manual de OEC abierto." : tab.kind === "image" ? `Preview: ${tab.path}` : tab.kind === "diff" ? `Cambios: ${tab.path}` : tab.kind === "logs" ? "Registro de errores abierto." : `Abierto: ${tab.path}`)
   }
 
-  async function openFile(path: string): Promise<boolean> {
+  async function openFile(path: string, verifyExisting = false): Promise<boolean> {
     const generation = ++openGeneration
     try {
       props.blurEditor()
       syncActiveTab()
-      const existing = tabs().findIndex((tab) => (tab.kind === "file" || tab.kind === "image") && tab.path === path)
+      let existing = tabs().findIndex((tab) => (tab.kind === "file" || tab.kind === "image") && tab.path === path)
       if (existing >= 0) {
+        if (verifyExisting) {
+          const target = tabs()[existing]!
+          if (target.kind === "image") await readImageFile(props.root, path)
+          else await readFile(props.root, path)
+          if (generation !== openGeneration) return false
+          syncActiveTab()
+          existing = tabs().findIndex((tab) => tab.kind === target.kind && tab.path === target.path && (tab.kind !== "file" || target.kind === "file" && tab.source === target.source))
+          if (existing < 0) return false
+        }
         loadTab(existing)
         return true
       }
@@ -193,7 +203,7 @@ export function useDocuments(props: Props) {
   function openDiff(diff: GitDiff) {
     props.blurEditor()
     syncActiveTab()
-    const existing = tabs().findIndex((tab) => tab.kind === "diff" && tab.path === diff.file.path && tab.diff.file.area === diff.file.area)
+    const existing = tabs().findIndex((tab) => tab.kind === "diff" && tab.path === diff.file.path && tab.diff.file.area === diff.file.area && tab.diff.revision === diff.revision)
     if (existing >= 0) {
       setTabs((current) => current.map((tab, index) => index === existing && tab.kind === "diff" ? { ...tab, diff } : tab))
       return loadTab(existing, tabs().map((tab, index) => index === existing && tab.kind === "diff" ? { ...tab, diff } : tab))
@@ -201,6 +211,12 @@ export function useDocuments(props: Props) {
     const nextTabs: OpenTab[] = [...tabs(), { kind: "diff", path: diff.file.path, diff }]
     setTabs(nextTabs)
     loadTab(nextTabs.length - 1, nextTabs)
+  }
+
+  async function openActiveDiffFile(): Promise<boolean> {
+    const diff = activeDiff()
+    if (!diff) return false
+    return openFile(join(props.root, diff.file.path), true)
   }
 
   async function save(force = false, expectedPath?: string): Promise<boolean> {
@@ -284,6 +300,7 @@ export function useDocuments(props: Props) {
   }
 
   function closeFile() {
+    openGeneration += 1
     props.blurEditor()
     const closing = activeTab()
     const nextTabs = tabs().filter((_, index) => index !== closing)
@@ -329,6 +346,7 @@ export function useDocuments(props: Props) {
     syncActiveTab()
     const affected = new Set(affectedTabIndexes(path, directory))
     if (!affected.size) return
+    openGeneration += 1
     const currentActive = activeTab()
     const nextTabs = tabs().filter((_, index) => !affected.has(index))
     setTabs(nextTabs)
@@ -373,5 +391,5 @@ export function useDocuments(props: Props) {
     loadTab(index)
   }
 
-  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, openActiveDiffFile, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
 }

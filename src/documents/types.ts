@@ -1,4 +1,5 @@
 import type { GitDiff } from "../git/status"
+export type { GitDiff } from "../git/status"
 
 export type FileTab = { kind: "file"; source: "project" | "config-global" | "config-project"; path: string; content: string; savedContent: string; view: "source" | "preview" }
 export type ManualTab = { kind: "manual"; path: string; content: string }

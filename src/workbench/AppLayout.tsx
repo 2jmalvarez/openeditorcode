@@ -50,12 +50,12 @@ export function AppLayout(props: Props) {
         </box>
         </box>
       <Show when={props.gitVisible()}>
-        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} commitMessage={props.git.commitMessage} setCommitMessage={props.git.setCommitMessage} commitFocused={props.git.commitFocused} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} />
+        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} commitMessage={props.git.commitMessage} setCommitMessage={props.git.setCommitMessage} commitFocused={props.git.commitFocused} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} mode={props.git.mode} historyTitle={props.git.historyTitle} loading={props.git.loading} />
       </Show>
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
       <box style={{ flexDirection: "row" }}>
-        <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.logs.notice() || props.status()}<Show when={props.documents.activePreview() && !props.documents.activeManual()}>  |  F4 editar</Show></text>
+        <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.logs.notice() || props.status()}<Show when={props.documents.activePreview() && !props.documents.activeManual()}>  |  F4 editar</Show><Show when={props.documents.activeDiff()}>  |  F4 abrir archivo</Show></text>
         <text style={{ marginLeft: "auto" }} fg="#8ca0ae"><Show when={props.config().keyboard.profile === "vim" && props.documents.activeProjectFile()}>{props.editor.vimMode().toUpperCase()}  |  </Show><Show when={props.documents.filePath() && !props.documents.activePreview()}>{t("app.line")} {props.editor.cursor().line}:{props.editor.cursor().column}  |  </Show>v{props.appVersion}<Show when={props.updates.latestVersion()}> ↑ {props.updates.latestVersion()}</Show></text>
       </box>
     </box>

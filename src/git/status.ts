@@ -1,10 +1,11 @@
-import { readTextFile } from "../documents/files"
+import { ensureInsideRoot, readTextFile } from "../documents/files"
 import { join } from "node:path"
 
 export type GitFileStatus = "modified" | "added" | "deleted" | "renamed" | "untracked"
 export type GitFileArea = "staged" | "changes"
 
 export type GitFile = {
+  /** Relative to the open workspace, not necessarily the repository root. */
   path: string
   status: GitFileStatus
   area: GitFileArea
@@ -25,6 +26,9 @@ export type GitDiff = {
   file: GitFile
   previous: string
   current: string
+  /** Immutable commit IDs; null denotes the empty tree before a root commit. */
+  revision?: string
+  previousRevision?: string | null
 }
 
 export type GitFailure = {
@@ -124,27 +128,51 @@ function countLines(content: string): number {
   return content.split("\n").length - Number(content.endsWith("\n"))
 }
 
+function workspacePath(root: string, path: string): string {
+  if (!path || path.includes("\0") || path.includes("\\") || path.startsWith("/") || /^[a-z]:/i.test(path) || path.split("/").some((part) => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error("Ruta Git fuera del workspace o no valida.")
+  ensureInsideRoot(root, join(root, path))
+  return path
+}
+
 export async function readGitState(root: string, signal?: AbortSignal): Promise<GitState> {
   const repository = await runGit(root, ["rev-parse", "--is-inside-work-tree"], signal)
   if (!repository.success || repository.stdout.trim() !== "true") return emptyState("Esta carpeta no es un repositorio Git.")
 
-  const [branch, status, upstream, stagedNumstat, changesNumstat] = await Promise.all([
+  const [branch, status, upstream, stagedNumstat, changesNumstat, prefixResult] = await Promise.all([
     runGit(root, ["branch", "--show-current"], signal),
     runGit(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"], signal),
     runGit(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], signal),
-    runGit(root, ["diff", "--cached", "--numstat", "-z", "HEAD"], signal),
-    runGit(root, ["diff", "--numstat", "-z"], signal),
+    runGit(root, ["diff", "--cached", "--no-relative", "--numstat", "-z", "HEAD"], signal),
+    runGit(root, ["diff", "--no-relative", "--numstat", "-z"], signal),
+    runGit(root, ["rev-parse", "--show-prefix"], signal),
   ])
-  if (!status.success) return emptyState("No se pudo leer el estado de Git.")
-  const files = parseGitStatus(status.stdout)
+  if (!status.success || !prefixResult.success) return emptyState("No se pudo leer el estado de Git.")
+  const prefix = prefixResult.stdout.replace(/\r?\n$/, "")
   const stagedStats = stagedNumstat.success ? parseGitNumstat(stagedNumstat.stdout) : new Map()
   const changesStats = changesNumstat.success ? parseGitNumstat(changesNumstat.stdout) : new Map()
-  await Promise.all(files.map(async (file) => {
-    if (file.status !== "untracked") {
-      const stats = (file.area === "staged" ? stagedStats : changesStats).get(file.path)
-      if (stats) Object.assign(file, stats)
-      return
+  const files = parseGitStatus(status.stdout).flatMap((file): GitFile[] => {
+    const newInside = file.path.startsWith(prefix)
+    const oldInside = (file.previousPath ?? file.path).startsWith(prefix)
+    if (!newInside && !oldInside) return []
+    const stats = (file.area === "staged" ? stagedStats : changesStats).get(file.path)
+    if (stats) Object.assign(file, stats)
+    // A cross-boundary rename is only an addition/deletion within this workspace.
+    if (newInside !== oldInside) {
+      file.path = (newInside ? file.path : file.previousPath!).slice(prefix.length)
+      file.status = newInside ? "added" : "deleted"
+      delete file.previousPath
+      file.additions = null
+      file.deletions = null
+    } else {
+      file.path = file.path.slice(prefix.length)
+      if (file.previousPath !== undefined) file.previousPath = file.previousPath.slice(prefix.length)
     }
+    workspacePath(root, file.path)
+    if (file.previousPath !== undefined) workspacePath(root, file.previousPath)
+    return [file]
+  })
+  await Promise.all(files.map(async (file) => {
+    if (file.status !== "untracked") return
     try {
       file.additions = countLines(await readTextFile(root, join(root, file.path)))
       file.deletions = 0
@@ -184,15 +212,26 @@ export async function restoreGitFile(root: string, file: GitFile, reportFailure?
 }
 
 export async function stageGitFiles(root: string, files: GitFile[], reportFailure?: ReportGitFailure): Promise<boolean> {
-  return files.length > 0 && runGitAsync(root, ["add", "--", ...files.map((file) => file.path)], "git add", reportFailure)
+  return runGitFiles(root, ["add"], files, "git add", reportFailure)
 }
 
 export async function unstageGitFiles(root: string, files: GitFile[], reportFailure?: ReportGitFailure): Promise<boolean> {
-  return files.length > 0 && runGitAsync(root, ["restore", "--staged", "--", ...files.map((file) => file.path)], "git restore --staged", reportFailure)
+  return runGitFiles(root, ["restore", "--staged"], files, "git restore --staged", reportFailure)
 }
 
 export async function restoreGitFiles(root: string, files: GitFile[], reportFailure?: ReportGitFailure): Promise<boolean> {
-  return files.length > 0 && runGitAsync(root, ["checkout", "--", ...files.map((file) => file.path)], "git checkout", reportFailure)
+  return runGitFiles(root, ["checkout"], files, "git checkout", reportFailure)
+}
+
+async function runGitFiles(root: string, args: string[], files: GitFile[], operation: string, reportFailure?: ReportGitFailure): Promise<boolean> {
+  if (!files.length) return false
+  try {
+    const paths = [...new Set(files.flatMap((file) => file.previousPath === undefined ? [file.path] : [file.path, file.previousPath]))].map((path) => workspacePath(root, path))
+    return await runGitAsync(root, ["--literal-pathspecs", ...args, "--", ...paths], operation, reportFailure)
+  } catch (error) {
+    reportFailure?.({ operation, stdout: "", stderr: error instanceof Error ? error.message : "Ruta Git no valida." })
+    return false
+  }
 }
 
 export async function commitGitChanges(root: string, message: string, reportFailure?: ReportGitFailure): Promise<boolean> {
@@ -208,13 +247,18 @@ export async function pushGit(root: string, reportFailure?: ReportGitFailure): P
 }
 
 export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff> {
+  workspacePath(root, file.path)
+  if (file.previousPath !== undefined) workspacePath(root, file.previousPath)
+  const prefixResult = await runGit(root, ["rev-parse", "--show-prefix"])
+  if (!prefixResult.success) throw new Error("No se pudo resolver la ruta del workspace en Git.")
+  const prefix = prefixResult.stdout.replace(/\r?\n$/, "")
   const hasPrevious = file.status !== "added" && file.status !== "untracked"
   const previousPath = file.status === "renamed" ? file.previousPath : file.path
   if (hasPrevious && !previousPath) throw new Error("No se pudo determinar la ruta anterior del archivo.")
   const previous = hasPrevious
-    ? await runGit(root, ["show", file.area === "staged" ? `HEAD:${previousPath}` : `:${previousPath}`])
+    ? await runGit(root, ["show", file.area === "staged" ? `HEAD:${prefix}${previousPath}` : `:${prefix}${previousPath}`])
     : { stdout: "", success: true }
-  const indexed = file.status === "deleted" ? { stdout: "", success: true } : await runGit(root, ["show", `:${file.path}`])
+  const indexed = file.status === "deleted" ? { stdout: "", success: true } : await runGit(root, ["show", `:${prefix}${file.path}`])
   const current = file.area === "staged"
     ? indexed.stdout
     : file.status === "deleted" ? "" : await readTextFile(root, join(root, file.path))

@@ -212,6 +212,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   function requestGitRevert() {
+    if (git.mode() !== "local") return
     const files = git.selectedFiles()
     if (!files.length) return
     if (files[0].area === "staged") return void unstageGitItem()
@@ -219,6 +220,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function acceptGitRevert() {
+    if (git.mode() !== "local") return overlays.close()
     const files = overlays.pendingGitRevert()
     if (!files.length) return overlays.close()
     if (files.some((file) => documents.hasDirtyTabsAffectedBy(join(root, file.path), false))) {
@@ -244,16 +246,19 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function commitGitChanges() {
+    if (git.mode() !== "local") return
     if (!git.commitMessage().trim()) return setStatus("Escribe un mensaje de commit.")
     if (!git.state().files.some((file) => file.area === "staged")) return setStatus("No hay cambios preparados para confirmar.")
     setStatus(await activity.run("Creando commit...", git.commit) ? "Commit creado." : "No se pudo crear el commit.")
   }
 
   async function pullGitChanges() {
+    if (git.mode() !== "local") return
     setStatus(await activity.run("Integrando cambios remotos...", git.pull) ? "Cambios remotos integrados." : "No se pudieron integrar los cambios remotos.")
   }
 
   async function pushGitChanges() {
+    if (git.mode() !== "local") return
     setStatus(await activity.run("Enviando cambios al remoto...", git.push) ? "Cambios enviados al remoto." : "No se pudieron enviar los cambios al remoto.")
   }
 
@@ -286,6 +291,8 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: t("command.toggleExplorer"), shortcut: "Ctrl+B", run: toggleExplorer },
     { title: t("command.toggleGit"), shortcut: "Ctrl+Alt+B", run: toggleGit },
     { title: t("command.refreshGit"), shortcut: t("command.palette"), run: () => void git.fetch() },
+    { title: "Git: ver historial de commits", shortcut: "F8", run: () => void showGitHistory() },
+    { title: "Git: ver todas las ramas", shortcut: "F9", run: () => void showGitBranches() },
     { title: t("command.refresh"), shortcut: "F5", run: () => void refreshActivePanel() },
     { title: t("command.create"), shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
     { title: active() === "explorer" ? t("command.searchFile") : t("command.searchText"), shortcut: "Ctrl+F", run: openContextSearch },
@@ -296,7 +303,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: "Editar configuración del proyecto", shortcut: t("command.palette"), run: () => void openProjectConfig() },
     { title: t("command.manual"), shortcut: t("command.palette"), run: openManual },
     { title: t("command.logs"), shortcut: "F12", run: openLogs },
-    { title: documents.activePreview() ? "Editar Markdown" : "Ver preview Markdown", shortcut: "F4", run: documents.togglePreview },
+    { title: documents.activeDiff() ? "Abrir archivo del proyecto" : documents.activePreview() ? "Editar Markdown" : "Ver preview Markdown", shortcut: "F4", run: () => documents.activeDiff() ? void documents.openActiveDiffFile() : documents.togglePreview() },
     { title: t("command.save"), shortcut: bindingLabel(config().keyboard.bindings, "file.save", "Ctrl+S"), run: () => void saveDocument() },
     { title: t("command.close"), shortcut: bindingLabel(config().keyboard.bindings, "file.close", "Ctrl+W"), run: requestClose },
     { title: t("command.nextTab"), shortcut: "Shift+Tab", run: () => documents.changeTab(1) },
@@ -463,6 +470,20 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     return focusExplorer()
   }
 
+  async function showGitHistory() {
+    if (!canShowBothSidePanels(renderer.width, config().layout)) setExplorerVisible(false)
+    setGitVisible(true)
+    setActive("git")
+    await git.showHistory()
+  }
+
+  async function showGitBranches() {
+    if (!canShowBothSidePanels(renderer.width, config().layout)) setExplorerVisible(false)
+    setGitVisible(true)
+    setActive("git")
+    await git.showBranches()
+  }
+
   function activateExplorerAt(index: number) {
     setExplorerVisible(true)
     setActive("explorer")
@@ -500,6 +521,8 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.commitFocused()) return void commitGitChanges(); if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, gitCommitFocused: git.commitFocused,
     openFileSearch: openContextSearch, fileSearchOpen: search.fileSearchOpen, closeFileSearch: search.closeFileSearch, moveFileSearchSelection: search.moveFileSelection, fileSearchResultsLength: () => search.fileResults().length, openFileSearchResult,
     openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion, bindings: () => config().keyboard.bindings, formatDocument: formatActiveDocument, handleVimKey: editor.handleVimKey, settingsIndex: overlays.settingsIndex, setSettingsIndex: overlays.setSettingsIndex, settingsScope: overlays.settingsScope, setSettingsScope: overlays.setSettingsScope, toggleSetting, openSettingsJson: () => { const scope = overlays.settingsScope(); overlays.close(); if (scope === "global") void openOecConfig(); else void openProjectConfig() },
+    activeDiff: () => Boolean(documents.activeDiff()), openDiffFile: documents.openActiveDiffFile,
+    gitHistoryActive: () => git.mode() !== "local", showGitHistory, showGitBranches, goBackGit: git.goBack,
   })
 
   createEffect(() => explorerScroll?.scrollTo({ x: explorerScroll.scrollLeft, y: Math.max(0, (search.fileSearchOpen() ? search.fileSearchIndex() : explorer.selected()) - 4) }))

@@ -1,24 +1,24 @@
 /** @jsxImportSource @opentui/solid */
-import { createCliRenderer } from "@opentui/core"
-import { render } from "@opentui/solid"
 import { writeFileSync } from "node:fs"
 import { resolveRoot } from "./bootstrap/resolve-root"
-import { App } from "./workbench/App"
-import { clearRecoveryNotice, loadConfig, loadProjectConfig, markConfigHealthy, resolveConfig } from "./config/storage"
 import { parseCli } from "./bootstrap/cli"
 import { configureLanguage } from "./localization"
 
 configureLanguage("auto")
-const loadedConfig = await loadConfig()
 const cli = parseCli(process.argv.slice(2))
 if ("output" in cli) {
   console.log(cli.output)
   process.exitCode = cli.exitCode
 } else {
+  const { clearRecoveryNotice, loadConfig, loadProjectConfig, markConfigHealthy, resolveConfig } = await import("./config/storage")
+  const loadedConfig = await loadConfig()
   const root = resolveRoot(cli.project)
   const loadedProject = await loadProjectConfig(root).catch(() => ({ config: undefined, path: "" }))
   const config = resolveConfig(loadedConfig.config, loadedProject.config)
   configureLanguage(config.appearance.language)
+  const { createCliRenderer } = await import("@opentui/core")
+  const { render } = await import("@opentui/solid")
+  const { App } = await import("./workbench/App")
   // Ctrl+C belongs to the editor for copying selected text.
   const renderer = await createCliRenderer({
     exitOnCtrlC: false,

@@ -1,4 +1,5 @@
 import type { GitFile, GitFileArea } from "./status"
+import type { GitBranch, GitCommit } from "./history"
 
 export type GitTreeItem = {
   path: string
@@ -8,6 +9,9 @@ export type GitTreeItem = {
   expanded: boolean
   file?: GitFile
   fileNumber?: number
+  commit?: GitCommit
+  branch?: GitBranch
+  loadMore?: boolean
 }
 
 type Node = { name: string; path: string; children: Map<string, Node>; file?: GitFile; fileNumber?: number }

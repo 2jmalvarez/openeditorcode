@@ -9,7 +9,8 @@ export function useUpdates(checkOnStartup = true) {
   const launchedByNpm = process.env.OEC_NPM_LAUNCHER === "1"
 
   onMount(() => {
-    if (!checkOnStartup) return
+    // Direct binaries must stay on their installation channel, not npm.
+    if (!checkOnStartup || !launchedByNpm) return
     const controller = new AbortController()
     let requestTimer: ReturnType<typeof setTimeout> | undefined
     const startTimer = setTimeout(() => {

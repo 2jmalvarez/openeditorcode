@@ -1,8 +1,11 @@
-.TH OEC 1
+.TH OEC 1 "" "OpenEditorCode 0.2.23"
 .SH NAME
 oec \- OpenEditorCode terminal project editor
 .SH SYNOPSIS
 .B oec
+.RI [ PROJECT ]
+.br
+.B openeditorcode
 .RI [ PROJECT ]
 .SH DESCRIPTION
 OpenEditorCode edits UTF-8 project files in a terminal. Without PROJECT it opens the current directory.
@@ -10,8 +13,61 @@ OpenEditorCode edits UTF-8 project files in a terminal. Without PROJECT it opens
 The complete, versioned Spanish manual is installed as docs/manual.md with the npm package. It defines search, ignored paths, configuration, recovery, Git, updates, shortcuts, limits and security guarantees.
 .PP
 Markdown project files open in a read-only preview by default. F4 switches a project Markdown file between preview and source editing. The bundled manual is always read-only. PNG, JPEG, WebP and GIF previews use Kitty or Sixel when supported and otherwise fall back to terminal blocks.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print help without starting the interface.
+.TP
+.BR \-v ", " \-V ", " \-\-version
+Print the installed version without starting the interface. All three options work with both command aliases.
+.SH INSTALLATION
+With Node.js 18+ and npm on Windows x64 or Linux x64 with glibc:
+.PP
+.nf
+npm install \-g openeditorcode
+.fi
+.PP
+The installation notice follows the OS language: Spanish (es) for Spanish locales and English (en) otherwise. npm may hide lifecycle script output; add \-\-foreground-scripts to display it. With \-\-ignore-scripts the notice is not run.
+.PP
+Direct installation is available since 0.2.23 and requires Bash, curl and standard Linux utilities including sha256sum on Linux x64 with glibc, including a compatible WSL distribution. It needs no Node.js, npm or Bun. Native Windows, macOS and ARM64 are not supported by this installer. It verifies the release binary's SHA-256 checksum and reported version before installation. Messages use Spanish for Spanish locales and English otherwise.
+.PP
+.nf
+curl \-fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash
+.fi
+.PP
+Installer options: \-\-version <VERSION> selects a published release starting at 0.2.23; \-\-no-modify-path leaves shell startup files unchanged. Without a version argument, the installer selects the latest stable GitHub release. Unlike the editor's version option, the installer option takes a version argument. Replace <VERSION> below with the desired version, without angle brackets:
+.PP
+.nf
+curl \-fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash \-s \-\- \-\-version <VERSION> \-\-no-modify-path
+.fi
+.PP
+Both aliases, oec and openeditorcode, are installed in ~/.local/bin. Restart the shell after PATH setup, or run export PATH="$HOME/.local/bin:$PATH" in Bash/Zsh for the current session. With \-\-no-modify-path, configure PATH manually if needed. Choose one installation method to avoid competing commands on PATH.
+.SH UPDATES
+Only launches through the npm launcher check npm for newer versions, unless updates.checkOnStartup is false. When a newer version is found, the palette offers Update OEC: close the editor, install the latest npm package and reopen the same project, preserving user configuration.
+.PP
+Direct binaries do not query npm or offer the npm update action. Close OEC and repeat the direct installer to update the same installation, without running npm or creating a second npm installation.
+.SH UNINSTALL
+For a direct installation, remove both aliases and the ownership marker:
+.PP
+.nf
+rm \-f "$HOME/.local/bin/oec" "$HOME/.local/bin/openeditorcode" "$HOME/.local/bin/.oec-install-sh.sha256"
+.fi
+.PP
+Remove any installer-added PATH entry from the shell startup file only if it is no longer needed. For npm installations use npm uninstall \-g openeditorcode instead. User configuration is preserved by both methods.
+.SH GIT
+With Git focused, F8 opens the current branch's complete history in the right pane, loading commits in pages as you navigate with no total limit. F9 lists known local and remote branches. Remote branches are locally available references, not a live server listing.
+.PP
+Enter on a branch opens its commits without checkout; on a commit it opens changed files; on a file it opens a read-only historical diff tab while keeping the right pane open. With Git focused, Esc returns from files to history, then to branches if history was opened from that list, then to local changes. Open diff tabs are preserved.
+.PP
+Stage, unstage, discard, commit, pull (F6) and push (F7) are available only in local changes and are blocked while browsing history or branches. F5 fetches and rereads local status even if fetch fails, and refreshes the history or branch list when applicable without returning to local changes. Setting git.fetchOnRefresh to false skips fetch but retains local reads.
+.PP
+In local, staged or historical diffs, F4 opens the current project file without closing the diff. It does not open or restore historical content. Missing files produce a notice and are not recreated. Outside diffs, F4 retains Markdown preview/editing; the bundled manual remains read-only.
+.PP
+Ctrl+P includes the current palette labels "Git: ver historial de commits" (view commit history, F8), "Git: ver todas las ramas" (view all known branches, F9) and, with an active diff, "Abrir archivo del proyecto" (open the project file, F4).
 .SH CONFIGURATION
 On Windows OEC stores config.json under %APPDATA%\\openeditorcode. On Linux it uses ${XDG_CONFIG_HOME:-$HOME/.config}/openeditorcode. Invalid or startup-crashing configuration is copied to config.bkp.json and factory defaults are restored.
+.PP
+appearance.language accepts auto, es or en. The default, auto, uses Spanish for Spanish OS locales and English otherwise. An explicit language preference takes effect when configuration is saved.
 .SH FILES
 .I docs/manual.md
 Complete manual.

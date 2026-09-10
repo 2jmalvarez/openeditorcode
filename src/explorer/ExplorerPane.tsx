@@ -66,7 +66,10 @@ export function ExplorerPane(props: Props) {
         <Show when={range().top}><box style={{ height: range().top }} /></Show>
         <For each={rows()}>{(item, itemIndex) => { const logicalIndex = () => range().start + itemIndex(); return (
           <box id={`tree-${logicalIndex()}`} onMouseDown={() => props.onActivate(logicalIndex())} style={{ height: 1, flexShrink: 0, paddingLeft: item.depth, overflow: "hidden", flexDirection: "row", alignItems: "center", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
-            <box style={{ flexGrow: 1, minWidth: 0, height: 1, overflow: "hidden" }}><text fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"}>{fileIcon(item)} {item.name}</text></box>
+            <box style={{ flexGrow: 1, minWidth: 0, height: 1, overflow: "hidden", flexDirection: "row" }}>
+              <text style={{ width: 3, flexShrink: 0 }} fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"}>{fileIcon(item)}</text>
+              <text style={{ flexGrow: 1, minWidth: 0 }} fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"}>{item.name}</text>
+            </box>
             <Show when={!item.directory && props.lineCounts()[item.path] !== undefined} fallback={<box />}>
               <text style={{ marginLeft: "auto" }} fg="#71808b">{props.lineCounts()[item.path]}</text>
             </Show>

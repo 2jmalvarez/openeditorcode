@@ -22,9 +22,9 @@ test("accepts legacy configuration as automatic language", () => {
 
 test("applies the configured language to interface and CLI messages", () => {
   configureLanguage("en")
-  expect(t("app.explorer")).toBe("EXPLORER")
+  expect(t("app.explorer")).toBe("Explorer")
   expect(parseCli(["--help"])).toMatchObject({ output: expect.stringContaining("Usage:") })
   configureLanguage("es")
-  expect(t("app.explorer")).toBe("EXPLORADOR")
+  expect(t("app.explorer")).toBe("Explorador")
   expect(parseCli(["--help"])).toMatchObject({ output: expect.stringContaining("Uso:") })
 })

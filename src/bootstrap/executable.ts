@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { spawn } from "node:child_process"
-import { configHash, configPaths, loadConfig, markConfigStarting, readConfigText, restoreFactory } from "../config/storage"
+import { parseCli } from "./cli"
+import { configureLanguage } from "../localization"
 
 async function runWorker(args: string[], recoveryAttempt = false): Promise<number> {
+  const { configHash, loadConfig, markConfigStarting, readConfigText, restoreFactory } = await import("../config/storage")
   const loaded = await loadConfig()
   const text = await readConfigText(loaded.paths)
   if (text === undefined) return 1
@@ -28,7 +30,12 @@ async function runWorker(args: string[], recoveryAttempt = false): Promise<numbe
   return code
 }
 
-if (process.env.OEC_INTERNAL_WORKER === "1") {
+configureLanguage("auto")
+const cli = parseCli(process.argv.slice(2))
+if ("output" in cli) {
+  console.log(cli.output)
+  process.exitCode = cli.exitCode
+} else if (process.env.OEC_INTERNAL_WORKER === "1") {
   await import("../index")
 } else {
   process.exitCode = await runWorker(process.argv.slice(2))

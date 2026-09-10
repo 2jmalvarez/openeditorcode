@@ -11,6 +11,17 @@ import { configureLanguage } from "../src/localization"
 
 let root = ""
 
+async function waitForText(setup: Awaited<ReturnType<typeof testRender>>, text: string) {
+  let frame = ""
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await setup.renderOnce()
+    frame = setup.captureCharFrame()
+    if (frame.includes(text)) return
+    await Bun.sleep(25)
+  }
+  expect(frame).toContain(text)
+}
+
 async function git(...args: string[]) {
   const process = Bun.spawn(["git", "-C", root, ...args], { stdout: "ignore", stderr: "pipe" })
   if (await process.exited !== 0) throw new Error(await new Response(process.stderr).text())
@@ -61,7 +72,7 @@ test("shows both side panels initially when the terminal is wide enough", async 
   try {
     await setup.renderOnce()
     const frame = setup.captureCharFrame()
-    expect(frame).toContain("EXPLORADOR")
+    expect(frame).toContain("Explorador")
     expect(frame).toContain("Mensaje de commit...")
     expect(frame).toContain("F6 pull | F7 push")
   } finally {
@@ -95,7 +106,7 @@ test("shows only the explorer initially when the terminal is narrow", async () =
   try {
     await setup.renderOnce()
     const frame = setup.captureCharFrame()
-    expect(frame).toContain("EXPLORADOR")
+    expect(frame).toContain("Explorador")
     expect(frame).not.toContain("CAMBIOS 0")
   } finally {
     setup.renderer.destroy()
@@ -111,7 +122,7 @@ test("keeps the explorer and hides changes when a wide terminal becomes narrow",
     setup.renderer.resize(120, 30)
     await setup.renderOnce()
     const frame = setup.captureCharFrame()
-    expect(frame).toContain("EXPLORADOR")
+    expect(frame).toContain("Explorador")
     expect(frame).not.toContain("CAMBIOS 0")
   } finally {
     setup.renderer.destroy()
@@ -133,14 +144,10 @@ afterEach(async () => {
 test("renders the explorer and opens its selected file", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(120)
-    await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("hello.txt")
+    await waitForText(setup, "hello.txt")
 
     setup.mockInput.pressEnter()
-    await Bun.sleep(120)
-    await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("contenido de prueba")
+    await waitForText(setup, "contenido de prueba")
   } finally {
     setup.renderer.destroy()
   }
@@ -183,14 +190,12 @@ test("toggles a Markdown file between preview and source with F4", async () => {
   await writeFile(join(root, "README.md"), "# Documento\n\nContenido fuente", "utf8")
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(80)
+    await waitForText(setup, "README.md")
     setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("README.md")
     await Bun.sleep(80)
     setup.mockInput.pressEnter()
-    await Bun.sleep(80)
-    await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("PREVIEW MARKDOWN")
+    await waitForText(setup, "PREVIEW MARKDOWN")
 
     setup.mockInput.pressKey(KeyCodes.F4)
     await setup.renderOnce()
@@ -232,6 +237,63 @@ test("shows changed file totals, numbering, and line statistics", async () => {
     setup.renderer.destroy()
   }
 })
+
+test("navigates Git with F8/F9 and opens the project file with F4 without closing its diff", async () => {
+  await git("init", "--quiet")
+  await git("config", "user.name", "OEC Tests")
+  await git("config", "user.email", "oec@example.test")
+  await git("add", ".")
+  await git("commit", "--quiet", "-m", "history-entry")
+  await git("branch", "-M", "main")
+  const setup = await testRender(() => <App root={root} />, { width: 160, height: 30 })
+  async function waitFrame(check: (frame: string) => boolean) {
+    let frame = ""
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await Bun.sleep(25)
+      await setup.renderOnce()
+      frame = setup.captureCharFrame()
+      if (check(frame)) return frame
+    }
+    expect(check(frame), frame).toBe(true)
+    return frame
+  }
+  try {
+    await waitFrame((frame) => frame.includes("hello.txt") && frame.includes("main"))
+    setup.mockInput.pressKey(KeyCodes.F8)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("Historial:")
+    // Cycle explorer -> editor -> Git without relying on native modifier detection.
+    setup.mockInput.pressTab()
+    setup.mockInput.pressTab()
+    setup.mockInput.pressKey(KeyCodes.F8)
+    await waitFrame((frame) => frame.includes("history-entry"))
+    expect(setup.captureCharFrame()).toContain("Historial: main")
+    expect(setup.captureCharFrame()).not.toContain("Mensaje de commit...")
+    setup.mockInput.pressEnter()
+    await waitFrame((frame) => frame.includes("1. A") && !frame.includes("Cargando..."))
+    setup.mockInput.pressEnter()
+    await waitFrame((frame) => frame.includes("F4 abrir archivo"))
+    expect(setup.captureCharFrame()).toContain("@ ")
+    setup.mockInput.pressKey(KeyCodes.ESCAPE)
+    await waitFrame((frame) => frame.includes("Historial: main"))
+    expect(setup.captureCharFrame()).toContain("F4 abrir archivo")
+    setup.mockInput.pressKey(KeyCodes.F4)
+    await waitFrame((frame) => frame.includes("contenido de prueba") && !frame.includes("F4 abrir archivo"))
+    expect(setup.captureCharFrame()).toContain("@ ")
+    setup.mockInput.pressTab()
+    setup.mockInput.pressKey(KeyCodes.F9)
+    await waitFrame((frame) => frame.includes("[local]"))
+    setup.mockInput.pressEnter()
+    await waitFrame((frame) => frame.includes("Historial: main") && frame.includes("history-entry"))
+    setup.mockInput.pressKey(KeyCodes.ESCAPE)
+    await waitFrame((frame) => frame.includes("[local]"))
+    setup.mockInput.pressKey(KeyCodes.ESCAPE)
+    await waitFrame((frame) => frame.includes("Mensaje de commit..."))
+    expect(setup.captureCharFrame()).toContain("@ ")
+  } finally {
+    setup.renderer.destroy()
+  }
+}, 15000)
 
 test("wraps long branch names in the changes panel", async () => {
   const branch = "feature/a-very-long-branch-name-that-must-remain-visible"

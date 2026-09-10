@@ -38,6 +38,8 @@ type Props = {
   cycleFocus: () => void
   toggleWrap: () => void
   togglePreview: () => void
+  activeDiff: () => boolean
+  openDiffFile: () => Promise<boolean>
   requestClose: () => void
   copy: () => void
   paste: () => Promise<void>
@@ -63,6 +65,10 @@ type Props = {
   pullGitChanges: () => Promise<void>
   pushGitChanges: () => Promise<void>
   gitCommitFocused: () => boolean
+  gitHistoryActive: () => boolean
+  showGitHistory: () => Promise<void>
+  showGitBranches: () => Promise<void>
+  goBackGit: () => boolean
   openFileSearch: () => void
   fileSearchOpen: () => boolean
   closeFileSearch: () => void
@@ -187,7 +193,7 @@ export function useKeyboardShortcuts(props: Props) {
     if (matches("navigation.focusLeft", "ctrl+shift+left")) return consume(key, props.focusLeft)
     if (matches("navigation.focusRight", "ctrl+shift+right")) return consume(key, props.focusRight)
     if (matches("panel.toggleGit", "ctrl+alt+b")) return consume(key, props.toggleGit)
-    if (matches("editor.preview", "f4")) return consume(key, props.togglePreview)
+    if (matches("editor.preview", "f4")) return consume(key, () => props.activeDiff() ? void props.openDiffFile() : props.togglePreview())
     if (matches("panel.toggleExplorer", "ctrl+b")) return consume(key, props.toggleExplorer)
     if (matches("file.nextTab", "shift+tab")) return consume(key, props.changeTab)
     if (matches("editor.toggleWrap", "ctrl+l")) return consume(key, props.toggleWrap)
@@ -205,6 +211,10 @@ export function useKeyboardShortcuts(props: Props) {
     if (props.handleVimKey(key)) return consume(key, () => undefined)
     if (key.name === "tab") return consume(key, props.cycleFocus)
     if (props.active() === "git") {
+      if (keyName === "f8") return consume(key, () => void props.showGitHistory())
+      if (keyName === "f9") return consume(key, () => void props.showGitBranches())
+      if (isEscape && props.gitHistoryActive()) return consume(key, props.goBackGit)
+      if (props.gitHistoryActive() && (keyName === "f6" || keyName === "f7" || keyName === "+" || keyName === "-")) return consume(key, () => undefined)
       if (keyName === "f6") return consume(key, () => void props.pullGitChanges())
       if (keyName === "f7") return consume(key, () => void props.pushGitChanges())
       if (props.gitCommitFocused()) {

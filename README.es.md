@@ -4,6 +4,8 @@
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
+Documentacion para la release **0.2.23**.
+
 Editor de proyectos de código abierto para terminal. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
 La referencia completa está en [docs/manual.md](docs/manual.md); la instalación npm también ofrece `man oec` en Unix. Desde OEC, `Ctrl+P` incluye **Abrir configuración de OEC** y **Abrir manual de OEC**.
@@ -29,6 +31,7 @@ Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al m
 - Conteo de lineas por archivo y del proyecto indexado.
 - Confirmacion modal para cambios sin guardar, eliminacion y cambios externos detectados antes de guardar.
 - Panel Git virtualizado con staging, commits, pull/push, diffs alineados de solo lectura, resaltado intralinea y marcadores laterales.
+- Historial Git paginado sin limite total de commits, navegacion de ramas locales y remotas conocidas sin checkout y diffs historicos en pestanas.
 - Registro de errores de sesion mediante `F12`.
 - Proteccion contra rutas externas, symlinks/junctions que salen de la raiz, UTF-8 invalido, binarios y archivos de mas de 2 MiB.
 
@@ -48,6 +51,28 @@ Instala OEC globalmente desde npm:
 npm install -g openeditorcode
 ```
 
+El aviso de instalacion sigue el idioma del sistema operativo: espanol (`es`) para variantes espanolas e ingles (`en`) para el resto. npm puede ocultar la salida de los scripts de ciclo de vida (lifecycle); usa `npm install -g openeditorcode --foreground-scripts` para verla. Con `--ignore-scripts` no se ejecuta el aviso.
+
+### Instalacion directa (solo Linux x64 / WSL)
+
+Disponible desde **0.2.23**, requiere Linux x64 con glibc (incluida una distribucion WSL compatible), Bash, curl y utilidades estandar de Linux como `sha256sum`, pero no Node.js, npm ni Bun. No admite Windows nativo, macOS ni ARM64. El instalador verifica el checksum SHA-256 y la version informada por el binario de la release antes de instalarlo. Sus mensajes usan espanol para variantes espanolas e ingles para el resto.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash
+```
+
+Para elegir una version publicada o no modificar los archivos de inicio del shell:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.sh | bash -s -- --version <VERSION> --no-modify-path
+```
+
+Sustituye `<VERSION>` por una version de release a partir de `0.2.23`, sin escribir los signos angulares. Sin `--version`, el instalador elige la ultima release estable de GitHub. Ambos aliases, `oec` y `openeditorcode`, quedan en `~/.local/bin`. Reinicia el shell tras configurar PATH o ejecuta `export PATH="$HOME/.local/bin:$PATH"` en Bash/Zsh para la sesion actual. Con `--no-modify-path`, agrega ese directorio a PATH por tu cuenta si hace falta.
+
+Cierra OEC y repite el instalador para actualizar la misma instalacion directa; no ejecuta npm ni crea una segunda instalacion npm. Elige un solo metodo para evitar comandos en conflicto en PATH. Para desinstalar la instalacion directa y su marcador de propiedad, ejecuta `rm -f "$HOME/.local/bin/oec" "$HOME/.local/bin/openeditorcode" "$HOME/.local/bin/.oec-install-sh.sha256"`; elimina la entrada PATH agregada por el instalador en el archivo de inicio del shell solo si ya no la necesitas. Se conserva la configuracion del usuario. Para una instalacion npm, usa en cambio `npm uninstall -g openeditorcode`.
+
+### Inicio y version
+
 Despues, abre el editor en el directorio actual o indica la carpeta del proyecto:
 
 ```bash
@@ -66,9 +91,12 @@ oec --help
 oec -h
 oec --version
 oec -V
+oec -v
 ```
 
-OEC comprueba actualizaciones en segundo plano despues de iniciar. Si hay una version nueva, la muestra junto a la version actual. **Actualizar OEC** aparece en `Ctrl+P` solo si OEC se inicio mediante el lanzador npm; cierra el editor, instala el paquete mas reciente y vuelve a abrir el mismo proyecto.
+`-v`, `-V` y `--version` son equivalentes para ambos aliases. `--version <VERSION>` del instalador elige la release a instalar; `--version` del editor solo imprime la version instalada.
+
+Al iniciarse mediante npm, OEC comprueba actualizaciones en segundo plano salvo que `updates.checkOnStartup` sea falso. Si hay una version nueva, la muestra junto a la version actual. **Actualizar OEC** aparece en `Ctrl+P` solo para ese modo de inicio; cierra el editor, instala el paquete npm mas reciente y vuelve a abrir el mismo proyecto. Los binarios directos no consultan npm ni ofrecen su accion de actualizacion; se actualizan repitiendo el instalador directo indicado arriba.
 
 La instalacion npm incluye unicamente el lanzador y el binario de la plataforma actual; las dependencias de compilacion no se instalan globalmente.
 
@@ -131,6 +159,8 @@ Cuando una operación falla, OEC conserva la operación, la hora y el detalle t�
 
 Pulsa `Ctrl+P` para abrir la paleta de comandos, escribe para filtrar, usa las flechas para seleccionar y `Enter` para ejecutar. Desde ella puedes abrir la configuración global o del proyecto, el manual integrado, el registro de errores de sesión, el conteo de líneas del proyecto y la actualización de referencias remotas de Git. Cuando está disponible, también ofrece la actualización de OEC mediante npm.
 
+Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git: ver todas las ramas** (`F9`) y, con un diff activo, **Abrir archivo del proyecto** (`F4`). Son las etiquetas actuales de la paleta; fuera de diffs, el comando `F4` conserva su accion de preview/edicion de Markdown.
+
 ## Atajos
 
 | Atajo | Accion |
@@ -141,7 +171,9 @@ Pulsa `Ctrl+P` para abrir la paleta de comandos, escribe para filtrar, usa las f
 | `Ctrl+B` | Mostrar u ocultar el Explorador |
 | `Ctrl+Alt+B` | Mostrar u ocultar Cambios Git |
 | `Ctrl+Shift+Enter` | Contraer todas las carpetas del panel activo |
-| `F5` | Actualizar el panel activo; en Cambios ejecuta fetch y relee el estado local |
+| `F5` | Actualizar el panel activo; en Git ejecuta fetch, relee el estado local y refresca la vista historica cuando corresponde |
+| `F8` | Con foco en Git, abrir el historial completo paginado de la rama actual en el panel derecho |
+| `F9` | Con foco en Git, listar ramas locales y remotas conocidas en el panel derecho |
 | `F12` | Abrir el registro de errores de la sesion |
 | `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
@@ -158,10 +190,10 @@ Pulsa `Ctrl+P` para abrir la paleta de comandos, escribe para filtrar, usa las f
 | `Ctrl+Shift+Z` | Rehacer el ultimo cambio |
 | `Alt+Shift+F` | Formatear el documento actual |
 | `Ctrl+L` | Alternar ajuste de linea |
-| `F4` | Alternar preview y edicion de Markdown |
+| `F4` | En un diff, abrir el archivo actual del proyecto sin cerrar el diff; fuera de diffs, alternar preview y edicion de Markdown |
 | `Ctrl+Q` | Salir |
 | `Tab` | Alternar Explorador, Editor y Cambios |
-| `Esc` | Cerrar una busqueda o dialogo |
+| `Esc` | Cerrar una busqueda o dialogo; en historial Git, retroceder un nivel hacia cambios locales sin cerrar diffs |
 
 ## Busqueda y conteo
 
@@ -176,11 +208,16 @@ Pulsa `Ctrl+P` para abrir la paleta de comandos, escribe para filtrar, usa las f
 
 - Git es opcional. `Ctrl+Alt+B` muestra el panel **CAMBIOS** cuando el proyecto es un repositorio Git. Los archivos preparados se separan en **STAGED** y el resto en **CAMBIOS**; usa flechas para seleccionar entradas y `Enter` para expandir o contraer carpetas y abrir diffs.
 - El encabezado muestra la rama y su estado remoto: `actualizado`, `↑N` pendiente de push o `↓N` pendiente de pull. Cada cambio se numera y muestra sus lineas anadidas en verde y eliminadas en rojo. Un mismo archivo puede aparecer una vez en cada grupo; los binarios o estadisticas no disponibles se indican con `?`.
-- `+` suma el archivo o todo el contenido de una carpeta a **STAGED**. `-` quita archivos de **STAGED** o descarta los cambios de **CAMBIOS** tras confirmar.
-- Baja con `↓` desde el ultimo cambio para escribir el mensaje de commit; `Enter` crea el commit. `F6` ejecuta pull y `F7` ejecuta push.
-- Con el panel **CAMBIOS** activo, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales y sus estadisticas aunque el fetch falle.
+- En la vista local de Cambios, `+` suma el archivo o todo el contenido de una carpeta a **STAGED**. `-` quita archivos de **STAGED** o descarta los cambios de **CAMBIOS** tras confirmar.
+- En la vista local de Cambios, baja desde el ultimo cambio para escribir el mensaje de commit; `Enter` crea el commit. `F6` ejecuta pull y `F7` ejecuta push. Las mutaciones Git (stage, unstage, descarte, commit, pull y push) se bloquean al navegar historial o ramas.
+- Con foco en Git, `F5` ejecuta `git fetch` y vuelve a comprobar los cambios locales y sus estadisticas aunque el fetch falle. Tambien refresca el historial o la lista de ramas cuando corresponde, sin reemplazarlos por cambios locales. Configura `git.fetchOnRefresh` en `false` para omitir fetch manteniendo las lecturas locales.
 - OEC muestra el estado remoto de la rama disponible localmente. La paleta incluye **Actualizar referencias remotas de Git** para ejecutar `git fetch --quiet` manualmente.
 - Los directorios sin seguimiento se expanden en archivos individuales. Abrir una entrada crea una pestaña `Delta` con el diff preparado o no preparado correspondiente, por lo que ambos pueden convivir para una misma ruta. Cierra una pestaña diff con `Ctrl+W`. Los diffs son de solo lectura, alinean las líneas modificadas, resaltan fragmentos cambiados, sincronizan el scroll y muestran marcadores laterales. `layout.diffOrientation` acepta `auto`, `horizontal` o `vertical`; en `auto`, `layout.diffStackBelow` indica el ancho del terminal a partir del cual las dos versiones se apilan verticalmente.
+
+- Con foco en Git, `F8` abre el historial completo de la rama actual en el panel derecho. Los commits se cargan por paginas al navegar, sin limite total. `F9` lista las ramas locales y remotas conocidas; las remotas son referencias disponibles localmente, no una lista consultada en vivo al servidor.
+- En el panel derecho, `Enter` sobre una rama abre sus commits sin checkout, sobre un commit abre sus archivos modificados y sobre un archivo abre un diff historico de solo lectura en una pestana, manteniendo el panel derecho abierto.
+- Con foco en Git, `Esc` vuelve de archivos del commit a historial, luego a ramas si el historial se abrio desde esa lista y finalmente a cambios locales. Las pestanas diff abiertas se conservan durante toda la navegacion.
+- En cualquier diff local, staged o historico, `F4` abre el archivo actual del proyecto sin cerrar el diff. No abre ni restaura la version historica. Si el archivo ya no existe, OEC muestra un aviso y no lo recrea. Fuera de diffs, `F4` sigue alternando preview/edicion de Markdown; el manual integrado permanece de solo lectura.
 
 ## Limites de seguridad
 
