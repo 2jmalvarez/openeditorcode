@@ -16,6 +16,23 @@ type Props = {
   vimEnabled: () => boolean
 }
 
+export function duplicateCurrentLine(text: string, row: number, direction: "above" | "below") {
+  const safeRow = Math.max(0, Math.min(row, text.split("\n").length - 1))
+  let start = 0
+  for (let index = 0; index < safeRow; index++) start = text.indexOf("\n", start) + 1
+  const lineEnd = text.indexOf("\n", start)
+  const contentEnd = lineEnd === -1 ? text.length : lineEnd - (text[lineEnd - 1] === "\r" ? 1 : 0)
+  const line = text.slice(start, contentEnd)
+  const newline = text.includes("\r\n") ? "\r\n" : "\n"
+
+  if (direction === "above") {
+    return { text: `${text.slice(0, start)}${line}${newline}${text.slice(start)}`, row: safeRow }
+  }
+  if (lineEnd === -1) return { text: `${text}${newline}${line}`, row: safeRow + 1 }
+  const afterLine = lineEnd + 1
+  return { text: `${text.slice(0, afterLine)}${line}${newline}${text.slice(afterLine)}`, row: safeRow + 1 }
+}
+
 export function useEditor(props: Props) {
   const [content, setContent] = createSignal("")
   const [wrapMode, setWrapMode] = createSignal<"none" | "word">(props.wrapMode ?? "none")
@@ -110,6 +127,20 @@ export function useEditor(props: Props) {
       metrics.scheduleHighlight(props.filePath(), renderable.plainText)
       props.setStatus("Cambio rehecho.")
     }
+  }
+
+  function duplicateLine(direction: "above" | "below") {
+    if (props.active() !== "editor" || !props.filePath() || !renderable) return
+    const position = renderable.logicalCursor
+    if (!position) return
+    const duplicated = duplicateCurrentLine(renderable.plainText, position.row, direction)
+    renderable.replaceText(duplicated.text)
+    renderable.setCursor(duplicated.row, position.col)
+    setContent(renderable.plainText)
+    metrics.scheduleHighlight(props.filePath(), renderable.plainText, 0)
+    metrics.schedule()
+    updateCursor()
+    props.setStatus(`Línea duplicada ${direction === "above" ? "arriba" : "abajo"}.`)
   }
 
   function replaceCurrentText(text: string): boolean {
@@ -229,5 +260,5 @@ export function useEditor(props: Props) {
     else renderable?.focus()
   })
 
-  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, vimMode, metrics, setEditor, onContentChange, onCursorChange, undo, redo, replaceCurrentText, handleVimKey, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
+  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, vimMode, metrics, setEditor, onContentChange, onCursorChange, undo, redo, duplicateLine, replaceCurrentText, handleVimKey, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
 }

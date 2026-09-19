@@ -23,6 +23,7 @@ When launched with no open documents, OEC shows the Explorer and, with at least 
 - Create files in the selected folder without overwriting existing files.
 - Multiple open tabs, circular tab switching, clickable close buttons, and `Delta` Git diff tabs.
 - Multi-line editor with line numbers, basic code highlighting, line wrapping, undo/redo, and preserved LF/CRLF line endings.
+- Duplicate the current line above with `Alt+Shift+Down` or below with `Alt+Shift+Up`.
 - Built-in formatting with `Alt+Shift+F`, Prettier for common web formats, optional format on save, and configurable external formatters.
 - Read-only Markdown preview by default, with `F4` to switch between preview and editing; the built-in manual is always read-only.
 - PNG, JPEG, WebP, and GIF previews using Kitty or Sixel when available, with terminal blocks as a fallback.
@@ -188,6 +189,7 @@ Additional Git commands are **Git: ver historial de commits** (view commit histo
 | `Ctrl+V` | Paste from the system clipboard |
 | `Ctrl+Z` | Undo the last change |
 | `Ctrl+Shift+Z` | Redo the last change |
+| `Alt+Shift+Down` / `Alt+Shift+Up` | Duplicate the current line above / below |
 | `Alt+Shift+F` | Format the current document |
 | `Ctrl+L` | Toggle line wrapping |
 | `F4` | In a diff, open the current project file without closing the diff; otherwise toggle Markdown preview and editing |

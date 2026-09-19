@@ -21,6 +21,7 @@ type Props = {
   save: () => Promise<boolean>
   undo: () => void
   redo: () => void
+  duplicateLine: (direction: "above" | "below") => void
   openPalette: () => void
   openLogs: () => void
   openNewFile: () => void
@@ -186,6 +187,8 @@ export function useKeyboardShortcuts(props: Props) {
     if (matches("file.save", "ctrl+s")) return consume(key, () => void props.save())
     if (props.active() === "editor" && matches("editor.redo", "ctrl+shift+z")) return consume(key, props.redo)
     if (props.active() === "editor" && matches("editor.undo", "ctrl+z")) return consume(key, props.undo)
+    if (props.active() === "editor" && matches("editor.duplicateLineAbove", "alt+shift+down")) return consume(key, () => props.duplicateLine("above"))
+    if (props.active() === "editor" && matches("editor.duplicateLineBelow", "alt+shift+up")) return consume(key, () => props.duplicateLine("below"))
     if (matches("palette.open", "ctrl+p")) return consume(key, props.openPalette)
     if (matches("file.new", "ctrl+n")) return consume(key, props.openNewFile)
     if (matches("search.project", "ctrl+alt+f")) return consume(key, props.openProjectSearch)

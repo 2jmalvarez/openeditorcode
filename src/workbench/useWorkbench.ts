@@ -312,6 +312,8 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: t("command.wrap"), shortcut: "Ctrl+L", run: toggleWrap },
     { title: t("command.undo"), shortcut: "Ctrl+Z", run: editor.undo },
     { title: t("command.redo"), shortcut: "Ctrl+Shift+Z", run: editor.redo },
+    { title: "Duplicar línea arriba", shortcut: bindingLabel(config().keyboard.bindings, "editor.duplicateLineAbove", "Alt+Shift+Down"), run: () => editor.duplicateLine("above") },
+    { title: "Duplicar línea abajo", shortcut: bindingLabel(config().keyboard.bindings, "editor.duplicateLineBelow", "Alt+Shift+Up"), run: () => editor.duplicateLine("below") },
     { title: "Formatear documento", shortcut: bindingLabel(config().keyboard.bindings, "editor.formatDocument", "Alt+Shift+F"), run: () => void formatActiveDocument() },
     { title: t("command.countLines"), shortcut: t("command.palette"), run: () => void search.showProjectLineCount() },
     { title: `Configuración: ajuste de línea ${editor.wrapMode() === "word" ? "activado" : "desactivado"}`, shortcut: "Ctrl+Alt+W", run: toggleWrap },
@@ -513,7 +515,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
 
   useKeyboardShortcuts({
     active, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
-    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptGitRevert, acceptExternalChange, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo,
+    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptGitRevert, acceptExternalChange, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo, duplicateLine: editor.duplicateLine,
     openPalette: () => openOverlay("command-palette"), openLogs, openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: openContextSearch, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
     focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, togglePreview: documents.togglePreview, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,

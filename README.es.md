@@ -23,6 +23,7 @@ Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al m
 - Creacion de archivos en la carpeta seleccionada, sin sobrescribir archivos existentes.
 - Varias pestanas abiertas, cambio circular, cierre clicable y pestanas de diff Git `Delta`.
 - Editor multilinea con numeros de linea, resaltado basico para codigo, ajuste de linea, deshacer/rehacer y conservacion de finales LF/CRLF.
+- Duplicar la linea actual arriba con `Alt+Shift+Abajo` o abajo con `Alt+Shift+Arriba`.
 - Formateo integrado con `Alt+Shift+F`, Prettier para formatos web comunes, formateo al guardar opcional y formateadores externos configurables.
 - Preview Markdown de solo lectura por defecto, con `F4` para alternar preview y edicion; el manual interno nunca se puede editar.
 - Preview de PNG, JPEG, WebP y GIF en Kitty/Sixel cuando estan disponibles, con fallback de bloques de terminal.
@@ -188,6 +189,7 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Ctrl+V` | Pegar desde el portapapeles del sistema |
 | `Ctrl+Z` | Deshacer el ultimo cambio |
 | `Ctrl+Shift+Z` | Rehacer el ultimo cambio |
+| `Alt+Shift+Abajo` / `Alt+Shift+Arriba` | Duplicar la linea actual arriba / abajo |
 | `Alt+Shift+F` | Formatear el documento actual |
 | `Ctrl+L` | Alternar ajuste de linea |
 | `F4` | En un diff, abrir el archivo actual del proyecto sin cerrar el diff; fuera de diffs, alternar preview y edicion de Markdown |

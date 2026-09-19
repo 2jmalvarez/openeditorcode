@@ -42,7 +42,7 @@ El explorador se muestra inicialmente. Cambios se muestra también si el ancho d
 
 Los archivos abiertos se muestran en pestañas. `*` significa que el contenido difiere del último guardado. `Ctrl+S` guarda, `Ctrl+W` cierra y `Shift+Tab` selecciona la siguiente pestaña. Al cerrar, salir o actualizar con cambios sin guardar OEC pide guardar o descartar. Los diffs Git (`Delta`) son de solo lectura.
 
-El editor ofrece ajuste de línea (`Ctrl+L`), formateo (`Alt+Shift+F`), deshacer (`Ctrl+Z`), rehacer (`Ctrl+Shift+Z`), copia OSC 52 (`Ctrl+C`) y pegado (`Ctrl+V`). Resalta TS, TSX, JS, JSX, JSON, CSS, HTML, Markdown, Python, YAML y shell hasta 200.000 caracteres.
+El editor ofrece ajuste de línea (`Ctrl+L`), formateo (`Alt+Shift+F`), deshacer (`Ctrl+Z`), rehacer (`Ctrl+Shift+Z`), duplicar la línea arriba (`Alt+Shift+Down`) o abajo (`Alt+Shift+Up`), copia OSC 52 (`Ctrl+C`) y pegado (`Ctrl+V`). Resalta TS, TSX, JS, JSX, JSON, CSS, HTML, Markdown, Python, YAML y shell hasta 200.000 caracteres.
 
 ## Búsqueda y rutas ignoradas
 
@@ -119,6 +119,7 @@ Solo se editan archivos UTF-8 de hasta 2 MiB (2.097.152 bytes). Archivos con NUL
 | `F8` / `F9` | Con foco en Git, historial completo paginado / ramas locales y remotas conocidas |
 | `F12` | Abrir el registro de errores de la sesión |
 | `Ctrl+C`, `Ctrl+V`, `Ctrl+Z`, `Ctrl+Shift+Z` | Copiar, pegar, deshacer, rehacer |
+| `Alt+Shift+Down` / `Alt+Shift+Up` | Duplicar la línea arriba / abajo |
 | `Esc` | Cerrar busqueda o dialogo; con foco en historial Git, retroceder hacia cambios locales sin cerrar diffs |
 
 Los overlays tienen prioridad sobre los atajos globales. En confirmaciones use flechas y `Enter`; en resultados use flechas y `Enter`.
