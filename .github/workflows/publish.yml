@@ -119,7 +119,7 @@ jobs:
       - run: bun run pack:check
       - name: Verify Linux package executable mode
         run: |
-          archive="$(npm pack --pack-destination "$RUNNER_TEMP" --prefix packages/oec-linux-x64)"
+          archive="$(cd packages/oec-linux-x64 && npm pack --pack-destination "$RUNNER_TEMP")"
           tar -tvzf "$RUNNER_TEMP/$archive" | grep -Eq '^-rwxr-xr-x[[:space:]].*[[:space:]]package/bin/oec$'
       - run: npm publish --access public
         working-directory: packages/oec-win32-x64
