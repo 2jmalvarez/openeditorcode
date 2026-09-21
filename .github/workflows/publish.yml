@@ -110,7 +110,7 @@ jobs:
       - run: chmod +x packages/oec-linux-x64/bin/oec
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
       - uses: oven-sh/setup-bun@v2
         with:
@@ -123,12 +123,6 @@ jobs:
           tar -tvzf "$RUNNER_TEMP/$archive" | grep -Eq '^-rwxr-xr-x[[:space:]].*[[:space:]]package/bin/oec$'
       - run: npm publish --access public
         working-directory: packages/oec-win32-x64
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish --access public
         working-directory: packages/oec-linux-x64
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
