@@ -274,6 +274,27 @@ test("keeps CRLF files clean when opening and switching tabs", async () => {
   expect(documents.hasDirtyTabs()).toBe(false)
 })
 
+test("keeps open buffers and unsaved changes when a project path is renamed", async () => {
+  let text = ""
+  const root = "root"
+  const original = join(root, "draft", "notes.txt")
+  const renamed = join(root, "archive")
+  const documents = useDocuments({
+    root, content: () => text, getText: () => text, setText: (value) => { text = value }, clearEditor: () => { text = "" },
+    blurEditor: () => undefined, focusEditor: () => undefined, focusExplorer: () => undefined, setStatus: () => undefined,
+    readFile: async () => "saved",
+  })
+
+  await documents.openFile(original)
+  text = "unsaved"
+  documents.syncContent(text)
+  documents.renameTabsAffectedBy(join(root, "draft"), renamed, true)
+
+  expect(documents.filePath()).toBe(join(root, "archive", "notes.txt"))
+  expect(documents.tabs()[0]).toMatchObject({ path: join(root, "archive", "notes.txt"), content: "unsaved" })
+  expect(documents.dirty()).toBe(true)
+})
+
 test("preserves CRLF when saving edits made through the normalized textarea", async () => {
   let content = ""
   let textareaText = ""

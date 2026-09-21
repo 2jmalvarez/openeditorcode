@@ -29,6 +29,11 @@ export function pathIsAffected(entryPath: string, filePath: string, directory: b
   return fromEntry === "" || (!fromEntry.startsWith("..") && !fromEntry.startsWith("/") && !fromEntry.startsWith("\\"))
 }
 
+export function renamedPath(entryPath: string, nextEntryPath: string, filePath: string, directory: boolean): string {
+  if (!pathIsAffected(entryPath, filePath, directory)) return filePath
+  return directory ? join(nextEntryPath, relative(entryPath, filePath)) : nextEntryPath
+}
+
 function normalizeLineEndings(content: string): string {
   return content.replace(/\r\n?/g, "\n")
 }
@@ -365,6 +370,16 @@ export function useDocuments(props: Props) {
     loadTab(nextActive, nextTabs)
   }
 
+  function renameTabsAffectedBy(path: string, nextPath: string, directory: boolean) {
+    syncActiveTab()
+    setTabs((current) => current.map((tab) => {
+      if ((tab.kind !== "file" && tab.kind !== "image") || tab.kind === "file" && tab.source !== "project") return tab
+      return { ...tab, path: renamedPath(path, nextPath, tab.path, directory) }
+    }))
+    const currentPath = filePath()
+    if (currentPath) setFilePath(renamedPath(path, nextPath, currentPath, directory))
+  }
+
   async function createFile(directory: string, name: string, refreshExplorer: () => Promise<void>) {
     if (!name) return props.setStatus("Escribe un nombre de archivo.")
     if (name.includes("/") || name.includes("\\")) return props.setStatus("El nombre debe pertenecer a la carpeta seleccionada.")
@@ -391,5 +406,5 @@ export function useDocuments(props: Props) {
     loadTab(index)
   }
 
-  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, openActiveDiffFile, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, openActiveDiffFile, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, renameTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
 }

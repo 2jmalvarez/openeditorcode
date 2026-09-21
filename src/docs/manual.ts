@@ -25,6 +25,8 @@ En un diff local, staged o histórico, F4 abre el archivo actual del proyecto si
 
 Ctrl+P incluye los comandos adicionales “Git: ver historial de commits” (F8), “Git: ver todas las ramas” (F9) y, con un diff activo, “Abrir archivo del proyecto” (F4), además de la actualización de referencias remotas.
 
+F10 abre la carpeta raíz en el explorador de archivos del sistema. Con foco en el explorador, F2 renombra el archivo o carpeta seleccionada y conserva las pestañas abiertas.
+
 ## Registro de errores
 Cuando falla una operación, el pie indica F12. F12 abre una pestaña de solo lectura con los detalles técnicos del registro de esta sesión.
 
@@ -61,6 +63,8 @@ F5 in Git fetches and rereads local status even if fetch fails; it also refreshe
 In a local, staged, or historical diff, F4 opens the current project file without closing the diff. It does not open or restore the historical version. If the file does not exist, a notice is shown and the file is not recreated. Outside diffs, F4 still toggles Markdown preview and editing; the manual remains read-only.
 
 Ctrl+P includes the additional commands “Git: ver historial de commits” (view commit history, F8), “Git: ver todas las ramas” (view all known branches, F9), and, with a diff active, “Abrir archivo del proyecto” (open the project file, F4), alongside refreshing remote references. These are the current palette labels.
+
+F10 opens the project root in the system file manager. With Explorer focused, F2 renames the selected file or folder while preserving open tabs.
 
 ## Error log
 When an operation fails, the footer points to F12. F12 opens a read-only tab with the technical details recorded during this session.

@@ -153,3 +153,26 @@ export async function removeProjectEntry(root: string, targetPath: string): Prom
   if (!info.isSymbolicLink()) await ensurePhysicallyInsideRoot(root, safePath)
   await rm(safePath, { recursive: true, force: false })
 }
+
+export async function renameProjectEntry(root: string, targetPath: string, name: string): Promise<string> {
+  if (!name || name === "." || name === ".." || name.includes("/") || name.includes("\\")) {
+    throw new FileAccessError("El nombre no es válido.")
+  }
+  const safePath = ensureInsideRoot(root, targetPath)
+  if (safePath === resolve(root)) throw new FileAccessError("No se puede renombrar la carpeta raíz del proyecto.")
+  await ensureParentPhysicallyInsideRoot(root, safePath)
+  const info = await lstat(safePath)
+  if (!info.isSymbolicLink()) await ensurePhysicallyInsideRoot(root, safePath)
+
+  const nextPath = ensureInsideRoot(root, resolve(dirname(safePath), name))
+  if (nextPath === safePath) return safePath
+  await ensureParentPhysicallyInsideRoot(root, nextPath)
+  try {
+    await lstat(nextPath)
+    throw new FileAccessError("Ya existe un elemento con ese nombre.")
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+  }
+  await rename(safePath, nextPath)
+  return nextPath
+}

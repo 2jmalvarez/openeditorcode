@@ -24,12 +24,15 @@ type Props = {
   newFileName: Accessor<string>
   setNewFileName: (value: string) => void
   newFileDirectory: Accessor<string>
+  renameName: Accessor<string>
+  setRenameName: (value: string) => void
   searchIndex: Accessor<number>
   paletteResults: Accessor<Command[]>
   projectResults: Accessor<ProjectSearchResult[]>
   projectSearching: Accessor<boolean>
   confirmChoice: Accessor<number>
   pendingDeletion: Accessor<TreeItem | undefined>
+  pendingRename: Accessor<TreeItem | undefined>
   pendingAction: Accessor<PendingAction | undefined>
   pendingGitRevert: Accessor<{ path: string }[]>
   pendingExternalChange: Accessor<string | undefined>
@@ -68,10 +71,10 @@ export function Overlays(props: Props) {
   onCleanup(() => { if (pendingScroll) renderer.off("frame", pendingScroll) })
 
   return <>
-    <Show when={props.overlay() === "command-palette" || props.overlay() === "project-search" || props.overlay() === "search-exclusions" || props.overlay() === "new-file"} fallback={<box />}>
+    <Show when={props.overlay() === "command-palette" || props.overlay() === "project-search" || props.overlay() === "search-exclusions" || props.overlay() === "new-file" || props.overlay() === "rename"} fallback={<box />}>
       <box style={{ position: "absolute", top: "20%", left: "15%", width: "70%", height: "55%", padding: 1, flexDirection: "column", backgroundColor: "#1b252e", border: true, borderColor: "#70d6a7" }}>
-        <text fg="#70d6a7">{props.overlay() === "command-palette" ? t("overlay.palette") : props.overlay() === "project-search" ? t("overlay.projectSearch") : props.overlay() === "search-exclusions" ? t("overlay.exclusions") : t("overlay.newFile")}</text>
-        <Show when={props.overlay() !== "new-file"} fallback={<box><text style={{ marginTop: 1 }} fg="#8ca0ae">{t("overlay.folder", { path: displayPath(props.root, props.newFileDirectory()) })}</text><input focused value={props.newFileName()} onInput={props.setNewFileName} placeholder={t("overlay.fileName")} style={{ marginTop: 1, backgroundColor: "#101419" }} /></box>}>
+        <text fg="#70d6a7">{props.overlay() === "command-palette" ? t("overlay.palette") : props.overlay() === "project-search" ? t("overlay.projectSearch") : props.overlay() === "search-exclusions" ? t("overlay.exclusions") : props.overlay() === "rename" ? t("overlay.rename") : t("overlay.newFile")}</text>
+        <Show when={props.overlay() !== "new-file" && props.overlay() !== "rename"} fallback={<box><text style={{ marginTop: 1 }} fg="#8ca0ae">{props.overlay() === "rename" ? props.pendingRename()?.directory ? "Carpeta" : "Archivo" : t("overlay.folder", { path: displayPath(props.root, props.newFileDirectory()) })}</text><input focused value={props.overlay() === "rename" ? props.renameName() : props.newFileName()} onInput={props.overlay() === "rename" ? props.setRenameName : props.setNewFileName} placeholder={t("overlay.fileName")} style={{ marginTop: 1, backgroundColor: "#101419" }} /></box>}>
           <input focused value={props.overlay() === "search-exclusions" ? props.exclusionQuery() : props.query()} onInput={props.overlay() === "search-exclusions" ? props.setExclusionQuery : props.setQuery} placeholder={props.overlay() === "search-exclusions" ? t("overlay.pattern") : t("app.typeToSearch")} style={{ marginTop: 1, backgroundColor: "#101419" }} />
         </Show>
         <Show when={props.overlay() === "command-palette"} fallback={<box />}>
@@ -83,7 +86,7 @@ export function Overlays(props: Props) {
         <Show when={props.overlay() === "search-exclusions"} fallback={<box />}>
           <scrollbox scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><For each={props.exclusionSuggestions()}>{(item, index) => <box style={{ flexDirection: "row", backgroundColor: index() === props.exclusionIndex() ? "#28404a" : undefined }}><text fg={item.excluded ? "#c98b8b" : "#70d6a7"}>{item.excluded ? "●" : "○"} {item.pattern}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{item.source === "gitignore" ? ".gitignore" : item.source === "session" ? t("overlay.session") : t("overlay.project")}</text></box>}</For></scrollbox>
         </Show>
-        <text fg="#8ca0ae">{props.overlay() === "command-palette" ? t("overlay.paletteHelp") : props.overlay() === "project-search" ? t("overlay.projectHelp") : props.overlay() === "search-exclusions" ? t("overlay.exclusionHelp") : t("overlay.newFileHelp")}</text>
+        <text fg="#8ca0ae">{props.overlay() === "command-palette" ? t("overlay.paletteHelp") : props.overlay() === "project-search" ? t("overlay.projectHelp") : props.overlay() === "search-exclusions" ? t("overlay.exclusionHelp") : props.overlay() === "rename" ? t("overlay.renameHelp") : t("overlay.newFileHelp")}</text>
       </box>
     </Show>
     <Show when={props.overlay() === "confirm"} fallback={<box />}>

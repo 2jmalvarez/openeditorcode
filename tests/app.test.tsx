@@ -424,8 +424,14 @@ test("opens session search exclusions from the explorer search", async () => {
 test("opens another file after closing the current tab without a stale save dialog", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(60)
-    await setup.renderOnce()
+    let initialFrame = ""
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await Bun.sleep(40)
+      await setup.renderOnce()
+      initialFrame = setup.captureCharFrame()
+      if (initialFrame.includes("hello.txt")) break
+    }
+    expect(initialFrame).toContain("hello.txt")
     setup.mockInput.pressEnter()
     await Bun.sleep(60)
     await setup.renderOnce()

@@ -10,7 +10,7 @@ import { useEditor } from "../editor/useEditor"
 import { useExplorer } from "../explorer/useExplorer"
 import { useGit } from "../git/useGit"
 import { displayPath } from "../explorer/tree"
-import { removeProjectEntry } from "../documents/files"
+import { removeProjectEntry, renameProjectEntry } from "../documents/files"
 import { useSearch } from "../search/useSearch"
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts"
 import type { FocusTarget } from "./types"
@@ -28,6 +28,7 @@ import { configureLanguage, language, t } from "../localization"
 import { createSyntaxTheme } from "../editor/syntax"
 import { formatDocument } from "../editor/format"
 import { bindingLabel } from "./keybindings"
+import { openProjectFolder } from "./openProjectFolder"
 
 export function useWorkbench(root: string, initialConfig: OecConfig, configPaths: ConfigPaths, recovery?: ConfigRecovery, initialGlobalConfig = initialConfig, initialProjectConfig?: ProjectConfig, initialProjectConfigPath = projectConfigPath(root)) {
   const renderer = useRenderer()
@@ -203,6 +204,43 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     if (item) overlays.requestDeletion(item)
   }
 
+  function requestRename() {
+    const item = explorer.selectedItem()
+    if (item) overlays.requestRename(item)
+  }
+
+  async function acceptRename() {
+    const item = overlays.pendingRename()
+    const name = overlays.renameName().trim()
+    if (!item) return overlays.close()
+    if (name === item.name) return overlays.close()
+    await activity.run("Renombrando elemento...", async () => {
+      try {
+        const nextPath = await renameProjectEntry(root, item.path, name)
+        documents.renameTabsAffectedBy(item.path, nextPath, item.directory)
+        await explorer.renameItem(item.path, nextPath, item.directory)
+        search.invalidateIndex()
+        overlays.close()
+        setStatus(`Renombrado: ${name}`)
+      } catch (error) {
+        const summary = error instanceof Error ? error.message : "No se pudo renombrar el elemento."
+        setStatus(summary)
+        logs.report({ source: "Archivos", operation: "Renombrar elemento", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
+      }
+    })
+  }
+
+  function revealProjectFolder() {
+    try {
+      openProjectFolder(root)
+      setStatus("Carpeta del proyecto abierta.")
+    } catch (error) {
+      const summary = error instanceof Error ? error.message : "No se pudo abrir la carpeta del proyecto."
+      setStatus(summary)
+      logs.report({ source: "Sistema", operation: "Abrir carpeta del proyecto", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
+    }
+  }
+
   async function stageGitItem() {
     if (await git.stageSelected()) setStatus("Cambios preparados.")
   }
@@ -295,6 +333,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: "Git: ver todas las ramas", shortcut: "F9", run: () => void showGitBranches() },
     { title: t("command.refresh"), shortcut: "F5", run: () => void refreshActivePanel() },
     { title: t("command.create"), shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
+    ...(active() === "explorer" && explorer.selectedItem() ? [{ title: t("command.rename"), shortcut: bindingLabel(config().keyboard.bindings, "explorer.rename", "F2"), run: requestRename }] : []),
     { title: active() === "explorer" ? t("command.searchFile") : t("command.searchText"), shortcut: "Ctrl+F", run: openContextSearch },
     { title: t("command.searchProject"), shortcut: "Ctrl+Alt+F", run: () => openOverlay("project-search") },
     { title: t("command.exclusions"), shortcut: "Ctrl+E", run: openSearchExclusions },
@@ -316,6 +355,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: "Duplicar línea abajo", shortcut: bindingLabel(config().keyboard.bindings, "editor.duplicateLineBelow", "Alt+Shift+Up"), run: () => editor.duplicateLine("below") },
     { title: "Formatear documento", shortcut: bindingLabel(config().keyboard.bindings, "editor.formatDocument", "Alt+Shift+F"), run: () => void formatActiveDocument() },
     { title: t("command.countLines"), shortcut: t("command.palette"), run: () => void search.showProjectLineCount() },
+    { title: t("command.openProjectFolder"), shortcut: bindingLabel(config().keyboard.bindings, "app.openProjectFolder", "F10"), run: revealProjectFolder },
     { title: `Configuración: ajuste de línea ${editor.wrapMode() === "word" ? "activado" : "desactivado"}`, shortcut: "Ctrl+Alt+W", run: toggleWrap },
     ...(updates.canUpdate() ? [{ title: `Actualizar OEC a v${updates.latestVersion()}`, shortcut: t("command.update"), run: requestUpdate }] : []),
   ]
@@ -515,12 +555,12 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
 
   useKeyboardShortcuts({
     active, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
-    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptGitRevert, acceptExternalChange, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo, duplicateLine: editor.duplicateLine,
+    closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptRename, acceptGitRevert, acceptExternalChange, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo, duplicateLine: editor.duplicateLine,
     openPalette: () => openOverlay("command-palette"), openLogs, openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: openContextSearch, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
     focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, togglePreview: documents.togglePreview, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
-    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.commitFocused()) return void commitGitChanges(); if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, gitCommitFocused: git.commitFocused,
+    moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, requestRename, openProjectFolder: revealProjectFolder, moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.commitFocused()) return void commitGitChanges(); if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, gitCommitFocused: git.commitFocused,
     openFileSearch: openContextSearch, fileSearchOpen: search.fileSearchOpen, closeFileSearch: search.closeFileSearch, moveFileSearchSelection: search.moveFileSelection, fileSearchResultsLength: () => search.fileResults().length, openFileSearchResult,
     openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion, bindings: () => config().keyboard.bindings, formatDocument: formatActiveDocument, handleVimKey: editor.handleVimKey, settingsIndex: overlays.settingsIndex, setSettingsIndex: overlays.setSettingsIndex, settingsScope: overlays.settingsScope, setSettingsScope: overlays.setSettingsScope, toggleSetting, openSettingsJson: () => { const scope = overlays.settingsScope(); overlays.close(); if (scope === "global") void openOecConfig(); else void openProjectConfig() },
     activeDiff: () => Boolean(documents.activeDiff()), openDiffFile: documents.openActiveDiffFile,

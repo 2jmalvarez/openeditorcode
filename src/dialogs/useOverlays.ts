@@ -7,9 +7,11 @@ export function useOverlays() {
   const [overlay, setOverlay] = createSignal<Overlay>()
   const [newFileName, setNewFileName] = createSignal("")
   const [newFileDirectory, setNewFileDirectory] = createSignal("")
+  const [renameName, setRenameName] = createSignal("")
   const [confirmChoice, setConfirmChoice] = createSignal(2)
   const [pendingAction, setPendingAction] = createSignal<PendingAction>()
   const [pendingDeletion, setPendingDeletion] = createSignal<TreeItem>()
+  const [pendingRename, setPendingRename] = createSignal<TreeItem>()
   const [pendingGitRevert, setPendingGitRevert] = createSignal<GitFile[]>([])
   const [pendingExternalChange, setPendingExternalChange] = createSignal<string>()
   const [settingsIndex, setSettingsIndex] = createSignal(0)
@@ -21,6 +23,7 @@ export function useOverlays() {
       setNewFileName("")
       setNewFileDirectory(directory ?? "")
     }
+    if (next === "rename") setRenameName("")
     if (next === "settings") setSettingsIndex(0)
   }
 
@@ -33,6 +36,12 @@ export function useOverlays() {
   function requestDeletion(item: TreeItem) {
     setPendingDeletion(item)
     setOverlay("delete-confirm")
+  }
+
+  function requestRename(item: TreeItem) {
+    setPendingRename(item)
+    setRenameName(item.name)
+    setOverlay("rename")
   }
 
   function requestGitRevert(files: GitFile[]) {
@@ -50,12 +59,14 @@ export function useOverlays() {
     setOverlay(undefined)
     setNewFileName("")
     setNewFileDirectory("")
+    setRenameName("")
     setPendingAction(undefined)
     setPendingDeletion(undefined)
+    setPendingRename(undefined)
     setPendingGitRevert([])
     setPendingExternalChange(undefined)
     setConfirmChoice(2)
   }
 
-  return { overlay, newFileName, setNewFileName, newFileDirectory, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, pendingGitRevert, pendingExternalChange, settingsIndex, setSettingsIndex, settingsScope, setSettingsScope, open, requestConfirm, requestDeletion, requestGitRevert, requestExternalChange, close }
+  return { overlay, newFileName, setNewFileName, newFileDirectory, renameName, setRenameName, pendingRename, confirmChoice, setConfirmChoice, pendingAction, pendingDeletion, pendingGitRevert, pendingExternalChange, settingsIndex, setSettingsIndex, settingsScope, setSettingsScope, open, requestConfirm, requestDeletion, requestRename, requestGitRevert, requestExternalChange, close }
 }

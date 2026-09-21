@@ -173,11 +173,13 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Ctrl+Alt+B` | Mostrar u ocultar Cambios Git |
 | `Ctrl+Shift+Enter` | Contraer todas las carpetas del panel activo |
 | `F5` | Actualizar el panel activo; en Git ejecuta fetch, relee el estado local y refresca la vista historica cuando corresponde |
+| `F10` | Abrir la carpeta del proyecto en el explorador de archivos del sistema |
 | `F8` | Con foco en Git, abrir el historial completo paginado de la rama actual en el panel derecho |
 | `F9` | Con foco en Git, listar ramas locales y remotas conocidas en el panel derecho |
 | `F12` | Abrir el registro de errores de la sesion |
 | `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
+| `F2` | Renombrar el archivo o carpeta seleccionado en el Explorador |
 | `Shift+Enter` | Alternar la carpeta seleccionada en Explorador o Cambios |
 | `Ctrl+F` | Buscar archivos por nombre en el Explorador o texto en el Editor |
 | `Ctrl+Alt+F` | Buscar texto en todos los archivos del proyecto |

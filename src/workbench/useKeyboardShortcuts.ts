@@ -14,6 +14,7 @@ type Props = {
   cancelProjectSearch: () => void
   acceptConfirm: () => Promise<void>
   acceptDeletion: () => Promise<void>
+  acceptRename: () => Promise<void>
   acceptGitRevert: () => Promise<void>
   acceptExternalChange: () => Promise<void>
   quit: () => void
@@ -56,6 +57,8 @@ type Props = {
   activateExplorerItem: () => Promise<void>
   collapseExplorerItem: () => Promise<void>
   requestDeletion: () => void
+  requestRename: () => void
+  openProjectFolder: () => void
   moveGitSelection: (direction: number) => void
   activateGitItem: () => Promise<void>
   collapseGitItem: () => void
@@ -164,6 +167,11 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) return consume(key, () => void props.createNewFile())
       return
     }
+    if (props.overlay() === "rename") {
+      if (isEscape) return consume(key, props.closeOverlay)
+      if (isEnter) return consume(key, () => void props.acceptRename())
+      return
+    }
     if (props.overlay() === "project-search") {
       if (ctrl && keyName === "e") return consume(key, props.openSearchExclusions)
       if (isEscape) return consume(key, props.cancelProjectSearch)
@@ -183,6 +191,7 @@ export function useKeyboardShortcuts(props: Props) {
     }
     if (matches("app.quit", "ctrl+q")) return consume(key, props.quit)
     if (matches("app.logs", "f12")) return consume(key, props.openLogs)
+    if (matches("app.openProjectFolder", "f10")) return consume(key, props.openProjectFolder)
     if (matches("panel.refresh", "f5")) return consume(key, () => void props.refreshActivePanel())
     if (matches("file.save", "ctrl+s")) return consume(key, () => void props.save())
     if (props.active() === "editor" && matches("editor.redo", "ctrl+shift+z")) return consume(key, props.redo)
@@ -242,5 +251,6 @@ export function useKeyboardShortcuts(props: Props) {
     if (isEnter) return consume(key, () => void props.activateExplorerItem())
     if (key.name === "left") return consume(key, () => void props.collapseExplorerItem())
     if (keyName === "delete") return consume(key, props.requestDeletion)
+    if (matches("explorer.rename", "f2")) return consume(key, props.requestRename)
   })
 }

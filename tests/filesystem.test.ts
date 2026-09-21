@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { createTextFile, ensureInsideRoot, ExternalFileChangedError, FileAccessError, MAX_FILE_BYTES, readTextFile, removeProjectEntry, writeTextFile } from "../src/documents/files"
+import { createTextFile, ensureInsideRoot, ExternalFileChangedError, FileAccessError, MAX_FILE_BYTES, readTextFile, removeProjectEntry, renameProjectEntry, writeTextFile } from "../src/documents/files"
 import { fuzzyScore, filterItems } from "../src/search/file-index"
 import { countProjectLines, searchProjectText } from "../src/search/project-search"
 import { createTree } from "../src/explorer/tree"
-import { pathIsAffected } from "../src/documents/useDocuments"
+import { pathIsAffected, renamedPath } from "../src/documents/useDocuments"
+import { projectFolderCommand } from "../src/workbench/openProjectFolder"
 
 let root = ""
 
@@ -23,6 +24,12 @@ describe("file access", () => {
     expect(pathIsAffected(join(root, "notes.txt"), join(root, "notes.txt"), false)).toBe(true)
     expect(pathIsAffected(join(root, "folder"), join(root, "folder", "notes.txt"), true)).toBe(true)
     expect(pathIsAffected(join(root, "folder"), join(root, "folder-two", "notes.txt"), true)).toBe(false)
+  })
+
+  test("remaps open file paths when a file or parent directory is renamed", () => {
+    expect(renamedPath(join(root, "notes.txt"), join(root, "ideas.txt"), join(root, "notes.txt"), false)).toBe(join(root, "ideas.txt"))
+    expect(renamedPath(join(root, "folder"), join(root, "archive"), join(root, "folder", "notes.txt"), true)).toBe(join(root, "archive", "notes.txt"))
+    expect(renamedPath(join(root, "folder"), join(root, "archive"), join(root, "folder-two", "notes.txt"), true)).toBe(join(root, "folder-two", "notes.txt"))
   })
 
   test("reads and atomically writes UTF-8 text inside the selected root", async () => {
@@ -99,6 +106,23 @@ describe("file access", () => {
     await expect(removeProjectEntry(root, root)).rejects.toThrow("raíz")
   })
 
+  test("renames files and folders inside the selected root without overwriting", async () => {
+    const folder = join(root, "draft")
+    const file = join(folder, "notes.txt")
+    await mkdir(folder)
+    await writeFile(file, "keep", "utf8")
+
+    const renamedFolder = await renameProjectEntry(root, folder, "archive")
+    const renamedFile = await renameProjectEntry(root, join(renamedFolder, "notes.txt"), "ideas.txt")
+
+    expect(renamedFolder).toBe(join(root, "archive"))
+    expect(await readTextFile(root, renamedFile)).toBe("keep")
+    await writeFile(join(renamedFolder, "exists.txt"), "existing", "utf8")
+    await expect(renameProjectEntry(root, renamedFile, "exists.txt")).rejects.toThrow("Ya existe")
+    await expect(renameProjectEntry(root, renamedFile, "../outside.txt")).rejects.toThrow("no es válido")
+    await expect(renameProjectEntry(root, root, "other")).rejects.toThrow("raíz")
+  })
+
   test("rejects link escapes while allowing links that resolve inside the root", async () => {
     const outside = await mkdtemp(join(tmpdir(), "oec-outside-"))
     const internalDirectory = join(root, "internal")
@@ -152,6 +176,12 @@ describe("file access", () => {
       await rm(outside, { recursive: true, force: true })
     }
   })
+})
+
+test("selects the platform file manager command", () => {
+  expect(projectFolderCommand("C:\\work folder", "win32")).toEqual(["explorer.exe", "C:\\work folder"])
+  expect(projectFolderCommand("/work folder", "linux")).toEqual(["xdg-open", "/work folder"])
+  expect(() => projectFolderCommand("/work", "darwin")).toThrow("no está disponible")
 })
 
 describe("fuzzy search", () => {

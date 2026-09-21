@@ -1,5 +1,5 @@
 import { createSignal, onMount } from "solid-js"
-import { dirname, relative } from "node:path"
+import { dirname, join, relative, sep } from "node:path"
 import { createTree, type TreeItem } from "./tree"
 
 type Props = {
@@ -37,6 +37,21 @@ export function useExplorer(props: Props) {
 
   async function refreshExplorer() {
     if (await refreshTree()) props.setStatus("Explorador actualizado.")
+  }
+
+  async function renameItem(path: string, nextPath: string, directory: boolean) {
+    if (directory) {
+      const nextExpanded = new Set<string>()
+      for (const expandedPath of expanded()) {
+        const fromRenamed = relative(path, expandedPath)
+        nextExpanded.add(fromRenamed === "" || fromRenamed !== ".." && !fromRenamed.startsWith(`..${sep}`) ? join(nextPath, fromRenamed) : expandedPath)
+      }
+      setExpanded(nextExpanded)
+    }
+    if (await refreshTree()) {
+      const nextIndex = tree().findIndex((item) => item.path === nextPath)
+      if (nextIndex >= 0) setSelected(nextIndex)
+    }
   }
 
   async function collapseAllFolders() {
@@ -92,5 +107,5 @@ export function useExplorer(props: Props) {
 
   onMount(() => void refreshTree())
 
-  return { tree, selected, setSelected, selectedItem, newFileDirectory, refreshTree, refreshExplorer, collapseAllFolders, collapseSelectedFolder, activateItem, activateAt, moveSelection }
+  return { tree, selected, setSelected, selectedItem, newFileDirectory, refreshTree, refreshExplorer, renameItem, collapseAllFolders, collapseSelectedFolder, activateItem, activateAt, moveSelection }
 }

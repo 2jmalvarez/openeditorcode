@@ -173,11 +173,13 @@ Additional Git commands are **Git: ver historial de commits** (view commit histo
 | `Ctrl+Alt+B` | Show or hide Git Changes |
 | `Ctrl+Shift+Enter` | Collapse all folders in the active pane |
 | `F5` | Refresh the active pane; in Git, fetch, reread local status, and refresh the historical view when applicable |
+| `F10` | Open the project folder in the system file manager |
 | `F8` | With Git focused, open the current branch's complete paginated history in the right pane |
 | `F9` | With Git focused, list known local and remote branches in the right pane |
 | `F12` | Open the session error log |
 | `Delete` | Delete the selected file or folder |
 | `Ctrl+N` | Create a file in the selected folder |
+| `F2` | Rename the selected file or folder in Explorer |
 | `Shift+Enter` | Toggle the selected folder in Explorer or Changes |
 | `Ctrl+F` | Search file names in Explorer or text in Editor |
 | `Ctrl+Alt+F` | Search text in all project files |
