@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { version } from "../package.json"
+import { restoreLinuxExecutable } from "../bin/postinstall.js"
 
 function installMessage(env) {
   return spawnSync("node", [fileURLToPath(new URL("../bin/postinstall.js", import.meta.url))], {
@@ -32,4 +33,22 @@ test("local installs do not print a global installation notice", () => {
     expect(result.stdout).toBe("")
     expect(result.stderr).toBe("")
   }
+})
+
+test("global Linux installation restores the platform binary execute permission", () => {
+  let executable
+  let mode
+  expect(restoreLinuxExecutable({
+    platform: "linux",
+    resolve: (request) => {
+      expect(request).toBe("@2jmalvarez/oec-linux-x64/bin/oec")
+      return "/tmp/oec"
+    },
+    chmod: (path, requestedMode) => {
+      executable = path
+      mode = requestedMode
+    },
+  })).toBe(true)
+  expect(executable).toBe("/tmp/oec")
+  expect(mode).toBe(0o755)
 })

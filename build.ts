@@ -19,7 +19,8 @@ const result = await Bun.build({
   format: "esm",
   plugins: [solidPlugin],
   minify: true,
-  bytecode: true,
+  // Bun 1.3.14 bytecode crashes in JavaScriptCore on some Linux systems.
+  bytecode: targetName !== "linux-x64",
   compile: {
     target: target.target,
     outfile: target.outfile,
