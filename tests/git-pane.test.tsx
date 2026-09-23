@@ -5,6 +5,7 @@ import { createSignal } from "solid-js"
 import { GitPane } from "../src/git/GitPane"
 import type { GitTreeItem } from "../src/git/tree"
 import type { GitMode } from "../src/git/useGit"
+import { t } from "../src/localization"
 
 test("GitPane renders history rows without file metadata and hides the commit input outside local mode", async () => {
   const [mode, setMode] = createSignal<GitMode>("local")
@@ -30,15 +31,15 @@ test("GitPane renders history rows without file metadata and hides the commit in
     const frame = setup.captureCharFrame()
     expect(frame).toContain("Historial: main")
     expect(frame).toContain("abc12345 initial")
-    expect(frame).toContain("Cargar mas commits")
-    expect(frame).toContain("Esc: volver")
+    expect(frame).toContain(t("git.loadMore"))
+    expect(frame).toContain(t("git.backHelp"))
     expect(frame).not.toContain("COMMIT_INPUT_VISIBLE")
     expect(frame).not.toContain("HIDDEN_TAIL")
     const lines = frame.split("\n")
     const commitLine = lines.findIndex((line) => line.includes("abc12345 initial"))
     expect(lines[commitLine + 1]).toContain("origin/feature/")
     expect(lines[commitLine + 2]).toContain("nested/file-")
-    expect(lines[commitLine + 3]).toContain("Cargar mas commits")
+    expect(lines[commitLine + 3]).toContain(t("git.loadMore"))
   } finally { setup.renderer.destroy() }
 })
 
@@ -56,7 +57,7 @@ test("GitPane preserves file number and changed lines beside a scrolling histori
     await setup.renderOnce()
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("12. M")
-    expect(setup.captureCharFrame()).toContain("2 archivos")
+    expect(setup.captureCharFrame()).toContain(t("overlay.files", { count: 2 }))
     expect(setup.captureCharFrame()).toContain("+123 -45")
     expect(setup.captureCharFrame()).toContain("+? -?")
     await Bun.sleep(1650)

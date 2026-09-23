@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import { useLogs } from "../src/logs/useLogs"
+import { t } from "../src/localization"
 
 test("keeps session errors until they are read and removes terminal control sequences", () => {
   const logs = useLogs()
@@ -7,7 +8,7 @@ test("keeps session errors until they are read and removes terminal control sequ
   logs.report({ source: "Archivos", operation: "Guardar archivo", summary: "Acceso denegado.", details: "EACCES" })
 
   expect(logs.unreadCount()).toBe(2)
-  expect(logs.notice()).toContain("2 errores")
+  expect(logs.notice()).toBe(t("log.manyUnread", { count: 2 }))
   expect(logs.entries()[0].details).toBe("remote rejected")
   logs.markRead()
   expect(logs.unreadCount()).toBe(0)
