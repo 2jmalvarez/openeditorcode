@@ -2,6 +2,7 @@ import { readdir, stat } from "node:fs/promises"
 import { join, relative } from "node:path"
 import { isIgnoredPath, readGitignore } from "./gitignore"
 import type { Ignore } from "ignore"
+import { t } from "../localization"
 
 export type TreeItem = {
   path: string
@@ -32,8 +33,24 @@ export async function listDirectory(root: string, directory: string, depth: numb
 
 export async function createTree(root: string, expanded: ReadonlySet<string>): Promise<TreeItem[]> {
   const rootInfo = await stat(root)
-  if (!rootInfo.isDirectory()) throw new Error("La ruta inicial no es una carpeta.")
+  if (!rootInfo.isDirectory()) throw new Error(t("explorer.invalidRoot"))
   return listDirectory(root, root, 0, expanded, await readGitignore(root))
+}
+
+export async function descendantDirectories(directory: string): Promise<Set<string>> {
+  const directories = new Set<string>([directory])
+  const pending = [directory]
+  while (pending.length) {
+    const current = pending.pop()!
+    const entries = await readdir(current, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.name === ".git" || !entry.isDirectory()) continue
+      const path = join(current, entry.name)
+      directories.add(path)
+      pending.push(path)
+    }
+  }
+  return directories
 }
 
 export function displayPath(root: string, itemPath: string): string {

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { buildFileIndex } from "../src/search/file-index"
 import { createGitignore } from "../src/explorer/gitignore"
+import { descendantDirectories } from "../src/explorer/tree"
 
 let root = ""
 
@@ -47,4 +48,11 @@ test("accepts session exclusion rules instead of the project gitignore", async (
   expect(defaultIndex.items.some((item) => item.path === join(root, "ignored", "inside.ts"))).toBe(false)
   expect(sessionIndex.items.some((item) => item.path === join(root, "ignored", "inside.ts"))).toBe(true)
   expect(sessionIndex.items.some((item) => item.path === join(root, "visible", "inside.ts"))).toBe(false)
+})
+
+test("finds all descendant directories while skipping Git metadata", async () => {
+  await mkdir(join(root, "src", "nested"), { recursive: true })
+  await mkdir(join(root, ".git", "objects"), { recursive: true })
+
+  expect(await descendantDirectories(root)).toEqual(new Set([root, join(root, "src"), join(root, "src", "nested")]))
 })

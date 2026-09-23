@@ -1,5 +1,6 @@
 import { ensureInsideRoot, readTextFile } from "../documents/files"
 import { join } from "node:path"
+import { t } from "../localization"
 
 export type GitFileStatus = "modified" | "added" | "deleted" | "renamed" | "untracked"
 export type GitFileArea = "staged" | "changes"
@@ -18,6 +19,7 @@ export type GitState = {
   available: boolean
   branch: string
   remoteStatus: string
+  remoteCounts?: { ahead: number; behind: number }
   files: GitFile[]
   message: string
 }
@@ -60,7 +62,7 @@ async function runGitAsync(root: string, args: string[], operation: string, repo
     reportFailure?.({ operation, exitCode, stdout, stderr })
     return false
   } catch (error) {
-    reportFailure?.({ operation, stdout: "", stderr: error instanceof Error ? error.stack ?? error.message : "No se pudo iniciar el proceso Git." })
+    reportFailure?.({ operation, stdout: "", stderr: error instanceof Error ? error.stack ?? error.message : t("git.startFailed") })
     return false
   }
 }
@@ -129,14 +131,14 @@ function countLines(content: string): number {
 }
 
 function workspacePath(root: string, path: string): string {
-  if (!path || path.includes("\0") || path.includes("\\") || path.startsWith("/") || /^[a-z]:/i.test(path) || path.split("/").some((part) => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error("Ruta Git fuera del workspace o no valida.")
+  if (!path || path.includes("\0") || path.includes("\\") || path.startsWith("/") || /^[a-z]:/i.test(path) || path.split("/").some((part) => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error(t("git.invalidPath"))
   ensureInsideRoot(root, join(root, path))
   return path
 }
 
 export async function readGitState(root: string, signal?: AbortSignal): Promise<GitState> {
   const repository = await runGit(root, ["rev-parse", "--is-inside-work-tree"], signal)
-  if (!repository.success || repository.stdout.trim() !== "true") return emptyState("Esta carpeta no es un repositorio Git.")
+  if (!repository.success || repository.stdout.trim() !== "true") return emptyState(t("git.notRepository"))
 
   const [branch, status, upstream, stagedNumstat, changesNumstat, prefixResult] = await Promise.all([
     runGit(root, ["branch", "--show-current"], signal),
@@ -146,7 +148,7 @@ export async function readGitState(root: string, signal?: AbortSignal): Promise<
     runGit(root, ["diff", "--no-relative", "--numstat", "-z"], signal),
     runGit(root, ["rev-parse", "--show-prefix"], signal),
   ])
-  if (!status.success || !prefixResult.success) return emptyState("No se pudo leer el estado de Git.")
+  if (!status.success || !prefixResult.success) return emptyState(t("git.statusFailed"))
   const prefix = prefixResult.stdout.replace(/\r?\n$/, "")
   const stagedStats = stagedNumstat.success ? parseGitNumstat(stagedNumstat.stdout) : new Map()
   const changesStats = changesNumstat.success ? parseGitNumstat(changesNumstat.stdout) : new Map()
@@ -181,18 +183,23 @@ export async function readGitState(root: string, signal?: AbortSignal): Promise<
       file.deletions = null
     }
   }))
-  const remoteStatus = !upstream.success ? "sin remoto" : await remoteSummary(root, signal)
-  return { available: true, branch: branch.stdout.trim() || "HEAD separado", remoteStatus, files, message: "Sin cambios locales." }
+  const remoteCounts = upstream.success ? await readRemoteCounts(root, signal) : undefined
+  const remoteStatus = remoteCounts ? remoteLabel(remoteCounts) : t("git.noRemote")
+  return { available: true, branch: branch.stdout.trim() || t("git.detached"), remoteStatus, remoteCounts, files, message: t("git.noChanges") }
 }
 
-async function remoteSummary(root: string, signal?: AbortSignal): Promise<string> {
+async function readRemoteCounts(root: string, signal?: AbortSignal): Promise<{ ahead: number; behind: number } | undefined> {
   const counts = await runGit(root, ["rev-list", "--left-right", "--count", "HEAD...@{upstream}"], signal)
-  if (!counts.success) return "sin remoto"
+  if (!counts.success) return undefined
   const [ahead = 0, behind = 0] = counts.stdout.trim().split(/\s+/).map(Number)
-  if (ahead && behind) return `${ahead} adelante, ${behind} atrás`
-  if (ahead) return `${ahead} adelante`
-  if (behind) return `${behind} atrás`
-  return "actualizado"
+  return { ahead, behind }
+}
+
+function remoteLabel({ ahead, behind }: { ahead: number; behind: number }): string {
+  if (ahead && behind) return t("git.diverged", { ahead, behind })
+  if (ahead) return t("git.ahead", { ahead })
+  if (behind) return t("git.behind", { behind })
+  return t("git.synced")
 }
 
 export async function fetchGit(root: string, reportFailure?: ReportGitFailure): Promise<boolean> {
@@ -229,7 +236,7 @@ async function runGitFiles(root: string, args: string[], files: GitFile[], opera
     const paths = [...new Set(files.flatMap((file) => file.previousPath === undefined ? [file.path] : [file.path, file.previousPath]))].map((path) => workspacePath(root, path))
     return await runGitAsync(root, ["--literal-pathspecs", ...args, "--", ...paths], operation, reportFailure)
   } catch (error) {
-    reportFailure?.({ operation, stdout: "", stderr: error instanceof Error ? error.message : "Ruta Git no valida." })
+    reportFailure?.({ operation, stdout: "", stderr: error instanceof Error ? error.message : t("git.invalidPath") })
     return false
   }
 }
@@ -250,11 +257,11 @@ export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff>
   workspacePath(root, file.path)
   if (file.previousPath !== undefined) workspacePath(root, file.previousPath)
   const prefixResult = await runGit(root, ["rev-parse", "--show-prefix"])
-  if (!prefixResult.success) throw new Error("No se pudo resolver la ruta del workspace en Git.")
+  if (!prefixResult.success) throw new Error(t("git.workspaceFailed"))
   const prefix = prefixResult.stdout.replace(/\r?\n$/, "")
   const hasPrevious = file.status !== "added" && file.status !== "untracked"
   const previousPath = file.status === "renamed" ? file.previousPath : file.path
-  if (hasPrevious && !previousPath) throw new Error("No se pudo determinar la ruta anterior del archivo.")
+  if (hasPrevious && !previousPath) throw new Error(t("git.previousPathFailed"))
   const previous = hasPrevious
     ? await runGit(root, ["show", file.area === "staged" ? `HEAD:${prefix}${previousPath}` : `:${prefix}${previousPath}`])
     : { stdout: "", success: true }
@@ -262,7 +269,7 @@ export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff>
   const current = file.area === "staged"
     ? indexed.stdout
     : file.status === "deleted" ? "" : await readTextFile(root, join(root, file.path))
-  if (file.area === "staged" && !indexed.success) throw new Error("No se pudo leer la versión preparada del archivo.")
-  if (!previous.success) throw new Error("No se pudo leer la versión anterior del archivo.")
+  if (file.area === "staged" && !indexed.success) throw new Error(t("git.stagedFailed"))
+  if (!previous.success) throw new Error(t("git.previousFailed"))
   return { file, previous: previous.stdout, current }
 }

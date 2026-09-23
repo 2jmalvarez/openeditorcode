@@ -167,6 +167,45 @@ test("opens the command and configuration palette", async () => {
   }
 })
 
+test("shows English throughout the welcome screen, Git fallback, settings, and palette", async () => {
+  configureLanguage("en")
+  const setup = await testRender(() => <App root={root} />, { width: 145, height: 32 })
+  try {
+    await waitForText(setup, "This folder is not a Git repository.")
+    let frame = setup.captureCharFrame()
+    expect(frame).toContain("F8: history | F9: branches")
+    expect(frame).toContain("OPEN AND MOVE BETWEEN PANELS")
+    expect(frame).not.toContain("Esta carpeta")
+    setup.mockInput.pressKey("p", { ctrl: true })
+    await setup.renderOnce()
+    frame = setup.captureCharFrame()
+    expect(frame).toContain("COMMANDS AND SETTINGS")
+    expect(frame).toContain("Git: view commit history")
+    expect(frame).not.toContain("Git: ver historial")
+    await setup.mockInput.typeText("Open settings")
+    await setup.renderOnce()
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "Changes are saved to the JSON for the active scope.")
+    frame = setup.captureCharFrame()
+    expect(frame).toContain("Line wrap")
+    expect(frame).toContain("Syntax highlighting")
+    expect(frame).not.toContain("CONFIGURACIÓN")
+  } finally { setup.renderer.destroy(); configureLanguage("es") }
+})
+
+test("retranslates the mounted Git pane when the language changes", async () => {
+  configureLanguage("es")
+  const setup = await testRender(() => <App root={root} />, { width: 145, height: 32 })
+  try {
+    await waitForText(setup, "Esta carpeta no es un repositorio Git.")
+    configureLanguage("en")
+    await waitForText(setup, "This folder is not a Git repository.")
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("F8: history | F9: branches")
+    expect(frame).not.toContain("SOLO LECTURA")
+  } finally { setup.renderer.destroy(); configureLanguage("es") }
+})
+
 test("opens the OEC manual as a read-only Markdown preview", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
@@ -354,7 +393,7 @@ test("filters project files with Ctrl+F while the explorer is active", async () 
     await setup.renderOnce()
 
     const searchFrame = setup.captureCharFrame()
-    expect(searchFrame).toContain("resultados")
+    expect(searchFrame).toContain("1 resultado")
     expect(searchFrame).toContain("second.txt")
     expect(searchFrame).not.toContain("hello.txt")
 
@@ -433,9 +472,7 @@ test("opens another file after closing the current tab without a stale save dial
     }
     expect(initialFrame).toContain("hello.txt")
     setup.mockInput.pressEnter()
-    await Bun.sleep(60)
-    await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("contenido de prueba")
+    await waitForText(setup, "contenido de prueba")
 
     setup.mockInput.pressKey("w", { ctrl: true })
     await setup.renderOnce()
@@ -443,9 +480,7 @@ test("opens another file after closing the current tab without a stale save dial
     expect(setup.captureCharFrame()).not.toContain("Hay cambios sin guardar")
 
     setup.mockInput.pressEnter()
-    await Bun.sleep(60)
-    await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("contenido de prueba")
+    await waitForText(setup, "contenido de prueba")
   } finally {
     setup.renderer.destroy()
   }
@@ -508,15 +543,15 @@ test("opens a second tab without asking to save the modified first tab", async (
 test("keeps an inactive modified tab dirty and protects quit", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(60)
+    await waitForText(setup, "hello.txt")
     setup.mockInput.pressEnter()
-    await Bun.sleep(60)
+    await waitForText(setup, "contenido de prueba")
     await setup.mockInput.typeText("!")
+    await waitForText(setup, "* hello.txt")
     setup.mockInput.pressArrow("left", { ctrl: true, shift: true })
     setup.mockInput.pressArrow("down")
     setup.mockInput.pressEnter()
-    await Bun.sleep(60)
-    await setup.renderOnce()
+    await waitForText(setup, "segundo archivo")
 
     expect(setup.captureCharFrame()).toContain("* hello.txt")
     setup.mockInput.pressKey("q", { ctrl: true })
@@ -531,9 +566,9 @@ test("keeps an inactive modified tab dirty and protects quit", async () => {
 test("does not run global shortcuts behind the command palette", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    await Bun.sleep(60)
+    await waitForText(setup, "hello.txt")
     setup.mockInput.pressEnter()
-    await Bun.sleep(120)
+    await waitForText(setup, "contenido de prueba")
     setup.mockInput.pressKey("p", { ctrl: true })
     setup.mockInput.pressKey("w", { ctrl: true })
     await setup.renderOnce()

@@ -62,7 +62,7 @@ F5 in Git fetches and rereads local status even if fetch fails; it also refreshe
 
 In a local, staged, or historical diff, F4 opens the current project file without closing the diff. It does not open or restore the historical version. If the file does not exist, a notice is shown and the file is not recreated. Outside diffs, F4 still toggles Markdown preview and editing; the manual remains read-only.
 
-Ctrl+P includes the additional commands “Git: ver historial de commits” (view commit history, F8), “Git: ver todas las ramas” (view all known branches, F9), and, with a diff active, “Abrir archivo del proyecto” (open the project file, F4), alongside refreshing remote references. These are the current palette labels.
+Ctrl+P includes the additional commands “Git: view commit history” (F8), “Git: view all branches” (F9), and, with a diff active, “Open project file” (F4), alongside refreshing remote references.
 
 F10 opens the project root in the system file manager. With Explorer focused, F2 renames the selected file or folder while preserving open tabs.
 
@@ -70,7 +70,7 @@ F10 opens the project root in the system file manager. With Explorer focused, F2
 When an operation fails, the footer points to F12. F12 opens a read-only tab with the technical details recorded during this session.
 
 ## Configuration
-Open “Open configuration” from Ctrl+P to use the TUI screen or press E to edit JSON. Windows uses %APPDATA%\\openeditorcode\\config.json; Linux uses $XDG_CONFIG_HOME/openeditorcode/config.json or ~/.config/openeditorcode/config.json. A project can override preferences in .oec/config.json. Set appearance.language to auto, es, or en. auto follows the operating system language and falls back to English. The complete schema is in docs/oec-config.schema.json.
+Open “Open settings” from Ctrl+P to use the TUI screen or press E to edit JSON. Windows uses %APPDATA%\\openeditorcode\\config.json; Linux uses $XDG_CONFIG_HOME/openeditorcode/config.json or ~/.config/openeditorcode/config.json. A project can override preferences in .oec/config.json. Set appearance.language to auto, es, or en. auto follows the operating system language and falls back to English. The complete schema is in docs/oec-config.schema.json.
 
 An invalid configuration or one that prevents OEC from starting is copied to config.bkp.json (the same backup is overwritten on every recovery) and factory settings are restored. npm updates do not modify this directory.
 

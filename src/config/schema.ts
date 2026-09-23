@@ -90,7 +90,7 @@ export function parseConfig(text: string): OecConfig {
   if (!search || !exactKeys(search, ["respectGitignore"]) || typeof search.respectGitignore !== "boolean") throw new Error(t("config.search"))
   if (!git || !exactKeys(git, ["autoRefresh", "fetchOnRefresh"]) || typeof git.autoRefresh !== "boolean" || typeof git.fetchOnRefresh !== "boolean") throw new Error(t("config.git"))
   if (!updates || !exactKeys(updates, ["checkOnStartup"]) || typeof updates.checkOnStartup !== "boolean") throw new Error(t("config.updates"))
-  if (!preview || !exactKeys(preview, ["markdownDefault", "images", "imageProtocol"]) || !oneOf(preview.markdownDefault, ["preview", "source"] as const) || typeof preview.images !== "boolean" || !oneOf(preview.imageProtocol, ["auto", "kitty", "sixel", "blocks"] as const)) throw new Error("La configuración de preview no es válida.")
+  if (!preview || !exactKeys(preview, ["markdownDefault", "images", "imageProtocol"]) || !oneOf(preview.markdownDefault, ["preview", "source"] as const) || typeof preview.images !== "boolean" || !oneOf(preview.imageProtocol, ["auto", "kitty", "sixel", "blocks"] as const)) throw new Error(t("config.preview"))
   return root as OecConfig
 }
 

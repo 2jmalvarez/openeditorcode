@@ -1,6 +1,7 @@
 import { join } from "node:path"
 import { ensureInsideRoot, MAX_FILE_BYTES } from "../documents/files"
-import type { GitDiff, GitFile } from "./status"
+import { parseGitNumstat, type GitDiff, type GitFile } from "./status"
+import { t } from "../localization"
 
 export type GitCommit = { revision: string; author: string; date: string; subject: string }
 export type GitBranch = { ref: string; name: string; revision: string; current: boolean; remote: boolean }
@@ -17,16 +18,16 @@ async function git(root: string, args: string[], signal?: AbortSignal, limit = 1
       const { value, done } = await reader.read()
       if (done) break
       size += value.length
-      if (size > limit) throw new Error("La salida de Git supera el limite permitido.")
+      if (size > limit) throw new Error(t("git.outputTooLarge"))
       chunks.push(value)
     }
     if (await process.exited !== 0) {
       if (optional && !signal?.aborted) return undefined
-      throw new Error("No se pudo leer el historial de Git.")
+      throw new Error(t("git.readHistoryFailed"))
     }
     signal?.throwIfAborted()
     const data = Buffer.concat(chunks)
-    if (limit === MAX_FILE_BYTES && data.includes(0)) throw new Error("Los archivos binarios no se pueden mostrar.")
+    if (limit === MAX_FILE_BYTES && data.includes(0)) throw new Error(t("git.binary"))
     return new TextDecoder("utf-8", { fatal: true }).decode(data)
   } finally {
     reader.releaseLock()
@@ -36,7 +37,7 @@ async function git(root: string, args: string[], signal?: AbortSignal, limit = 1
 }
 
 async function resolveCommit(root: string, ref: string, signal?: AbortSignal): Promise<string | undefined> {
-  if (!ref || ref.includes("\0")) throw new Error("Revision no valida.")
+  if (!ref || ref.includes("\0")) throw new Error(t("git.invalidRevision"))
   const result = await git(root, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], signal, 1024, true)
   if (result) return result.trim()
   // An unborn branch has no commits, but is still a valid history view.
@@ -44,11 +45,11 @@ async function resolveCommit(root: string, ref: string, signal?: AbortSignal): P
     const head = await git(root, ["symbolic-ref", "-q", "HEAD"], signal, 1024, true)
     if (head && !await git(root, ["show-ref", "--verify", head.trim()], signal, 1024, true)) return undefined
   }
-  throw new Error("No se pudo resolver la revision de Git.")
+  throw new Error(t("git.resolveRevisionFailed"))
 }
 
 export async function readGitHistory(root: string, ref = "HEAD", skip = 0, pageSize = GIT_HISTORY_PAGE_SIZE, signal?: AbortSignal): Promise<GitHistoryPage> {
-  if (!Number.isSafeInteger(skip) || skip < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 1000) throw new Error("Pagina de historial no valida.")
+  if (!Number.isSafeInteger(skip) || skip < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 1000) throw new Error(t("git.invalidPage"))
   const revision = await resolveCommit(root, ref, signal)
   if (!revision) return { commits: [], hasMore: false }
   const output = await git(root, ["log", "--no-show-signature", "--date-order", `--skip=${skip}`, `--max-count=${pageSize + 1}`, "-z", "--format=%H%x00%an%x00%aI%x00%s", revision, "--"], signal)
@@ -71,13 +72,13 @@ export async function readGitBranches(root: string, signal?: AbortSignal): Promi
 }
 
 function safePath(root: string, path: string) {
-  if (!path || path.includes("\0") || path.includes("\\") || path.startsWith("/") || path.split("/").some((part) => part === ".." || part === "." || part.toLowerCase() === ".git") || /^[a-z]:/i.test(path)) throw new Error("Ruta historica no valida.")
+  if (!path || path.includes("\0") || path.includes("\\") || path.startsWith("/") || path.split("/").some((part) => part === ".." || part === "." || part.toLowerCase() === ".git") || /^[a-z]:/i.test(path)) throw new Error(t("git.invalidHistoricalPath"))
   ensureInsideRoot(root, join(root, path))
 }
 
 async function commitContext(root: string, ref: string, signal?: AbortSignal) {
   const revision = await resolveCommit(root, ref, signal)
-  if (!revision) throw new Error("La rama no contiene commits.")
+  if (!revision) throw new Error(t("git.emptyBranch"))
   const [parents, prefix] = await Promise.all([
     git(root, ["rev-list", "--parents", "-1", revision, "--"], signal, 16384),
     git(root, ["rev-parse", "--show-prefix"], signal, 16384),
@@ -87,7 +88,13 @@ async function commitContext(root: string, ref: string, signal?: AbortSignal) {
 
 export async function readGitCommitFiles(root: string, ref: string, signal?: AbortSignal): Promise<GitFile[]> {
   const { revision, previousRevision, prefix } = await commitContext(root, ref, signal)
-  const output = await git(root, ["diff-tree", "--no-commit-id", "--no-ext-diff", "--no-textconv", "-r", "-M", "--name-status", "-z", ...(previousRevision ? [previousRevision, revision] : ["--root", revision]), "--"], signal)
+  const base = ["diff-tree", "--no-commit-id", "--no-ext-diff", "--no-textconv", "-r", "-M"]
+  const comparison = previousRevision ? [previousRevision, revision] : ["--root", revision]
+  const [output, numstat] = await Promise.all([
+    git(root, [...base, "--name-status", "-z", ...comparison, "--"], signal),
+    git(root, [...base, "--numstat", "-z", ...comparison, "--"], signal),
+  ])
+  const stats = parseGitNumstat(numstat!)
   const fields = output!.split("\0")
   const files: GitFile[] = []
   for (let index = 0; index + 1 < fields.length;) {
@@ -103,7 +110,8 @@ export async function readGitCommitFiles(root: string, ref: string, signal?: Abo
     safePath(root, path)
     const previousPath = status === "renamed" ? before.slice(prefix.length) : undefined
     if (previousPath) safePath(root, previousPath)
-    files.push({ path, previousPath, status, area: "changes", additions: null, deletions: null })
+    const counts = stats.get(after)
+    files.push({ path, previousPath, status, area: "changes", additions: counts?.additions ?? null, deletions: counts?.deletions ?? null })
   }
   return files
 }
@@ -116,9 +124,9 @@ export async function readGitHistoricalDiff(root: string, ref: string, file: Git
     if (!commit) return ""
     const object = `${commit}:${prefix}${path}`
     const type = await git(root, ["cat-file", "-t", object], signal, 1024)
-    if (type!.trim() !== "blob") throw new Error("La ruta historica no es un archivo.")
+    if (type!.trim() !== "blob") throw new Error(t("git.notHistoricalFile"))
     const size = Number((await git(root, ["cat-file", "-s", object], signal, 1024))!.trim())
-    if (size > MAX_FILE_BYTES) throw new Error("El archivo supera el limite de 2 MB.")
+    if (size > MAX_FILE_BYTES) throw new Error(t("files.tooLarge"))
     return (await git(root, ["cat-file", "blob", object], signal, MAX_FILE_BYTES))!
   }
   const previous = file.status === "added" ? "" : await blob(previousRevision, file.previousPath ?? file.path)

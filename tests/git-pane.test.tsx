@@ -41,3 +41,29 @@ test("GitPane renders history rows without file metadata and hides the commit in
     expect(lines[commitLine + 3]).toContain("Cargar mas commits")
   } finally { setup.renderer.destroy() }
 })
+
+test("GitPane preserves file number and changed lines beside a scrolling historical name", async () => {
+  const [selected, setSelected] = createSignal(0)
+  const rows: GitTreeItem[] = [
+    { path: "first", name: "long-historical-filename-with-ending.ts", depth: 0, directory: false, expanded: false, fileNumber: 12, file: { path: "first", status: "modified", area: "changes", additions: 123, deletions: 45 } },
+    { path: "binary", name: "binary-file.bin", depth: 0, directory: false, expanded: false, fileNumber: 13, file: { path: "binary", status: "modified", area: "changes", additions: null, deletions: null } },
+  ]
+  const setup = await testRender(() => <GitPane active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
+    tree={() => rows} selected={selected} commitMessage={() => ""} setCommitMessage={() => {}} commitFocused={() => false}
+    setScroll={() => {}} onActivate={() => {}} width={() => 32} mode={() => "files"} historyTitle={() => "Commit"} loading={() => false}
+  />, { width: 32, height: 14 })
+  try {
+    await setup.renderOnce()
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("12. M")
+    expect(setup.captureCharFrame()).toContain("2 archivos")
+    expect(setup.captureCharFrame()).toContain("+123 -45")
+    expect(setup.captureCharFrame()).toContain("+? -?")
+    await Bun.sleep(1650)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("+123 -45")
+    setSelected(1)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("long-historical")
+  } finally { setup.renderer.destroy() }
+})

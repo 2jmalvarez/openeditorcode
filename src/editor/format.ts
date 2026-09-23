@@ -1,6 +1,7 @@
 import { extname } from "node:path"
 import { format as prettierFormat } from "prettier"
 import type { OecConfig } from "../config/types"
+import { t } from "../localization"
 
 export async function formatDocument(path: string, source: string, config: OecConfig): Promise<string | undefined> {
   const extension = extname(path).toLowerCase()
@@ -13,7 +14,7 @@ export async function formatDocument(path: string, source: string, config: OecCo
   const timeout = setTimeout(() => process.kill(), external.timeoutMs)
   try {
     const [exitCode, output, error] = await Promise.all([process.exited, new Response(process.stdout).text(), new Response(process.stderr).text()])
-    if (exitCode !== 0) throw new Error(error.trim() || `El formateador ${formatter} finalizó con código ${exitCode}.`)
+    if (exitCode !== 0) throw new Error(error.trim() || t("editor.formatExit", { formatter, code: exitCode }))
     return output
   } finally { clearTimeout(timeout) }
 }

@@ -24,7 +24,7 @@ export function AppLayout(props: Props) {
     </box>
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
       <Show when={props.explorerVisible()} fallback={<box />}>
-        <ExplorerPane root={props.root} active={() => props.active() === "explorer"} tree={props.explorer.tree} selected={props.explorer.selected} filePath={props.documents.filePath} lineCounts={props.search.lineCounts} setScroll={props.setExplorerScroll} onActivate={props.activateExplorerAt} fileSearchOpen={props.search.fileSearchOpen} fileQuery={props.search.fileQuery} fileResults={props.search.fileResults} fileSearchIndex={props.search.fileSearchIndex} onFileQuery={(value) => void props.search.updateFileQuery(value)} onFileActivate={(index) => void props.openFileSearchResult(index)} width={() => props.config().layout.explorerWidth} />
+        <ExplorerPane root={props.root} active={() => props.active() === "explorer"} tree={props.explorer.tree} selected={props.explorer.selected} filePath={props.documents.filePath} lineCounts={props.search.lineCounts} setScroll={props.setExplorerScroll} onActivate={props.activateExplorerAt} fileSearchOpen={props.search.fileSearchOpen} fileQuery={props.search.fileQuery} fileResults={props.search.fileResults} fileSearchIndex={props.search.fileSearchIndex} onFileQuery={(value) => void props.search.updateFileQuery(value)} onFileActivate={(index) => void props.openFileSearchResult(index)} massiveFilesOpen={props.explorer.showMassiveFiles} onToggleMassiveFiles={props.toggleMassiveFiles} width={() => props.config().layout.explorerWidth} />
       </Show>
         <box style={{ flexGrow: 1, minWidth: 0, flexDirection: "column", border: ["top"], borderColor: props.active() === "editor" ? "#70d6a7" : "#30404d" }}>
         <DocumentTabs tabs={props.documents.tabs} activeTab={props.documents.activeTab} isTabDirty={props.documents.isTabDirty} onActivate={props.documents.activateTab} onClose={props.requestCloseTab} />
@@ -37,7 +37,7 @@ export function AppLayout(props: Props) {
                 when={props.documents.activeManual() || props.documents.activePreview()}
                 fallback={<><EditorPane filePath={props.documents.filePath} content={props.editor.content} active={props.active} explorerVisible={props.explorerVisible} gitVisible={props.gitVisible} wrapMode={props.editor.wrapMode} lineLabels={props.editor.metrics.lineLabels} scrollbar={props.editor.metrics.scrollbar} setEditor={props.editor.setEditor} onContentChange={props.editor.onContentChange} onCursorChange={props.editor.onCursorChange} onUnmount={props.editor.detachEditor} config={props.config} syntaxTheme={props.syntaxTheme} /><FindPanel open={props.editor.findOpen} query={props.editor.findQuery} results={props.editor.findResults} index={props.editor.findIndex} onQuery={props.editor.updateFindQuery} maxWidth={() => props.config().layout.findPanelMaxWidth} /></>}
               >
-                <Show when={props.documents.activeImage()} fallback={<MarkdownPreview content={props.documents.activePreviewContent} active={() => props.active() === "editor"} manual={() => Boolean(props.documents.activeManual())} />}>
+                 <Show when={props.documents.activeImage()} fallback={<MarkdownPreview content={props.documents.activePreviewContent} active={() => props.active() === "editor"} manual={() => Boolean(props.documents.activeManual())} />}>
                   <ImagePreview bytes={() => props.documents.activeImage()?.bytes} active={() => props.active() === "editor"} protocol={() => props.config().preview.imageProtocol} />
                 </Show>
               </Show>}
@@ -55,7 +55,7 @@ export function AppLayout(props: Props) {
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
       <box style={{ flexDirection: "row" }}>
-        <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.logs.notice() || props.status()}<Show when={props.documents.activePreview() && !props.documents.activeManual()}>  |  F4 editar</Show><Show when={props.documents.activeDiff()}>  |  F4 abrir archivo</Show></text>
+         <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.logs.notice() || props.status()}<Show when={props.documents.activePreview() && !props.documents.activeManual()}>{t("app.f4Edit")}</Show><Show when={props.documents.activeDiff()}>{t("app.f4Open")}</Show></text>
         <text style={{ marginLeft: "auto" }} fg="#8ca0ae"><Show when={props.config().keyboard.profile === "vim" && props.documents.activeProjectFile()}>{props.editor.vimMode().toUpperCase()}  |  </Show><Show when={props.documents.filePath() && !props.documents.activePreview()}>{t("app.line")} {props.editor.cursor().line}:{props.editor.cursor().column}  |  </Show>v{props.appVersion}<Show when={props.updates.latestVersion()}> ↑ {props.updates.latestVersion()}</Show></text>
       </box>
     </box>

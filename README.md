@@ -8,7 +8,7 @@ Documentation for release **0.2.24**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
-The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open OEC settings** and **Open OEC manual**.
+The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open settings** and **Open OEC manual**.
 
 ## Main view
 
@@ -154,13 +154,13 @@ When closing a modified tab, the dialog offers **Save**, **Save and close**, and
 
 Markdown (`.md`, `.markdown`, `.mdown`, and `.mkd`) opens as rendered preview by default. `F4` switches between editable source and preview while retaining unsaved changes. The manual opened from the palette always remains read-only. PNG, JPEG, WebP, and GIF open as read-only previews; OEC prefers Kitty or Sixel when supported and falls back to terminal blocks.
 
-When an operation fails, OEC keeps the operation, time, and technical details in the session log. The footer displays `F12` while unread errors exist; `F12` or **Open session error log** from the palette opens a read-only central tab that is not persisted after OEC closes.
+When an operation fails, OEC keeps the operation, time, and technical details in the session log. The footer displays `F12` while unread errors exist; `F12` or **Open error log** from the palette opens a read-only central tab that is not persisted after OEC closes.
 
 ## Command palette
 
 Press `Ctrl+P` to open the command palette, then type to filter commands, use arrows to select one, and press `Enter` to run it. It provides access to common actions, including opening global or project settings, the built-in manual, the session error log, project line counting, and refreshing Git remote references. When available, it also offers the npm-based OEC update.
 
-Additional Git commands are **Git: ver historial de commits** (view commit history, `F8`), **Git: ver todas las ramas** (view all known branches, `F9`), and, while a diff is active, **Abrir archivo del proyecto** (open the project file, `F4`). These are the current palette labels; outside diffs, the `F4` command retains its Markdown preview/editing action.
+Additional Git commands are **Git: view commit history** (`F8`), **Git: view all branches** (`F9`), and, while a diff is active, **Open project file** (`F4`). Outside diffs, the `F4` command retains its Markdown preview/editing action.
 
 ## Shortcuts
 
@@ -180,7 +180,7 @@ Additional Git commands are **Git: ver historial de commits** (view commit histo
 | `Delete` | Delete the selected file or folder |
 | `Ctrl+N` | Create a file in the selected folder |
 | `F2` | Rename the selected file or folder in Explorer |
-| `Shift+Enter` | Toggle the selected folder in Explorer or Changes |
+| `Shift+Enter` | Recursively expand or collapse the selected folder in Explorer; toggle it in Changes |
 | `Ctrl+F` | Search file names in Explorer or text in Editor |
 | `Ctrl+Alt+F` | Search text in all project files |
 | `Ctrl+E` | Edit temporary exclusions from a project search |

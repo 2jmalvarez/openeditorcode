@@ -1,6 +1,7 @@
 import type { KeyEvent, TextareaRenderable } from "@opentui/core"
 import { createEffect, createSignal } from "solid-js"
 import { readClipboard, selectedText } from "./clipboard"
+import { t } from "../localization"
 import { findMatches, type FindResult } from "./find"
 import { useEditorMetrics } from "./useEditorMetrics"
 import type { FocusTarget } from "../workbench/types"
@@ -110,14 +111,14 @@ export function useEditor(props: Props) {
       metrics.scheduleHighlight(props.filePath(), renderable.plainText, 16)
     }
     metrics.schedule()
-    props.setStatus(mode === "word" ? "Ajuste de línea activado." : "Ajuste de línea desactivado.")
+    props.setStatus(t(mode === "word" ? "editor.wrapOn" : "editor.wrapOff"))
   }
 
   function undo() {
     if (renderable?.undo()) {
       setContent(renderable.plainText)
       metrics.scheduleHighlight(props.filePath(), renderable.plainText)
-      props.setStatus("Cambio deshecho.")
+      props.setStatus(t("editor.undone"))
     }
   }
 
@@ -125,7 +126,7 @@ export function useEditor(props: Props) {
     if (renderable?.redo()) {
       setContent(renderable.plainText)
       metrics.scheduleHighlight(props.filePath(), renderable.plainText)
-      props.setStatus("Cambio rehecho.")
+      props.setStatus(t("editor.redone"))
     }
   }
 
@@ -140,7 +141,7 @@ export function useEditor(props: Props) {
     metrics.scheduleHighlight(props.filePath(), renderable.plainText, 0)
     metrics.schedule()
     updateCursor()
-    props.setStatus(`Línea duplicada ${direction === "above" ? "arriba" : "abajo"}.`)
+    props.setStatus(t(direction === "above" ? "editor.duplicateAbove" : "editor.duplicateBelow"))
   }
 
   function replaceCurrentText(text: string): boolean {
@@ -194,20 +195,20 @@ export function useEditor(props: Props) {
 
   function copy(copyToClipboard: (text: string) => boolean) {
     const text = selectedText(renderable)
-    if (!text) return props.setStatus("Selecciona texto antes de copiar.")
-    props.setStatus(copyToClipboard(text) ? "Copiado al portapapeles." : "El terminal no admite la copia al portapapeles.")
+    if (!text) return props.setStatus(t("editor.selectText"))
+    props.setStatus(t(copyToClipboard(text) ? "editor.copied" : "editor.copyUnsupported"))
   }
 
   async function paste() {
     if (props.active() !== "editor" || !renderable) return
     try {
       const text = await readClipboard()
-      if (!text) return props.setStatus("El portapapeles está vacío.")
+      if (!text) return props.setStatus(t("editor.clipboardEmpty"))
       renderable.insertText(text)
       setContent(renderable.plainText)
-      props.setStatus("Pegado desde el portapapeles.")
+      props.setStatus(t("editor.pasted"))
     } catch {
-      props.setStatus("No se pudo leer el portapapeles.")
+      props.setStatus(t("editor.pasteFailed"))
     }
   }
 
@@ -233,7 +234,7 @@ export function useEditor(props: Props) {
     renderable.setCursor(result.line - 1, result.column - 1)
     updateCursor()
     metrics.schedule()
-    props.setStatus(`Coincidencia ${findIndex() + 1} de ${findResults().length}.`)
+    props.setStatus(t("editor.findPosition", { index: findIndex() + 1, count: findResults().length }))
     setFindOpen(false)
   }
 

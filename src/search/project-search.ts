@@ -8,6 +8,7 @@ export type ProjectSearchResult = {
 }
 
 export type ProjectLineCount = { files: number; lines: number; byPath: Record<string, number> }
+export type MassiveFile = { path: string; name: string; lines: number }
 
 function lineCount(content: string): number {
   if (!content) return 0
@@ -33,6 +34,13 @@ export async function countProjectLines(root: string, indexedItems?: IndexedItem
     }
   }
   return { files, lines, byPath }
+}
+
+export function sortMassiveFiles(items: IndexedItem[], lineCounts: Record<string, number>): MassiveFile[] {
+  return items
+    .filter((item) => !item.directory && lineCounts[item.path] !== undefined)
+    .map((item) => ({ path: item.path, name: item.name, lines: lineCounts[item.path] }))
+    .sort((left, right) => right.lines - left.lines || left.path.localeCompare(right.path))
 }
 
 export async function searchProjectText(root: string, query: string, limit = 100, indexedItems?: IndexedItem[]): Promise<ProjectSearchResult[]> {

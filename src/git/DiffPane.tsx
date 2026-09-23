@@ -89,7 +89,7 @@ export function DiffPane(props: Props) {
   const diffRows = createMemo(() => alignDiff(props.diff()!.previous, props.diff()!.current))
   return <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "column", backgroundColor: "#101419" }}>
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: vertical() ? "column" : "row" }}>
-      <VersionPane title={props.diff()?.revision ? props.diff()?.previousRevision?.slice(0, 8) ?? "(vacio)" : t("app.previous")} rows={diffRows()} side="previous" scroll={(value) => { previousScroll = value; previousY = value.scrollTop }} />
+       <VersionPane title={props.diff()?.revision ? props.diff()?.previousRevision?.slice(0, 8) ?? t("git.empty") : t("app.previous")} rows={diffRows()} side="previous" scroll={(value) => { previousScroll = value; previousY = value.scrollTop }} />
       <VersionPane title={props.diff()?.revision?.slice(0, 8) ?? t("app.new")} rows={diffRows()} side="current" scroll={(value) => { currentScroll = value; currentY = value.scrollTop }} />
     </box>
   </box>

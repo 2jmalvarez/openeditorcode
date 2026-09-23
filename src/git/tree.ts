@@ -1,5 +1,6 @@
 import type { GitFile, GitFileArea } from "./status"
 import type { GitBranch, GitCommit } from "./history"
+import { t } from "../localization"
 
 export type GitTreeItem = {
   path: string
@@ -19,7 +20,7 @@ type Node = { name: string; path: string; children: Map<string, Node>; file?: Gi
 export function createGitTree(files: GitFile[], expanded: Set<string>): GitTreeItem[] {
   const roots = new Map<GitFileArea, Node>()
   for (const [fileIndex, file] of files.entries()) {
-    const root = roots.get(file.area) ?? { name: file.area === "staged" ? "STAGED" : "CAMBIOS", path: file.area, children: new Map() }
+    const root = roots.get(file.area) ?? { name: file.area === "staged" ? "STAGED" : t("git.changes"), path: file.area, children: new Map() }
     roots.set(file.area, root)
     let node: Node = root
     const parts = file.path.replace(/\\/g, "/").split("/")

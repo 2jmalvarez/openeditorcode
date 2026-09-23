@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
+import { t } from "../localization"
 
 export const MAX_FILE_BYTES = 2 * 1024 * 1024
 export const MAX_IMAGE_BYTES = 16 * 1024 * 1024
@@ -25,7 +26,7 @@ export function ensureInsideRoot(root: string, target: string): string {
     return absoluteTarget
   }
 
-  throw new FileAccessError("La ruta solicitada está fuera de la carpeta abierta.")
+  throw new FileAccessError(t("files.outside"))
 }
 
 async function nearestExistingPath(target: string): Promise<string> {
@@ -50,7 +51,7 @@ async function ensurePhysicallyInsideRoot(root: string, target: string): Promise
   const physicalExistingPath = await realpath(existingPath)
 
   if (!isInside(physicalRoot, physicalExistingPath)) {
-    throw new FileAccessError("La ruta solicitada está fuera de la carpeta abierta.")
+    throw new FileAccessError(t("files.outside"))
   }
   return safePath
 }
@@ -59,38 +60,38 @@ async function ensureParentPhysicallyInsideRoot(root: string, target: string): P
   const physicalRoot = await realpath(resolve(root))
   const physicalParent = await realpath(dirname(target))
   if (!isInside(physicalRoot, physicalParent)) {
-    throw new FileAccessError("La ruta solicitada está fuera de la carpeta abierta.")
+    throw new FileAccessError(t("files.outside"))
   }
 }
 
 export async function readTextFile(root: string, filePath: string): Promise<string> {
   const safePath = await ensurePhysicallyInsideRoot(root, filePath)
   const info = await stat(safePath)
-  if (!info.isFile()) throw new FileAccessError("La ruta seleccionada no es un archivo.")
-  if (info.size > MAX_FILE_BYTES) throw new FileAccessError("El archivo supera el límite de 2 MB.")
+  if (!info.isFile()) throw new FileAccessError(t("files.notFile"))
+  if (info.size > MAX_FILE_BYTES) throw new FileAccessError(t("files.tooLarge"))
 
   const content = await readFile(safePath)
-  if (content.includes(0)) throw new FileAccessError("Los archivos binarios no se pueden editar.")
+  if (content.includes(0)) throw new FileAccessError(t("files.binary"))
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(content)
   } catch {
-    throw new FileAccessError("El archivo no contiene texto UTF-8 válido.")
+    throw new FileAccessError(t("files.invalidUtf8"))
   }
 }
 
 export async function readImageFile(root: string, filePath: string): Promise<Uint8Array> {
   const safePath = await ensurePhysicallyInsideRoot(root, filePath)
   const info = await stat(safePath)
-  if (!info.isFile()) throw new FileAccessError("La ruta seleccionada no es un archivo.")
-  if (info.size > MAX_IMAGE_BYTES) throw new FileAccessError("La imagen supera el límite de 16 MB.")
+  if (!info.isFile()) throw new FileAccessError(t("files.notFile"))
+  if (info.size > MAX_IMAGE_BYTES) throw new FileAccessError(t("files.imageTooLarge"))
   const content = await readFile(safePath)
-  if (content.length > MAX_IMAGE_BYTES) throw new FileAccessError("La imagen supera el límite de 16 MB.")
+  if (content.length > MAX_IMAGE_BYTES) throw new FileAccessError(t("files.imageTooLarge"))
   return content
 }
 
 export async function writeTextFile(root: string, filePath: string, content: string, options: WriteTextFileOptions = {}): Promise<void> {
   if (Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) {
-    throw new FileAccessError("El archivo supera el límite de 2 MB.")
+    throw new FileAccessError(t("files.tooLarge"))
   }
 
   const safePath = await ensurePhysicallyInsideRoot(root, filePath)
@@ -99,12 +100,12 @@ export async function writeTextFile(root: string, filePath: string, content: str
     try {
       const currentContent = await readTextFile(root, safePath)
       if (currentContent !== options.expectedContent) {
-        throw new ExternalFileChangedError("El archivo cambió fuera de OEC. Recarga o confirma la sobrescritura.")
+        throw new ExternalFileChangedError(t("files.externalChange"))
       }
     } catch (error) {
       if (error instanceof ExternalFileChangedError) throw error
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        throw new ExternalFileChangedError("El archivo cambió fuera de OEC. Recarga o confirma la sobrescritura.")
+        throw new ExternalFileChangedError(t("files.externalChange"))
       }
       throw error
     }
@@ -138,7 +139,7 @@ export async function createTextFile(root: string, filePath: string): Promise<vo
     await writeFile(safePath, "", { encoding: "utf8", flag: "wx" })
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-      throw new FileAccessError("Ya existe un archivo con ese nombre.")
+      throw new FileAccessError(t("files.exists"))
     }
     throw error
   }
@@ -146,7 +147,7 @@ export async function createTextFile(root: string, filePath: string): Promise<vo
 
 export async function removeProjectEntry(root: string, targetPath: string): Promise<void> {
   const safePath = ensureInsideRoot(root, targetPath)
-  if (safePath === resolve(root)) throw new FileAccessError("No se puede eliminar la carpeta raíz del proyecto.")
+  if (safePath === resolve(root)) throw new FileAccessError(t("files.deleteRoot"))
 
   await ensureParentPhysicallyInsideRoot(root, safePath)
   const info = await lstat(safePath)
@@ -156,10 +157,10 @@ export async function removeProjectEntry(root: string, targetPath: string): Prom
 
 export async function renameProjectEntry(root: string, targetPath: string, name: string): Promise<string> {
   if (!name || name === "." || name === ".." || name.includes("/") || name.includes("\\")) {
-    throw new FileAccessError("El nombre no es válido.")
+    throw new FileAccessError(t("files.invalidName"))
   }
   const safePath = ensureInsideRoot(root, targetPath)
-  if (safePath === resolve(root)) throw new FileAccessError("No se puede renombrar la carpeta raíz del proyecto.")
+  if (safePath === resolve(root)) throw new FileAccessError(t("files.renameRoot"))
   await ensureParentPhysicallyInsideRoot(root, safePath)
   const info = await lstat(safePath)
   if (!info.isSymbolicLink()) await ensurePhysicallyInsideRoot(root, safePath)
@@ -169,7 +170,7 @@ export async function renameProjectEntry(root: string, targetPath: string, name:
   await ensureParentPhysicallyInsideRoot(root, nextPath)
   try {
     await lstat(nextPath)
-    throw new FileAccessError("Ya existe un elemento con ese nombre.")
+    throw new FileAccessError(t("files.entryExists"))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
   }

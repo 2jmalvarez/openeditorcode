@@ -10,6 +10,11 @@ export function platformPackage(platform = process.platform, arch = process.arch
   return packages[`${platform}-${arch}`]
 }
 
+export function launcherLanguage(env = process.env) {
+  const locale = env.LC_ALL || env.LC_MESSAGES || env.LANG || Intl.DateTimeFormat().resolvedOptions().locale
+  return /^es(?:[-_.]|$)/i.test(locale) ? "es" : "en"
+}
+
 export function createLauncherDependencies() {
   const require = createRequire(import.meta.url)
   return {
@@ -23,7 +28,7 @@ export function createLauncherDependencies() {
       return new Promise((resolve) => {
         const child = spawn(command, args, { stdio: "inherit", env })
         child.on("error", (error) => {
-          console.error(`Could not start ${command}: ${error.message}`)
+           console.error(launcherLanguage(env) === "es" ? `No se pudo iniciar ${command}: ${error.message}` : `Could not start ${command}: ${error.message}`)
           resolve(1)
         })
         child.on("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)))
@@ -37,8 +42,9 @@ export function createLauncherDependencies() {
 
 export async function launch(args, dependencies = createLauncherDependencies()) {
   const packageName = platformPackage(dependencies.platform, dependencies.arch)
+  const spanish = launcherLanguage(dependencies.env) === "es"
   if (!packageName) {
-    console.error(`openeditorcode does not support ${dependencies.platform}-${dependencies.arch}.`)
+    console.error(spanish ? `openeditorcode no admite ${dependencies.platform}-${dependencies.arch}.` : `openeditorcode does not support ${dependencies.platform}-${dependencies.arch}.`)
     return 1
   }
 
@@ -46,7 +52,7 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
   try {
     executable = dependencies.resolve(packageName, dependencies.platform)
   } catch {
-    console.error(`The ${packageName} binary was not installed. Reinstall openeditorcode and try again.`)
+    console.error(spanish ? `El binario ${packageName} no está instalado. Reinstale openeditorcode e inténtelo de nuevo.` : `The ${packageName} binary was not installed. Reinstall openeditorcode and try again.`)
     return 1
   }
 

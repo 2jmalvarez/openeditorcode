@@ -180,7 +180,7 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Supr` | Eliminar el archivo o carpeta seleccionado |
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
 | `F2` | Renombrar el archivo o carpeta seleccionado en el Explorador |
-| `Shift+Enter` | Alternar la carpeta seleccionada en Explorador o Cambios |
+| `Shift+Enter` | Expandir o contraer recursivamente la carpeta seleccionada en Explorador; alternar en Cambios |
 | `Ctrl+F` | Buscar archivos por nombre en el Explorador o texto en el Editor |
 | `Ctrl+Alt+F` | Buscar texto en todos los archivos del proyecto |
 | `Ctrl+E` | Editar exclusiones temporales desde un buscador de proyecto |

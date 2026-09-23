@@ -1,5 +1,6 @@
 import { createMemo, createSignal } from "solid-js"
-import { countProjectLines, searchProjectText, type ProjectSearchResult } from "./project-search"
+import { formatNumber, t } from "../localization"
+import { countProjectLines, searchProjectText, sortMassiveFiles, type MassiveFile, type ProjectSearchResult } from "./project-search"
 import type { Command } from "../dialogs/types"
 import { buildFileIndex, filterItems, relativeResult, type IndexedItem } from "./file-index"
 import { useSearchExclusions } from "./useSearchExclusions"
@@ -22,6 +23,7 @@ export function useSearch(props: Props) {
   const [projectResults, setProjectResults] = createSignal<ProjectSearchResult[]>([])
   const [projectSearching, setProjectSearching] = createSignal(false)
   const [lineCounts, setLineCounts] = createSignal<Record<string, number>>({})
+  const [massiveFiles, setMassiveFiles] = createSignal<MassiveFile[]>([])
   const [fileSearchOpen, setFileSearchOpen] = createSignal(false)
   const [fileQuery, setFileQuery] = createSignal("")
   const [fileResults, setFileResults] = createSignal<IndexedItem[]>([])
@@ -48,7 +50,10 @@ export function useSearch(props: Props) {
     setProjectSearching(false)
     setProjectResults([])
     setFileResults([])
-    if (clearLineCounts) setLineCounts({})
+    if (clearLineCounts) {
+      setLineCounts({})
+      setMassiveFiles([])
+    }
   }
 
   function reset() {
@@ -69,20 +74,20 @@ export function useSearch(props: Props) {
     if (!query().trim()) return
     const generation = ++searchGeneration
     setProjectSearching(true)
-    await props.runActivity("Buscando en el proyecto...", async () => {
+    await props.runActivity(t("search.projectActivity"), async () => {
       try {
         const index = await projectIndex()
         const results = await searchProjectText(props.root, query(), 100, index.items)
         if (generation !== searchGeneration) return
         setProjectResults(results)
         setSearchIndex(0)
-        const partial = index.truncated ? " Resultado parcial: el índice alcanzó 50.000 entradas." : ""
-        props.setStatus((results.length ? `${results.length} coincidencias en el proyecto.` : "No se encontraron coincidencias en el proyecto.") + partial)
+        const partial = index.truncated ? t("search.partial", { count: formatNumber(50_000) }) : ""
+        props.setStatus(t(results.length === 1 ? "search.oneMatch" : results.length ? "search.matches" : "search.noMatches", { count: formatNumber(results.length) }) + partial)
       } catch (error) {
         if (generation !== searchGeneration) return
-        const summary = "No se pudo buscar en el proyecto."
+        const summary = t("search.failed")
         props.setStatus(summary)
-        props.reportError?.({ source: "Búsqueda", operation: "Buscar en proyecto", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
+        props.reportError?.({ source: t("log.search"), operation: t("log.projectSearch"), summary, details: error instanceof Error ? error.stack ?? error.message : t("log.unknown") })
       } finally {
         if (generation === searchGeneration) setProjectSearching(false)
       }
@@ -90,17 +95,37 @@ export function useSearch(props: Props) {
   }
 
   async function showProjectLineCount() {
-    await props.runActivity("Calculando líneas del proyecto...", async () => {
+    await props.runActivity(t("search.countActivity"), async () => {
       try {
         await exclusions.load()
         const index = await buildFileIndex(props.root, { rules: exclusions.baseRules() })
         const summary = await countProjectLines(props.root, index.items)
         setLineCounts(summary.byPath)
-        props.setStatus(`Proyecto: ${summary.lines.toLocaleString()} líneas en ${summary.files.toLocaleString()} archivos de texto.${index.truncated ? " Resultado parcial: el índice alcanzó 50.000 entradas." : ""}`)
+        props.setStatus(t("search.count", { lines: formatNumber(summary.lines), lineUnit: t(summary.lines === 1 ? "search.lineOne" : "search.lineMany"), files: formatNumber(summary.files), fileUnit: t(summary.files === 1 ? "search.fileOne" : "search.fileMany"), partial: index.truncated ? t("search.partial", { count: formatNumber(50_000) }) : "" }))
       } catch (error) {
-        const summary = "No se pudieron calcular las líneas del proyecto."
+        const summary = t("search.countFailed")
         props.setStatus(summary)
-        props.reportError?.({ source: "Búsqueda", operation: "Calcular líneas", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
+        props.reportError?.({ source: t("log.search"), operation: t("log.countLines"), summary, details: error instanceof Error ? error.stack ?? error.message : t("log.unknown") })
+      }
+    })
+  }
+
+  async function findMassiveFiles(): Promise<boolean> {
+    return await props.runActivity(t("search.massiveActivity"), async () => {
+      try {
+        // The explorer's mass ranking always follows the project's .gitignore.
+        const index = await buildFileIndex(props.root)
+        const summary = await countProjectLines(props.root, index.items)
+        setLineCounts(summary.byPath)
+        const files = sortMassiveFiles(index.items, summary.byPath)
+        setMassiveFiles(files)
+        props.setStatus(t("search.massiveResult", { count: formatNumber(files.length), partial: index.truncated ? t("search.partial", { count: formatNumber(50_000) }) : "" }))
+        return true
+      } catch (error) {
+        const summary = t("search.massiveFailed")
+        props.setStatus(summary)
+        props.reportError?.({ source: t("log.explorer"), operation: t("log.massive"), summary, details: error instanceof Error ? error.stack ?? error.message : t("log.unknown") })
+        return false
       }
     })
   }
@@ -125,18 +150,18 @@ export function useSearch(props: Props) {
     setFileSearchIndex(0)
     const generation = ++fileGeneration
     if (!value.trim()) return setFileResults([])
-    await props.runActivity("Buscando archivos...", async () => {
+    await props.runActivity(t("search.fileActivity"), async () => {
       try {
         const index = await projectIndex()
         const results = filterItems(props.root, index.items.filter((item) => !item.directory), value)
         if (generation !== fileGeneration) return
         setFileResults(results)
-        props.setStatus(results.length ? `${results.length} archivos encontrados.` : "No se encontraron archivos.")
+        props.setStatus(t(results.length === 1 ? "search.oneFile" : results.length ? "search.files" : "search.noFiles", { count: formatNumber(results.length) }))
       } catch (error) {
         if (generation !== fileGeneration) return
-        const summary = "No se pudieron buscar archivos."
+        const summary = t("search.filesFailed")
         props.setStatus(summary)
-        props.reportError?.({ source: "Búsqueda", operation: "Buscar archivos", summary, details: error instanceof Error ? error.stack ?? error.message : "Error desconocido" })
+        props.reportError?.({ source: t("log.search"), operation: t("log.fileSearch"), summary, details: error instanceof Error ? error.stack ?? error.message : t("log.unknown") })
       }
     })
   }
@@ -152,7 +177,7 @@ export function useSearch(props: Props) {
   const exclusionSuggestions = createMemo(() => exclusions.suggestions(exclusionQuery()))
 
   async function prepareExclusions() {
-    await props.runActivity("Cargando exclusiones de búsqueda...", async () => { await projectIndex() })
+    await props.runActivity(t("search.exclusionsActivity"), async () => { await projectIndex() })
     setExclusionIndex((value) => Math.min(value, Math.max(0, exclusionSuggestions().length - 1)))
   }
 
@@ -193,7 +218,7 @@ export function useSearch(props: Props) {
   }
 
   return {
-    query, searchIndex, setSearchIndex, projectResults, projectSearching, lineCounts, reset, updateQuery, findInProject, showProjectLineCount, paletteResults, invalidateIndex,
+    query, searchIndex, setSearchIndex, projectResults, projectSearching, lineCounts, massiveFiles, reset, updateQuery, findInProject, showProjectLineCount, findMassiveFiles, paletteResults, invalidateIndex,
     fileSearchOpen, fileQuery, fileResults, fileSearchIndex, setFileSearchIndex, openFileSearch, closeFileSearch, updateFileQuery, refreshFileSearch, moveFileSelection,
     exclusionQuery, exclusionIndex, setExclusionIndex, exclusionSuggestions, updateExclusionQuery, prepareExclusions, toggleExclusion, removeExclusion, completeExclusion, reloadExclusions,
   }

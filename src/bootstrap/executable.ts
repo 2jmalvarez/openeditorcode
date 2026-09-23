@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { spawn } from "node:child_process"
 import { parseCli } from "./cli"
-import { configureLanguage } from "../localization"
+import { configureLanguage, t } from "../localization"
 
 async function runWorker(args: string[], recoveryAttempt = false): Promise<number> {
   const { configHash, loadConfig, markConfigStarting, readConfigText, restoreFactory } = await import("../config/storage")
@@ -23,7 +23,7 @@ async function runWorker(args: string[], recoveryAttempt = false): Promise<numbe
   try {
     const state = JSON.parse(await Bun.file(loaded.paths.state).text()) as { attemptId?: string; configHash?: string; phase?: string }
     if (current && state.attemptId === attemptId && state.phase === "starting" && state.configHash === configHash(current)) {
-      await restoreFactory(loaded.paths, current, "OEC no pudo iniciar con esta configuración.")
+       await restoreFactory(loaded.paths, current, t("config.recoveryReason"))
       return runWorker(args, true)
     }
   } catch { /* A missing state file means the failure cannot be attributed safely. */ }

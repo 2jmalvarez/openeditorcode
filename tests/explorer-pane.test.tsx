@@ -3,6 +3,40 @@ import { expect, test } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { ExplorerPane } from "../src/explorer/ExplorerPane"
 import type { TreeItem } from "../src/explorer/tree"
+import { visibleName } from "../src/explorer/ScrollingName"
+import { createSignal } from "solid-js"
+
+test("scrolls a selected name across terminal columns without splitting wide characters", () => {
+  expect(visibleName("prefix-界-ending", 8, 0)).toBe("prefix-")
+  expect(visibleName("prefix-界-ending", 8, 9)).toBe("fix-界-e")
+  expect(visibleName("prefix-界-ending", 8, 15)).toBe("-ending")
+  expect(visibleName("short", 8, 100)).toBe("short")
+})
+
+test("keeps calculated line counts visible while a long selected file name moves", async () => {
+  const [selected, setSelected] = createSignal(0)
+  const tree: TreeItem[] = ["very-long-filename-with-a-readable-tail.ts", "second-file.ts"].map((name) => ({ path: name, name, depth: 0, directory: false, expanded: false, ignored: false }))
+  const setup = await testRender(() => <ExplorerPane root="." active={() => true} tree={() => tree} selected={selected}
+    filePath={() => undefined} lineCounts={() => ({ [tree[0]!.path]: 123456, [tree[1]!.path]: 42 })} setScroll={() => {}}
+    onActivate={() => {}} fileSearchOpen={() => false} fileQuery={() => ""} fileResults={() => []}
+    fileSearchIndex={() => 0} onFileQuery={() => {}} onFileActivate={() => {}}
+    massiveFilesOpen={() => false} onToggleMassiveFiles={() => {}} width={() => 28}
+  />, { width: 28, height: 10 })
+  try {
+    await setup.renderOnce()
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("123456")
+    await Bun.sleep(1800)
+    await setup.renderOnce()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("123456")
+    expect(frame).toContain("42")
+    expect(frame).toContain("long-")
+    setSelected(1)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("very-long-")
+  } finally { setup.renderer.destroy() }
+})
 
 test("aligns explorer names across icon widths and preserves indentation and counts", async () => {
   const tree: TreeItem[] = [0, 1, 2].flatMap((depth) =>
@@ -17,7 +51,7 @@ test("aligns explorer names across icon widths and preserves indentation and cou
     filePath={() => undefined} lineCounts={() => counts} setScroll={() => {}}
     onActivate={() => {}} fileSearchOpen={() => false} fileQuery={() => ""}
     fileResults={() => []} fileSearchIndex={() => 0} onFileQuery={() => {}}
-    onFileActivate={() => {}} width={() => 40}
+    onFileActivate={() => {}} massiveFilesOpen={() => false} onToggleMassiveFiles={() => {}} width={() => 40}
   />, { width: 40, height: 28 })
   try {
     await setup.renderOnce()

@@ -1,8 +1,9 @@
 import { watch } from "node:fs"
 import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
-import { commitGitChanges, fetchGit, pullGit, pushGit, readGitDiff, readGitState, restoreGitFiles, stageGitFiles, unstageGitFiles, type GitDiff, type GitFile, type GitFailure } from "./status"
+import { commitGitChanges, fetchGit, pullGit, pushGit, readGitDiff, readGitState, restoreGitFiles, stageGitFiles, unstageGitFiles, type GitDiff, type GitFile, type GitFailure, type GitState } from "./status"
 import { createGitTree, type GitTreeItem } from "./tree"
 import { readGitBranches, readGitCommitFiles, readGitHistoricalDiff, readGitHistory } from "./history"
+import { t } from "../localization"
 
 export type GitMode = "local" | "history" | "branches" | "files"
 type HistoryView = { mode: GitMode; title: string; rows: GitTreeItem[]; revision?: string; ref?: string }
@@ -22,23 +23,21 @@ export async function fetchAndRefreshGit(
   setStatus: (message: string) => void,
   fetchRemote: (root: string) => Promise<boolean> = fetchGit,
 ) {
-  setStatus("Actualizando referencias remotas y cambios de Git...")
+  setStatus(t("git.refreshActivity"))
   const fetched = await fetchRemote(root)
   await refresh()
-  setStatus(fetched
-    ? "Referencias remotas y cambios de Git actualizados."
-    : "Cambios de Git actualizados; no se pudieron actualizar las referencias remotas.")
+  setStatus(t(fetched ? "git.refreshed" : "git.partialRefresh"))
 }
 
 export function useGit(props: Props) {
-  const [state, setState] = createSignal({ available: false, branch: "", remoteStatus: "", files: [] as GitFile[], message: "Comprobando Git..." })
+  const [state, setState] = createSignal<GitState>({ available: false, branch: "", remoteStatus: "", files: [], message: t("git.checking") })
   const [selected, setSelected] = createSignal(0)
   const [expanded, setExpanded] = createSignal<Set<string>>(new Set())
   const [commitMessage, setCommitMessage] = createSignal("")
   const [commitFocused, setCommitFocused] = createSignal(false)
   const [view, setView] = createSignal<HistoryView>({ mode: "local", title: "", rows: [] })
   const mode = () => view().mode
-  const historyTitle = () => view().title
+  const historyTitle = () => view().mode === "branches" ? t("git.branches") : view().mode === "history" ? t("git.history", { ref: view().ref === "HEAD" ? state().branch || "HEAD" : view().ref?.replace(/^refs\/(heads|remotes)\//, "") }) : view().title
   const [loading, setLoading] = createSignal(false)
   const backStack: Array<{ view: HistoryView; selected: number; focused: boolean; path?: string }> = []
   let navigation = 0
@@ -50,7 +49,7 @@ export function useGit(props: Props) {
   const controller = new AbortController()
 
   function reportGitFailure(failure: GitFailure) {
-    props.reportFailure?.({ source: "Git", operation: failure.operation, summary: `${failure.operation} falló${failure.exitCode === undefined ? "" : ` (código ${failure.exitCode})`}.`, details: [failure.stderr, failure.stdout].filter(Boolean).join("\n") || "Git no devolvió detalles." })
+    props.reportFailure?.({ source: "Git", operation: failure.operation, summary: t("git.failure", { operation: failure.operation, code: failure.exitCode === undefined ? "" : t("git.exitCode", { code: failure.exitCode }) }), details: [failure.stderr, failure.stdout].filter(Boolean).join("\n") || t("git.noDetails") })
   }
 
   async function readState() {
@@ -143,13 +142,13 @@ export function useGit(props: Props) {
       const next = await operation(signal)
       if (token === navigation && !signal.aborted) setView(next)
     } catch (error) {
-      if (token === navigation && !signal.aborted) props.setStatus(error instanceof Error ? error.message : "No se pudo leer el historial.")
+      if (token === navigation && !signal.aborted) props.setStatus(error instanceof Error ? error.message : t("git.historyFailed"))
     } finally {
       if (token === navigation) setLoading(false)
     }
   }
 
-  async function showHistory(ref = "HEAD", title = `Historial: ${ref === "HEAD" ? state().branch || "HEAD" : ref.replace(/^refs\/(heads|remotes)\//, "")}`) {
+  async function showHistory(ref = "HEAD", title = t("git.history", { ref: ref === "HEAD" ? state().branch || "HEAD" : ref.replace(/^refs\/(heads|remotes)\//, "") })) {
     enter({ mode: "history", title, rows: [], ref }, true)
     await loadHistory(ref)
   }
@@ -160,7 +159,7 @@ export function useGit(props: Props) {
     await load(async (signal) => {
       const page = await readGitHistory(props.root, ref, existing.length, undefined, signal)
       const rows: GitTreeItem[] = [...existing, ...page.commits.map((commit) => ({ path: commit.revision, name: `${commit.revision.slice(0, 8)} ${commit.subject} (${commit.author}, ${commit.date.slice(0, 10)})`, depth: 0, directory: false, expanded: false, commit }))]
-      if (page.hasMore) rows.push({ path: "history:more", name: "Cargar mas commits...", depth: 0, directory: false, expanded: false, loadMore: true })
+      if (page.hasMore) rows.push({ path: "history:more", name: t("git.loadMore"), depth: 0, directory: false, expanded: false, loadMore: true })
       return { ...current, rows, revision: page.revision }
     })
   }
@@ -171,12 +170,12 @@ export function useGit(props: Props) {
   }
 
   async function showBranches() {
-    enter({ mode: "branches", title: "Ramas locales y remotas", rows: [] }, true)
+    enter({ mode: "branches", title: t("git.branches"), rows: [] }, true)
     await loadBranches()
   }
 
   async function loadBranches() {
-    await load(async (signal) => ({ mode: "branches", title: "Ramas locales y remotas", rows: (await readGitBranches(props.root, signal)).map((branch) => ({ path: branch.ref, name: `${branch.current ? "* " : "  "}${branch.name}${branch.remote ? " [remota]" : " [local]"}`, depth: 0, directory: false, expanded: false, branch })) }))
+    await load(async (signal) => ({ mode: "branches", title: t("git.branches"), rows: (await readGitBranches(props.root, signal)).map((branch) => ({ path: branch.ref, name: `${branch.current ? "* " : "  "}${branch.name}${t(branch.remote ? "git.remoteBranch" : "git.localBranch")}`, depth: 0, directory: false, expanded: false, branch })) }))
   }
 
   function goBack(): boolean {
@@ -224,7 +223,7 @@ export function useGit(props: Props) {
       if (!item) return
       if (item.loadMore) { await loadMore(); return }
       if (item.branch) {
-        enter({ mode: "history", title: `Historial: ${item.branch.name}`, rows: [], ref: item.branch.ref })
+        enter({ mode: "history", title: t("git.history", { ref: item.branch.name }), rows: [], ref: item.branch.ref })
         await loadHistory(item.branch.ref)
         return
       }
@@ -244,7 +243,7 @@ export function useGit(props: Props) {
         if (token !== navigation || signal.aborted) return
         return diff
       } catch (error) {
-        if (token === navigation && !signal.aborted) props.setStatus(error instanceof Error ? error.message : "No se pudo leer el diff historico.")
+        if (token === navigation && !signal.aborted) props.setStatus(error instanceof Error ? error.message : t("git.diffFailed"))
       } finally {
         if (token === navigation) setLoading(false)
       }
@@ -257,7 +256,7 @@ export function useGit(props: Props) {
       const diff = await readGitDiff(props.root, file)
       if (token === navigation && !controller.signal.aborted) return diff
     } catch (error) {
-      props.setStatus(error instanceof Error ? error.message : "No se pudieron mostrar los cambios.")
+      props.setStatus(error instanceof Error ? error.message : t("git.changesFailed"))
     }
   }
 
@@ -275,7 +274,7 @@ export function useGit(props: Props) {
       else await loadHistory(current.ref ?? "HEAD")
     }
     if (props.fetchOnRefresh === false) return refreshVisible()
-    await props.runActivity("Actualizando referencias remotas y cambios de Git...", () => fetchAndRefreshGit(props.root, refreshVisible, props.setStatus, (root) => fetchGit(root, reportGitFailure)))
+    await props.runActivity(t("git.refreshActivity"), () => fetchAndRefreshGit(props.root, refreshVisible, props.setStatus, (root) => fetchGit(root, reportGitFailure)))
   }
 
   async function stageSelected() {

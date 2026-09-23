@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test"
-import { launch } from "../bin/launcher.js"
+import { launch, launcherLanguage } from "../bin/launcher.js"
+
+test("launcher chooses Spanish only for Spanish system locales", () => {
+  expect(launcherLanguage({ LANG: "es_AR.UTF-8" })).toBe("es")
+  expect(launcherLanguage({ LANG: "es_AR.UTF-8", LC_ALL: "en_US.UTF-8" })).toBe("en")
+  expect(launcherLanguage({ LANG: "en_US.UTF-8" })).toBe("en")
+})
 
 function dependencies(codes) {
   const calls = []

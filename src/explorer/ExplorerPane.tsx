@@ -6,6 +6,7 @@ import { displayPath, type TreeItem } from "./tree"
 import { virtualRange } from "./virtual-rows"
 import { relativeResult, type IndexedItem } from "../search/file-index"
 import { t } from "../localization"
+import { ScrollingName } from "./ScrollingName"
 
 type Props = {
   root: string
@@ -22,6 +23,8 @@ type Props = {
   fileSearchIndex: Accessor<number>
   onFileQuery: (value: string) => void
   onFileActivate: (index: number) => void
+  massiveFilesOpen: Accessor<boolean>
+  onToggleMassiveFiles: () => void
   width: Accessor<number>
 }
 
@@ -54,11 +57,11 @@ export function ExplorerPane(props: Props) {
   onCleanup(() => renderer.off("frame", syncRange))
 
   return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, overflow: "hidden", flexDirection: "column", border: ["right"], borderColor: "#30404d" }}>
-    <box style={{ flexShrink: 0, paddingX: 1, paddingTop: 1 }}><text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{t("app.explorer")}</text></box>
+    <box style={{ flexShrink: 0, paddingX: 1, paddingTop: 1 }}><text onMouseDown={props.onToggleMassiveFiles} fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.massiveFilesOpen() ? "ARCHIVOS MASIVOS [Arbol]" : `${t("app.explorer")} [Masivos]`}</text></box>
     <Show when={props.fileSearchOpen()}>
       <box style={{ paddingX: 1, flexDirection: "column" }}>
         <input focused={props.active()} value={props.fileQuery()} onInput={props.onFileQuery} placeholder={t("app.searchFile")} style={{ backgroundColor: "#17202a" }} />
-        <text fg="#71808b">{t("app.results", { count: props.fileResults().length })} | Ctrl+E</text>
+         <text fg="#71808b">{props.fileResults().length === 1 ? t("app.resultOne") : t("app.results", { count: props.fileResults().length })} | Ctrl+E</text>
       </box>
     </Show>
     <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, paddingX: 1 }}>
@@ -66,12 +69,12 @@ export function ExplorerPane(props: Props) {
         <Show when={range().top}><box style={{ height: range().top }} /></Show>
         <For each={rows()}>{(item, itemIndex) => { const logicalIndex = () => range().start + itemIndex(); return (
           <box id={`tree-${logicalIndex()}`} onMouseDown={() => props.onActivate(logicalIndex())} style={{ height: 1, flexShrink: 0, paddingLeft: item.depth, overflow: "hidden", flexDirection: "row", alignItems: "center", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
-            <box style={{ flexGrow: 1, minWidth: 0, height: 1, overflow: "hidden", flexDirection: "row" }}>
+            <box style={{ width: 0, flexGrow: 1, minWidth: 0, height: 1, overflow: "hidden", flexDirection: "row" }}>
               <text style={{ width: 3, flexShrink: 0 }} fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"}>{fileIcon(item)}</text>
-              <text style={{ flexGrow: 1, minWidth: 0 }} fg={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"}>{item.name}</text>
+              <ScrollingName name={item.name} selected={() => props.active() && logicalIndex() === props.selected()} color={item.ignored ? "#59646d" : item.directory ? "#8ed1ff" : item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"} />
             </box>
             <Show when={!item.directory && props.lineCounts()[item.path] !== undefined} fallback={<box />}>
-              <text style={{ marginLeft: "auto" }} fg="#71808b">{props.lineCounts()[item.path]}</text>
+              <text style={{ marginLeft: "auto", flexShrink: 0 }} fg="#71808b">{props.lineCounts()[item.path]}</text>
             </Show>
           </box>
         )}}</For>

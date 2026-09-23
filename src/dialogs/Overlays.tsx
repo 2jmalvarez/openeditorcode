@@ -74,7 +74,7 @@ export function Overlays(props: Props) {
     <Show when={props.overlay() === "command-palette" || props.overlay() === "project-search" || props.overlay() === "search-exclusions" || props.overlay() === "new-file" || props.overlay() === "rename"} fallback={<box />}>
       <box style={{ position: "absolute", top: "20%", left: "15%", width: "70%", height: "55%", padding: 1, flexDirection: "column", backgroundColor: "#1b252e", border: true, borderColor: "#70d6a7" }}>
         <text fg="#70d6a7">{props.overlay() === "command-palette" ? t("overlay.palette") : props.overlay() === "project-search" ? t("overlay.projectSearch") : props.overlay() === "search-exclusions" ? t("overlay.exclusions") : props.overlay() === "rename" ? t("overlay.rename") : t("overlay.newFile")}</text>
-        <Show when={props.overlay() !== "new-file" && props.overlay() !== "rename"} fallback={<box><text style={{ marginTop: 1 }} fg="#8ca0ae">{props.overlay() === "rename" ? props.pendingRename()?.directory ? "Carpeta" : "Archivo" : t("overlay.folder", { path: displayPath(props.root, props.newFileDirectory()) })}</text><input focused value={props.overlay() === "rename" ? props.renameName() : props.newFileName()} onInput={props.overlay() === "rename" ? props.setRenameName : props.setNewFileName} placeholder={t("overlay.fileName")} style={{ marginTop: 1, backgroundColor: "#101419" }} /></box>}>
+         <Show when={props.overlay() !== "new-file" && props.overlay() !== "rename"} fallback={<box><text style={{ marginTop: 1 }} fg="#8ca0ae">{props.overlay() === "rename" ? t(props.pendingRename()?.directory ? "overlay.directory" : "overlay.file") : t("overlay.folder", { path: displayPath(props.root, props.newFileDirectory()) })}</text><input focused value={props.overlay() === "rename" ? props.renameName() : props.newFileName()} onInput={props.overlay() === "rename" ? props.setRenameName : props.setNewFileName} placeholder={t("overlay.fileName")} style={{ marginTop: 1, backgroundColor: "#101419" }} /></box>}>
           <input focused value={props.overlay() === "search-exclusions" ? props.exclusionQuery() : props.query()} onInput={props.overlay() === "search-exclusions" ? props.setExclusionQuery : props.setQuery} placeholder={props.overlay() === "search-exclusions" ? t("overlay.pattern") : t("app.typeToSearch")} style={{ marginTop: 1, backgroundColor: "#101419" }} />
         </Show>
         <Show when={props.overlay() === "command-palette"} fallback={<box />}>
@@ -107,7 +107,7 @@ export function Overlays(props: Props) {
     <Show when={props.overlay() === "git-revert-confirm"} fallback={<box />}>
       <box style={{ position: "absolute", top: "30%", left: "25%", width: "50%", height: 10, padding: 1, flexDirection: "column", backgroundColor: "#2a2020", border: true, borderColor: "#f2c66d" }}>
         <text fg="#f2c66d">{t("overlay.discardGit")}</text>
-        <text style={{ marginTop: 1 }} fg="#b8c7d1">{t("overlay.discardGitQuestion", { path: props.pendingGitRevert().length === 1 ? props.pendingGitRevert()[0].path : `${props.pendingGitRevert().length} archivos` })}</text>
+         <text style={{ marginTop: 1 }} fg="#b8c7d1">{t("overlay.discardGitQuestion", { path: props.pendingGitRevert().length === 1 ? props.pendingGitRevert()[0].path : t("overlay.files", { count: props.pendingGitRevert().length }) })}</text>
         <text fg="#b8c7d1">{t("overlay.irreversible")}</text>
         <text style={{ marginTop: 1 }} fg="#8ca0ae">{t("overlay.actionHelp")}</text>
       </box>
@@ -122,10 +122,10 @@ export function Overlays(props: Props) {
     </Show>
     <Show when={props.overlay() === "settings"} fallback={<box />}>
       <box style={{ position: "absolute", top: "16%", left: "20%", width: "60%", height: 17, padding: 1, flexDirection: "column", backgroundColor: "#17202a", border: true, borderColor: "#70d6a7" }}>
-        <box style={{ flexDirection: "row" }}><text fg="#70d6a7"><strong>CONFIGURACIÓN</strong></text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{props.settingsScope() === "global" ? "GLOBAL" : "PROYECTO"}</text></box>
-        <text style={{ marginTop: 1 }} fg="#8ca0ae">Los cambios se guardan en el JSON del ámbito activo.</text>
-        <For each={["Ajuste de línea", "Números de línea", "Resaltado de sintaxis", "Formatear al guardar", "Perfil de teclado"]}>{(label, index) => <box style={{ marginTop: 1, paddingX: 1, flexDirection: "row", backgroundColor: index() === props.settingsIndex() ? "#28404a" : undefined }}><text fg={index() === props.settingsIndex() ? "#ffffff" : "#d6e5dc"}>{index() === props.settingsIndex() ? "› " : "  "}{label}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{props.settingsValues()[index()]}</text></box>}</For>
-        <text style={{ marginTop: 1 }} fg="#8ca0ae">↑↓ seleccionar  Enter cambiar  ←→ ámbito  E editar JSON  Esc cerrar</text>
+         <box style={{ flexDirection: "row" }}><text fg="#70d6a7"><strong>{t("settings.title")}</strong></text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{t(props.settingsScope() === "global" ? "settings.global" : "settings.project")}</text></box>
+         <text style={{ marginTop: 1 }} fg="#8ca0ae">{t("settings.description")}</text>
+         <For each={["settings.wrap", "settings.lines", "settings.syntax", "settings.format", "settings.keyboard"] as const}>{(key, index) => <box style={{ marginTop: 1, paddingX: 1, flexDirection: "row", backgroundColor: index() === props.settingsIndex() ? "#28404a" : undefined }}><text fg={index() === props.settingsIndex() ? "#ffffff" : "#d6e5dc"}>{index() === props.settingsIndex() ? "› " : "  "}{t(key)}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{props.settingsValues()[index()]}</text></box>}</For>
+         <text style={{ marginTop: 1 }} fg="#8ca0ae">{t("settings.help")}</text>
       </box>
     </Show>
   </>

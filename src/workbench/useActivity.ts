@@ -1,4 +1,5 @@
 import { createMemo, createSignal, onCleanup } from "solid-js"
+import { translateKnown } from "../localization"
 
 const SPINNER_FRAMES = ["|", "/", "-", "\\"]
 
@@ -40,7 +41,7 @@ export function useActivity() {
   onCleanup(() => { if (timer) clearInterval(timer) })
 
   const busy = createMemo(() => activities().length > 0)
-  const message = createMemo(() => activities().at(-1)?.message ?? "")
+  const message = createMemo(() => translateKnown(activities().at(-1)?.message ?? ""))
   const spinner = createMemo(() => SPINNER_FRAMES[frame()])
   return { busy, message, spinner, run }
 }

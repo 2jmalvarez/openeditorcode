@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js"
+import { formatNumber, t } from "../localization"
 
 export type LogEntry = {
   id: number
@@ -34,7 +35,7 @@ export function useLogs() {
   function notice() {
     const count = unreadCount()
     if (!count) return ""
-    return count === 1 ? "Falló una operación · F12 para ver detalles" : `${count} errores sin leer · F12 para ver detalles`
+    return count === 1 ? t("log.oneUnread") : t("log.manyUnread", { count: formatNumber(count) })
   }
 
   return { entries, unreadCount, report, markRead, notice }

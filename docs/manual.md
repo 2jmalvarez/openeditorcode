@@ -38,7 +38,7 @@ Cierre OEC y repita el instalador para actualizar la misma instalacion directa, 
 
 El explorador se muestra inicialmente. Cambios se muestra también si el ancho del terminal alcanza `explorerWidth + changesWidth + minEditorWidth`; con la configuración de fábrica son 144 columnas. En espacios menores, los paneles laterales son excluyentes para no cubrir el editor.
 
-`Ctrl+B` alterna Explorador; `Ctrl+Alt+B` alterna Cambios; `Ctrl+Shift+Left` y `Ctrl+Shift+Right` mueven el foco. `Tab` recorre los paneles. El explorador se controla con flechas y `Enter`; `Shift+Enter` contrae la carpeta y `Ctrl+Shift+Enter` contrae el árbol. `Supr` pide confirmación antes de eliminar.
+`Ctrl+B` alterna Explorador; `Ctrl+Alt+B` alterna Cambios; `Ctrl+Shift+Left` y `Ctrl+Shift+Right` mueven el foco. `Tab` recorre los paneles. El explorador se controla con flechas y `Enter`; `Shift+Enter` expande o contrae recursivamente la carpeta y `Ctrl+Shift+Enter` contrae el árbol. El botón `Masivos` muestra una lista plana ordenada por cantidad de líneas, respetando `.gitignore`. `Supr` pide confirmación antes de eliminar.
 
 Los archivos abiertos se muestran en pestañas. `*` significa que el contenido difiere del último guardado. `Ctrl+S` guarda, `Ctrl+W` cierra y `Shift+Tab` selecciona la siguiente pestaña. Al cerrar, salir o actualizar con cambios sin guardar OEC pide guardar o descartar. Los diffs Git (`Delta`) son de solo lectura.
 
