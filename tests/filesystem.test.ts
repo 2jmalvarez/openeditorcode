@@ -8,6 +8,7 @@ import { countProjectLines, searchProjectText } from "../src/search/project-sear
 import { createTree } from "../src/explorer/tree"
 import { pathIsAffected, renamedPath } from "../src/documents/useDocuments"
 import { projectFolderCommand } from "../src/workbench/openProjectFolder"
+import { t } from "../src/localization"
 
 let root = ""
 
@@ -61,7 +62,7 @@ describe("file access", () => {
   test("rejects binary files", async () => {
     const path = join(root, "image.bin")
     await writeFile(path, Buffer.from([0x48, 0x00, 0x49]))
-    await expect(readTextFile(root, path)).rejects.toThrow("binarios")
+    await expect(readTextFile(root, path)).rejects.toThrow(t("files.binary"))
   })
 
   test("rejects invalid UTF-8 text", async () => {
@@ -92,7 +93,7 @@ describe("file access", () => {
     const path = join(root, "new-file.ts")
     await createTextFile(root, path)
     expect(await readTextFile(root, path)).toBe("")
-    await expect(createTextFile(root, path)).rejects.toThrow("Ya existe")
+    await expect(createTextFile(root, path)).rejects.toThrow(t("files.exists"))
   })
 
   test("removes a file or directory inside the selected root but never the root", async () => {
@@ -103,7 +104,7 @@ describe("file access", () => {
 
     await removeProjectEntry(root, directory)
     await expect(readTextFile(root, file)).rejects.toThrow()
-    await expect(removeProjectEntry(root, root)).rejects.toThrow("raíz")
+    await expect(removeProjectEntry(root, root)).rejects.toThrow(t("files.deleteRoot"))
   })
 
   test("renames files and folders inside the selected root without overwriting", async () => {
@@ -118,9 +119,9 @@ describe("file access", () => {
     expect(renamedFolder).toBe(join(root, "archive"))
     expect(await readTextFile(root, renamedFile)).toBe("keep")
     await writeFile(join(renamedFolder, "exists.txt"), "existing", "utf8")
-    await expect(renameProjectEntry(root, renamedFile, "exists.txt")).rejects.toThrow("Ya existe")
-    await expect(renameProjectEntry(root, renamedFile, "../outside.txt")).rejects.toThrow("no es válido")
-    await expect(renameProjectEntry(root, root, "other")).rejects.toThrow("raíz")
+    await expect(renameProjectEntry(root, renamedFile, "exists.txt")).rejects.toThrow(t("files.entryExists"))
+    await expect(renameProjectEntry(root, renamedFile, "../outside.txt")).rejects.toThrow(t("files.invalidName"))
+    await expect(renameProjectEntry(root, root, "other")).rejects.toThrow(t("files.renameRoot"))
   })
 
   test("rejects link escapes while allowing links that resolve inside the root", async () => {
@@ -181,7 +182,7 @@ describe("file access", () => {
 test("selects the platform file manager command", () => {
   expect(projectFolderCommand("C:\\work folder", "win32")).toEqual(["explorer.exe", "C:\\work folder"])
   expect(projectFolderCommand("/work folder", "linux")).toEqual(["xdg-open", "/work folder"])
-  expect(() => projectFolderCommand("/work", "darwin")).toThrow("no está disponible")
+  expect(() => projectFolderCommand("/work", "darwin")).toThrow(t("platform.openFolderUnsupported"))
 })
 
 describe("fuzzy search", () => {
