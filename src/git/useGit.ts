@@ -39,6 +39,8 @@ export function useGit(props: Props) {
   const mode = () => view().mode
   const historyTitle = () => view().mode === "branches" ? t("git.branches") : view().mode === "history" ? t("git.history", { ref: view().ref === "HEAD" ? state().branch || "HEAD" : view().ref?.replace(/^refs\/(heads|remotes)\//, "") }) : view().title
   const [loading, setLoading] = createSignal(false)
+  const [showCommitHashes, setShowCommitHashes] = createSignal(true)
+  const [showCommitDates, setShowCommitDates] = createSignal(true)
   const backStack: Array<{ view: HistoryView; selected: number; focused: boolean; path?: string }> = []
   let navigation = 0
   let historyController = new AbortController()
@@ -158,7 +160,7 @@ export function useGit(props: Props) {
     const existing = current.rows.filter((row) => !row.loadMore)
     await load(async (signal) => {
       const page = await readGitHistory(props.root, ref, existing.length, undefined, signal)
-      const rows: GitTreeItem[] = [...existing, ...page.commits.map((commit) => ({ path: commit.revision, name: `${commit.revision.slice(0, 8)} ${commit.subject} (${commit.author}, ${commit.date.slice(0, 10)})`, depth: 0, directory: false, expanded: false, commit }))]
+      const rows: GitTreeItem[] = [...existing, ...page.commits.map((commit) => ({ path: commit.revision, name: `${commit.subject} (${commit.author})`, depth: 0, directory: false, expanded: false, commit }))]
       if (page.hasMore) rows.push({ path: "history:more", name: t("git.loadMore"), depth: 0, directory: false, expanded: false, loadMore: true })
       return { ...current, rows, revision: page.revision }
     })
@@ -348,5 +350,5 @@ export function useGit(props: Props) {
     })
   })
 
-  return { state, tree, selected, commitMessage, setCommitMessage, commitFocused, setCommitFocused, refresh, fetch, moveSelection, select, toggleSelectedFolder, collapseAllFolders, selectedFile, selectedFiles, stageSelected, unstageSelected, restore, commit, pull, push, openSelected, mode, historyTitle, loading, showHistory, showBranches, goBack, loadMore }
+  return { state, tree, selected, commitMessage, setCommitMessage, commitFocused, setCommitFocused, refresh, fetch, moveSelection, select, toggleSelectedFolder, collapseAllFolders, selectedFile, selectedFiles, stageSelected, unstageSelected, restore, commit, pull, push, openSelected, mode, historyTitle, loading, showHistory, showBranches, goBack, loadMore, showCommitHashes, showCommitDates, toggleCommitHashes: () => setShowCommitHashes((value) => !value), toggleCommitDates: () => setShowCommitDates((value) => !value) }
 }

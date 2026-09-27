@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import type { BoxRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
-import { createEffect, createSignal, onCleanup, type Accessor } from "solid-js"
+import { createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js"
 
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
 
@@ -25,8 +25,7 @@ export function visibleName(name: string, width: number, tick: number): string {
   if (Bun.stringWidth(name) <= width) return name
   const { characters, widths } = nameParts(name)
   const maxOffset = lastOffset(widths, width)
-  const position = Math.min(maxOffset, Math.max(0, tick - 6))
-  const offset = tick >= maxOffset + 12 ? 0 : position
+  const offset = Math.min(maxOffset, Math.max(0, tick - 6))
   let result = ""
   let used = 0
   for (let index = offset; index < characters.length; index += 1) {
@@ -37,10 +36,12 @@ export function visibleName(name: string, width: number, tick: number): string {
   return result
 }
 
-export function ScrollingName(props: { name: string; selected: Accessor<boolean>; color: string }) {
+export function ScrollingName(props: { name: string; selected: Accessor<boolean>; active?: Accessor<boolean>; color: string }) {
   const renderer = useRenderer()
   const [width, setWidth] = createSignal(0)
   const [tick, setTick] = createSignal(0)
+  const parts = createMemo(() => nameParts(props.name))
+  const active = () => props.active?.() ?? true
   let container: BoxRenderable | undefined
 
   function measure() {
@@ -49,17 +50,22 @@ export function ScrollingName(props: { name: string; selected: Accessor<boolean>
 
   createEffect(() => {
     props.name
-    const selected = props.selected()
     setTick(0)
-    if (!selected) return
+  })
+
+  createEffect(() => {
+    if (!props.selected()) { setTick(0); return }
     renderer.on("frame", measure)
-    const timer = setInterval(() => {
-      if (width() > 0 && Bun.stringWidth(props.name) > width()) {
-        const { widths } = nameParts(props.name)
-        setTick((value) => (value + 1) % (lastOffset(widths, width()) + 13))
-      }
-    }, 150)
-    onCleanup(() => { renderer.off("frame", measure); clearInterval(timer) })
+    measure()
+    onCleanup(() => renderer.off("frame", measure))
+  })
+
+  createEffect(() => {
+    if (!props.selected() || !active() || width() <= 0 || Bun.stringWidth(props.name) <= width()) return
+    const endpoint = lastOffset(parts().widths, width()) + 6
+    if (tick() >= endpoint) return
+    const timer = setTimeout(() => setTick((value) => Math.min(endpoint, value + 1)), 150)
+    onCleanup(() => clearTimeout(timer))
   })
 
   return <box ref={container} style={{ width: 0, flexGrow: 1, minWidth: 0, height: 1, overflow: "hidden" }}>

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import packageJson from "../package.json"
 import { visibleLineLabels } from "../src/editor/useEditorMetrics"
-import { virtualRange } from "../src/explorer/virtual-rows"
+import { scrollTopForSelected, virtualRange } from "../src/explorer/virtual-rows"
 
 test("renders only visible line labels", () => {
   const sources = Array.from({ length: 10_000 }, (_, index) => index)
@@ -25,4 +25,11 @@ test("publishes only platform binaries as production dependencies", () => {
 
 test("mounts only viewport rows for large trees", () => {
   expect(virtualRange(20_000, 10_000, 30, 5)).toEqual({ start: 9995, end: 10035, top: 9995, bottom: 9965 })
+})
+
+test("keeps a selected virtual row visible with minimal scrolling", () => {
+  expect(scrollTopForSelected(100, 4, 0, 5)).toBe(0)
+  expect(scrollTopForSelected(100, 5, 0, 5)).toBe(1)
+  expect(scrollTopForSelected(100, 3, 5, 5)).toBe(3)
+  expect(scrollTopForSelected(100, 99, 0, 5)).toBe(95)
 })

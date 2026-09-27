@@ -50,7 +50,7 @@ export function AppLayout(props: Props) {
         </box>
         </box>
       <Show when={props.gitVisible()}>
-        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} commitMessage={props.git.commitMessage} setCommitMessage={props.git.setCommitMessage} commitFocused={props.git.commitFocused} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} mode={props.git.mode} historyTitle={props.git.historyTitle} loading={props.git.loading} />
+        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} commitMessage={props.git.commitMessage} setCommitMessage={props.git.setCommitMessage} commitFocused={props.git.commitFocused} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} mode={props.git.mode} historyTitle={props.git.historyTitle} loading={props.git.loading} showCommitHashes={props.git.showCommitHashes} showCommitDates={props.git.showCommitDates} />
       </Show>
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>

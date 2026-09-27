@@ -23,6 +23,8 @@ type Props = {
   mode?: Accessor<GitMode>
   historyTitle?: Accessor<string>
   loading?: Accessor<boolean>
+  showCommitHashes?: Accessor<boolean>
+  showCommitDates?: Accessor<boolean>
 }
 
 const labels: Record<GitFile["status"], string> = { modified: "M", added: "A", deleted: "D", renamed: "R", untracked: "?" }
@@ -51,28 +53,37 @@ export function GitPane(props: Props) {
   onCleanup(() => renderer.off("frame", syncRange))
 
   return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
-    <box style={{ minHeight: 3, flexShrink: 0, paddingX: 1, paddingY: 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
+    <box style={{ minHeight: 3, flexShrink: 0, paddingX: 1, paddingTop: 1, paddingBottom: props.mode?.() === "history" ? 0 : 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
        <Show when={props.state().available} fallback={<text fg="#71808b">{translateKnown(props.state().message)}</text>}>
          <box style={{ minWidth: 0 }}><text wrapMode="char" fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{translateKnown(props.state().branch)}</text></box>
          <text style={{ alignSelf: "flex-end" }} fg="#71808b">{remoteLabel(props.state())}</text>
       </Show>
       <Show when={props.mode && props.mode() !== "local"}>
-        <box style={{ flexDirection: "row", minWidth: 0 }}>
-          <box style={{ width: 0, flexGrow: 1, minWidth: 0, overflow: "hidden" }}><text wrapMode="none" fg="#8ed1ff">{props.historyTitle?.()}</text></box>
-           <Show when={props.mode?.() === "files" && !props.loading?.()}><text style={{ flexShrink: 0, marginLeft: 1 }} fg="#71808b">{props.tree().length === 1 ? t("overlay.oneFile") : t("overlay.files", { count: props.tree().length })}</text></Show>
-        </box>
-         <text fg="#71808b">{t(props.loading?.() ? "git.loading" : props.tree().length ? "git.readOnly" : "git.noResults")}</text>
+           <box style={{ flexDirection: "row", minWidth: 0 }}>
+           <box style={{ width: 0, flexGrow: 1, minWidth: 0, overflow: "hidden" }}><text wrapMode="none" fg="#8ed1ff">{props.historyTitle?.()}</text></box>
+            <Show when={props.mode?.() === "history"}><text style={{ flexShrink: 0, marginLeft: 1 }} fg="#71808b">{t(props.loading?.() ? "git.loading" : props.tree().length ? "git.readOnly" : "git.noResults")}</text></Show>
+            <Show when={props.mode?.() === "files" && !props.loading?.()}><text style={{ flexShrink: 0, marginLeft: 1 }} fg="#71808b">{props.tree().length === 1 ? t("overlay.oneFile") : t("overlay.files", { count: props.tree().length })}</text></Show>
+           </box>
+          <Show when={props.mode?.() === "history"}>
+            <box style={{ flexDirection: "row" }}>
+              <text fg="#71808b">{t(props.showCommitHashes?.() === false ? "git.showCommitIds" : "git.hideCommitIds")}</text>
+              <text style={{ marginLeft: "auto" }} fg="#71808b">{t(props.showCommitDates?.() === false ? "git.showCommitDates" : "git.hideCommitDates")}</text>
+            </box>
+          </Show>
+          <Show when={props.mode?.() !== "history"}><text fg="#71808b">{t(props.loading?.() ? "git.loading" : props.tree().length ? "git.readOnly" : "git.noResults")}</text></Show>
       </Show>
     </box>
     <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0 }}>
       <Show when={range().top}><box style={{ height: range().top }} /></Show>
       <For each={rows()}>{(item, index) => { const logicalIndex = () => range().start + index(); return (
-        <box onMouseDown={() => props.onActivate(logicalIndex())} style={{ height: 1, flexShrink: 0, overflow: "hidden", paddingLeft: item.depth + 1, paddingRight: 1, flexDirection: "row", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
-          <Show when={item.file}><text style={{ flexShrink: 0 }} fg="#71808b">{item.fileNumber}.</text></Show>
-          <text style={{ marginLeft: item.directory ? 0 : 1, flexShrink: 0 }} fg={item.file ? colors[item.file.status] : "#8ed1ff"}>{item.directory ? item.expanded ? "▾" : "▸" : item.file ? labels[item.file.status] : item.commit ? "#" : item.loadMore ? "+" : ""}</text>
-           <box style={{ marginLeft: 1, width: 0, flexGrow: 1, minWidth: 0, height: 1, overflow: "hidden", flexDirection: "row" }}><ScrollingName name={item.loadMore ? t("git.loadMore") : item.branch ? `${item.name.replace(/ \[(remota|local|remote)\]$/, "")}${t(item.branch.remote ? "git.remoteBranch" : "git.localBranch")}` : item.name} selected={() => props.active() && logicalIndex() === props.selected()} color="#d6e5dc" /></box>
-          <Show when={item.file && item.file.additions !== null && item.file.deletions !== null} fallback={<Show when={item.file}><text style={{ flexShrink: 0 }} fg="#70d6a7">+?</text><text style={{ marginLeft: 1, flexShrink: 0 }} fg="#ef7b7b">-?</text></Show>}>
-            <text style={{ marginLeft: "auto", flexShrink: 0 }} fg="#70d6a7">+{item.file!.additions}</text>
+        <box id={`git-${logicalIndex()}`} onMouseDown={() => props.onActivate(logicalIndex())} style={{ height: 1, flexShrink: 0, overflow: "hidden", paddingLeft: item.depth + 1, paddingRight: 1, flexDirection: "row", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
+           <Show when={item.file}><text style={{ flexShrink: 0 }} fg="#71808b">{item.fileNumber}.</text></Show>
+           <text style={{ marginLeft: item.directory ? 0 : 1, flexShrink: 0 }} fg={item.file ? colors[item.file.status] : "#8ed1ff"}>{item.directory ? item.expanded ? "▾" : "▸" : item.file ? labels[item.file.status] : item.commit ? "#" : item.loadMore ? "+" : ""}</text>
+           <Show when={item.commit && props.showCommitHashes?.() !== false}><text style={{ marginLeft: 1, flexShrink: 0 }} fg="#d6e5dc">{item.commit!.revision.slice(0, 8)}</text></Show>
+            <box style={{ marginLeft: 1, width: 0, flexGrow: 1, minWidth: 0, height: 1, overflow: "hidden", flexDirection: "row" }}><ScrollingName name={item.loadMore ? t("git.loadMore") : item.branch ? `${item.name.replace(/ \[(remota|local|remote)\]$/, "")}${t(item.branch.remote ? "git.remoteBranch" : "git.localBranch")}` : item.name} selected={() => logicalIndex() === props.selected()} active={() => props.active() && !props.commitFocused()} color="#d6e5dc" /></box>
+           <Show when={item.commit && props.showCommitDates?.() !== false}><text style={{ marginLeft: 1, flexShrink: 0 }} fg="#71808b">{item.commit!.date.slice(0, 10)}</text></Show>
+           <Show when={item.file && item.file.additions !== null && item.file.deletions !== null} fallback={<Show when={item.file}><text style={{ marginLeft: 1, flexShrink: 0 }} fg="#70d6a7">+?</text><text style={{ marginLeft: 1, flexShrink: 0 }} fg="#ef7b7b">-?</text></Show>}>
+             <text style={{ marginLeft: 1, flexShrink: 0 }} fg="#70d6a7">+{item.file!.additions}</text>
             <text style={{ marginLeft: 1, flexShrink: 0 }} fg="#ef7b7b">-{item.file!.deletions}</text>
           </Show>
         </box>

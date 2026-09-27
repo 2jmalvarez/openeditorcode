@@ -582,6 +582,26 @@ test("does not run global shortcuts behind the command palette", async () => {
   }
 })
 
+test("moves the source editor by a visible page with PageUp and PageDown", async () => {
+  await writeFile(join(root, "hello.txt"), Array.from({ length: 100 }, (_, index) => `linea ${index + 1}`).join("\n"), "utf8")
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await waitForText(setup, "hello.txt")
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "linea 1")
+
+    setup.mockInput.pressKey("\u001b[6~")
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toMatch(/(?:Línea|Ln) [2-9][0-9]:1/)
+
+    setup.mockInput.pressKey("\u001b[5~")
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toMatch(/(?:Línea|Ln) 1:1/)
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
 test("receives Shift+Enter in the explorer with the extended keyboard protocol", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30, kittyKeyboard: true })
   try {

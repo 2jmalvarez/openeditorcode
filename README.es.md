@@ -4,7 +4,7 @@
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
-Documentacion para la release **0.2.24**.
+Documentacion para la release **0.2.29**.
 
 Editor de proyectos de código abierto para terminal. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
@@ -23,6 +23,7 @@ Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al m
 - Creacion de archivos en la carpeta seleccionada, sin sobrescribir archivos existentes.
 - Varias pestanas abiertas, cambio circular, cierre clicable y pestanas de diff Git `Delta`.
 - Editor multilinea con numeros de linea, resaltado basico para codigo, ajuste de linea, deshacer/rehacer y conservacion de finales LF/CRLF.
+- Navegacion por pantallas en el editor de fuente con `RePag` y `AvPag`.
 - Duplicar la linea actual arriba con `Alt+Shift+Abajo` o abajo con `Alt+Shift+Arriba`.
 - Formateo integrado con `Alt+Shift+F`, Prettier para formatos web comunes, formateo al guardar opcional y formateadores externos configurables.
 - Preview Markdown de solo lectura por defecto, con `F4` para alternar preview y edicion; el manual interno nunca se puede editar.
@@ -33,6 +34,7 @@ Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al m
 - Confirmacion modal para cambios sin guardar, eliminacion y cambios externos detectados antes de guardar.
 - Panel Git virtualizado con staging, commits, pull/push, diffs alineados de solo lectura, resaltado intralinea y marcadores laterales.
 - Historial Git paginado sin limite total de commits, navegacion de ramas locales y remotas conocidas sin checkout y diffs historicos en pestanas.
+- Filas compactas del historial Git con IDs de commit (`H`) y fechas (`D`) conmutables de forma independiente.
 - Registro de errores de sesion mediante `F12`.
 - Proteccion contra rutas externas, symlinks/junctions que salen de la raiz, UTF-8 invalido, binarios y archivos de mas de 2 MiB.
 
@@ -191,6 +193,7 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Ctrl+V` | Pegar desde el portapapeles del sistema |
 | `Ctrl+Z` | Deshacer el ultimo cambio |
 | `Ctrl+Shift+Z` | Rehacer el ultimo cambio |
+| `RePag` / `AvPag` | Mover el cursor una pantalla arriba / abajo en el editor |
 | `Alt+Shift+Abajo` / `Alt+Shift+Arriba` | Duplicar la linea actual arriba / abajo |
 | `Alt+Shift+F` | Formatear el documento actual |
 | `Ctrl+L` | Alternar ajuste de linea |
@@ -219,6 +222,7 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 - Los directorios sin seguimiento se expanden en archivos individuales. Abrir una entrada crea una pestaña `Delta` con el diff preparado o no preparado correspondiente, por lo que ambos pueden convivir para una misma ruta. Cierra una pestaña diff con `Ctrl+W`. Los diffs son de solo lectura, alinean las líneas modificadas, resaltan fragmentos cambiados, sincronizan el scroll y muestran marcadores laterales. `layout.diffOrientation` acepta `auto`, `horizontal` o `vertical`; en `auto`, `layout.diffStackBelow` indica el ancho del terminal a partir del cual las dos versiones se apilan verticalmente.
 
 - Con foco en Git, `F8` abre el historial completo de la rama actual en el panel derecho. Los commits se cargan por paginas al navegar, sin limite total. `F9` lista las ramas locales y remotas conocidas; las remotas son referencias disponibles localmente, no una lista consultada en vivo al servidor.
+- En el historial de commits, `H` muestra u oculta los IDs abreviados y `D` muestra u oculta las fechas, dejando mas espacio para el asunto del commit.
 - En el panel derecho, `Enter` sobre una rama abre sus commits sin checkout, sobre un commit abre sus archivos modificados y sobre un archivo abre un diff historico de solo lectura en una pestana, manteniendo el panel derecho abierto.
 - Con foco en Git, `Esc` vuelve de archivos del commit a historial, luego a ramas si el historial se abrio desde esa lista y finalmente a cambios locales. Las pestanas diff abiertas se conservan durante toda la navegacion.
 - En cualquier diff local, staged o historico, `F4` abre el archivo actual del proyecto sin cerrar el diff. No abre ni restaura la version historica. Si el archivo ya no existe, OEC muestra un aviso y no lo recrea. Fuera de diffs, `F4` sigue alternando preview/edicion de Markdown; el manual integrado permanece de solo lectura.

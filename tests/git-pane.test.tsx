@@ -31,6 +31,7 @@ test("GitPane renders history rows without file metadata and hides the commit in
     const frame = setup.captureCharFrame()
     expect(frame).toContain("Historial: main")
     expect(frame).toContain("abc12345 initial")
+    expect(frame).toContain("2026-01-01")
     expect(frame).toContain(t("git.loadMore"))
     expect(frame).toContain(t("git.backHelp"))
     expect(frame).not.toContain("COMMIT_INPUT_VISIBLE")
@@ -40,6 +41,32 @@ test("GitPane renders history rows without file metadata and hides the commit in
     expect(lines[commitLine + 1]).toContain("origin/feature/")
     expect(lines[commitLine + 2]).toContain("nested/file-")
     expect(lines[commitLine + 3]).toContain(t("git.loadMore"))
+  } finally { setup.renderer.destroy() }
+})
+
+test("GitPane toggles localized commit IDs and dates independently in history", async () => {
+  const [hashes, setHashes] = createSignal(true)
+  const [dates, setDates] = createSignal(true)
+  const row: GitTreeItem = { path: "abcdef123456", name: "A localized commit (Test)", depth: 0, directory: false, expanded: false, commit: { revision: "abcdef123456", author: "Test", date: "2026-09-27", subject: "A localized commit" } }
+  const setup = await testRender(() => <GitPane active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
+    tree={() => [row]} selected={() => 0} commitMessage={() => ""} setCommitMessage={() => {}} commitFocused={() => false}
+    setScroll={() => {}} onActivate={() => {}} width={() => 60} mode={() => "history"} historyTitle={() => "Historial: main"} loading={() => false}
+    showCommitHashes={hashes} showCommitDates={dates}
+  />, { width: 60, height: 14 })
+  try {
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("abcdef12")
+    expect(setup.captureCharFrame()).toContain("2026-09-27")
+    expect(setup.captureCharFrame()).toContain("H: ocultar IDs")
+    expect(setup.captureCharFrame()).toContain("D: ocultar fechas")
+    setHashes(false)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("abcdef12")
+    expect(setup.captureCharFrame()).toContain("H: mostrar IDs")
+    setDates(false)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("2026-09-27")
+    expect(setup.captureCharFrame()).toContain("D: mostrar fechas")
   } finally { setup.renderer.destroy() }
 })
 
@@ -60,11 +87,13 @@ test("GitPane preserves file number and changed lines beside a scrolling histori
     expect(setup.captureCharFrame()).toContain(t("overlay.files", { count: 2 }))
     expect(setup.captureCharFrame()).toContain("+123 -45")
     expect(setup.captureCharFrame()).toContain("+? -?")
+    const countedLine = setup.captureCharFrame().split("\n").find((line) => line.includes("+123 -45"))!
+    expect(countedLine[countedLine.indexOf("+123") - 1]).toBe(" ")
     await Bun.sleep(1650)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("+123 -45")
     setSelected(1)
     await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("long-historical")
+    expect(setup.captureCharFrame()).toContain("long-historica")
   } finally { setup.renderer.destroy() }
 })

@@ -23,6 +23,7 @@ type Props = {
   undo: () => void
   redo: () => void
   duplicateLine: (direction: "above" | "below") => void
+  moveEditorPage: (direction: "up" | "down") => boolean
   openPalette: () => void
   openLogs: () => void
   openNewFile: () => void
@@ -70,6 +71,9 @@ type Props = {
   pushGitChanges: () => Promise<void>
   gitCommitFocused: () => boolean
   gitHistoryActive: () => boolean
+  gitCommitHistoryActive: () => boolean
+  toggleCommitHashes: () => void
+  toggleCommitDates: () => void
   showGitHistory: () => Promise<void>
   showGitBranches: () => Promise<void>
   goBackGit: () => boolean
@@ -220,11 +224,15 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) return consume(key, props.acceptEditorFind)
       return
     }
+    if (props.active() === "editor" && keyName === "pageup" && props.moveEditorPage("up")) return consume(key, () => undefined)
+    if (props.active() === "editor" && keyName === "pagedown" && props.moveEditorPage("down")) return consume(key, () => undefined)
     if (props.handleVimKey(key)) return consume(key, () => undefined)
     if (key.name === "tab") return consume(key, props.cycleFocus)
     if (props.active() === "git") {
       if (keyName === "f8") return consume(key, () => void props.showGitHistory())
       if (keyName === "f9") return consume(key, () => void props.showGitBranches())
+      if (props.gitCommitHistoryActive() && matches("git.toggleCommitHashes", "h")) return consume(key, props.toggleCommitHashes)
+      if (props.gitCommitHistoryActive() && matches("git.toggleCommitDates", "d")) return consume(key, props.toggleCommitDates)
       if (isEscape && props.gitHistoryActive()) return consume(key, props.goBackGit)
       if (props.gitHistoryActive() && (keyName === "f6" || keyName === "f7" || keyName === "+" || keyName === "-")) return consume(key, () => undefined)
       if (keyName === "f6") return consume(key, () => void props.pullGitChanges())

@@ -4,7 +4,7 @@ English | [Español](README.es.md)
 
 Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
-Documentation for release **0.2.24**.
+Documentation for release **0.2.29**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
@@ -23,6 +23,7 @@ When launched with no open documents, OEC shows the Explorer and, with at least 
 - Create files in the selected folder without overwriting existing files.
 - Multiple open tabs, circular tab switching, clickable close buttons, and `Delta` Git diff tabs.
 - Multi-line editor with line numbers, basic code highlighting, line wrapping, undo/redo, and preserved LF/CRLF line endings.
+- Page through the source editor with `PageUp` and `PageDown`.
 - Duplicate the current line above with `Alt+Shift+Down` or below with `Alt+Shift+Up`.
 - Built-in formatting with `Alt+Shift+F`, Prettier for common web formats, optional format on save, and configurable external formatters.
 - Read-only Markdown preview by default, with `F4` to switch between preview and editing; the built-in manual is always read-only.
@@ -33,6 +34,7 @@ When launched with no open documents, OEC shows the Explorer and, with at least 
 - Modal confirmation for unsaved work, deletion, and external file changes detected before saving.
 - Virtualized Git Changes pane with staging, commits, pull/push, aligned read-only diffs, intra-line highlighting, and overview markers.
 - Paginated Git history with no total commit limit, browsing of known local and remote branches without checkout, and historical diffs in tabs.
+- Compact Git history rows with independently toggleable commit IDs (`H`) and dates (`D`).
 - Session-only error log available through `F12`.
 - Protection against paths outside the project root, symlinks/junctions that escape it, invalid UTF-8, binary files, and files over 2 MiB.
 
@@ -191,6 +193,7 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 | `Ctrl+V` | Paste from the system clipboard |
 | `Ctrl+Z` | Undo the last change |
 | `Ctrl+Shift+Z` | Redo the last change |
+| `PageUp` / `PageDown` | Move the editor cursor one visible page up / down |
 | `Alt+Shift+Down` / `Alt+Shift+Up` | Duplicate the current line above / below |
 | `Alt+Shift+F` | Format the current document |
 | `Ctrl+L` | Toggle line wrapping |
@@ -218,6 +221,7 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 - OEC displays the remote status available locally. The palette includes **Refresh Git remote references** to run `git fetch --quiet` manually.
 - Untracked directories expand into individual files. Opening an entry creates a read-only `Delta` tab for its staged or unstaged diff, so both can coexist for one path. Close a diff tab with `Ctrl+W`. Diffs align changed lines, highlight changed fragments, synchronize scrolling, and show overview markers. `layout.diffOrientation` accepts `auto`, `horizontal`, or `vertical`; in `auto`, `layout.diffStackBelow` selects the terminal width at which the two versions stack vertically.
 - With Git focused, `F8` opens the current branch's complete history in the right pane. Commits load in pages as you navigate, with no total limit. `F9` lists known local and remote branches; remote branches are locally known references, not a live server listing.
+- In commit history, `H` shows or hides abbreviated commit IDs and `D` shows or hides commit dates, leaving more room for commit subjects.
 - In the right pane, `Enter` on a branch opens its commits without checkout, on a commit opens its changed files, and on a file opens a read-only historical diff in a tab while keeping the right pane open.
 - With Git focused, `Esc` returns from commit files to history, then to branches if history was opened from that list, then to local changes. Already open diff tabs remain open throughout navigation.
 - In any local, staged, or historical diff, `F4` opens the current file from the project without closing the diff. It does not open or restore the historical version. If the file no longer exists, OEC displays a notice and does not recreate it. Outside diffs, `F4` still toggles Markdown preview/editing; the built-in manual remains read-only.

@@ -10,6 +10,7 @@ test("scrolls a selected name across terminal columns without splitting wide cha
   expect(visibleName("prefix-界-ending", 8, 0)).toBe("prefix-")
   expect(visibleName("prefix-界-ending", 8, 9)).toBe("fix-界-e")
   expect(visibleName("prefix-界-ending", 8, 15)).toBe("-ending")
+  expect(visibleName("prefix-界-ending", 8, 30)).toBe("-ending")
   expect(visibleName("short", 8, 100)).toBe("short")
 })
 
@@ -32,6 +33,8 @@ test("keeps calculated line counts visible while a long selected file name moves
     expect(frame).toContain("123456")
     expect(frame).toContain("42")
     expect(frame).toContain("long-")
+    const countLine = frame.split("\n").find((line) => line.includes("123456"))!
+    expect(countLine[countLine.indexOf("123456") - 1]).toBe(" ")
     setSelected(1)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("very-long-")

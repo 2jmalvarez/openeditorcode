@@ -144,6 +144,16 @@ export function useEditor(props: Props) {
     props.setStatus(t(direction === "above" ? "editor.duplicateAbove" : "editor.duplicateBelow"))
   }
 
+  function movePage(direction: "up" | "down"): boolean {
+    if (props.active() !== "editor" || !props.filePath() || !renderable) return false
+    const move = direction === "up" ? renderable.moveCursorUp.bind(renderable) : renderable.moveCursorDown.bind(renderable)
+    let remainingRows = Math.max(1, renderable.height - 1)
+    while (remainingRows > 0 && move()) remainingRows -= 1
+    updateCursor()
+    metrics.refresh()
+    return true
+  }
+
   function replaceCurrentText(text: string): boolean {
     if (!renderable || text === renderable.plainText) return false
     renderable.replaceText(text)
@@ -261,5 +271,5 @@ export function useEditor(props: Props) {
     else renderable?.focus()
   })
 
-  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, vimMode, metrics, setEditor, onContentChange, onCursorChange, undo, redo, duplicateLine, replaceCurrentText, handleVimKey, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
+  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, vimMode, metrics, setEditor, onContentChange, onCursorChange, undo, redo, duplicateLine, movePage, replaceCurrentText, handleVimKey, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
 }

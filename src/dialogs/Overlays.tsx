@@ -47,16 +47,17 @@ type Props = {
 
 export function Overlays(props: Props) {
   const renderer = useRenderer()
+  let paletteScroll: ScrollBoxRenderable | undefined
   let projectResultsScroll: ScrollBoxRenderable | undefined
+  let exclusionsScroll: ScrollBoxRenderable | undefined
   let pendingScroll: (() => void) | undefined
 
-  function scrollToSelectedProjectResult() {
-    const index = props.searchIndex()
+  function scrollToSelected(scroll: ScrollBoxRenderable | undefined, id: string) {
     if (pendingScroll) renderer.off("frame", pendingScroll)
     pendingScroll = () => {
       renderer.off("frame", pendingScroll!)
       pendingScroll = undefined
-      projectResultsScroll?.scrollChildIntoView(`project-result-${index}`)
+      scroll?.scrollChildIntoView(id)
     }
     renderer.on("frame", pendingScroll)
   }
@@ -65,7 +66,19 @@ export function Overlays(props: Props) {
     if (props.overlay() !== "project-search") return
     props.searchIndex()
     props.projectResults().length
-    scrollToSelectedProjectResult()
+    scrollToSelected(projectResultsScroll, `project-result-${props.searchIndex()}`)
+  })
+  createEffect(() => {
+    if (props.overlay() !== "command-palette") return
+    props.searchIndex()
+    props.paletteResults().length
+    scrollToSelected(paletteScroll, `palette-result-${props.searchIndex()}`)
+  })
+  createEffect(() => {
+    if (props.overlay() !== "search-exclusions") return
+    props.exclusionIndex()
+    props.exclusionSuggestions().length
+    scrollToSelected(exclusionsScroll, `exclusion-result-${props.exclusionIndex()}`)
   })
 
   onCleanup(() => { if (pendingScroll) renderer.off("frame", pendingScroll) })
@@ -78,13 +91,13 @@ export function Overlays(props: Props) {
           <input focused value={props.overlay() === "search-exclusions" ? props.exclusionQuery() : props.query()} onInput={props.overlay() === "search-exclusions" ? props.setExclusionQuery : props.setQuery} placeholder={props.overlay() === "search-exclusions" ? t("overlay.pattern") : t("app.typeToSearch")} style={{ marginTop: 1, backgroundColor: "#101419" }} />
         </Show>
         <Show when={props.overlay() === "command-palette"} fallback={<box />}>
-          <scrollbox scrollY style={{ flexGrow: 1, marginTop: 1 }}><For each={props.paletteResults()}>{(command, index) => <box style={{ flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#d6e5dc">{command.title}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{command.shortcut}</text></box>}</For></scrollbox>
+           <scrollbox ref={(value) => { paletteScroll = value; scrollToSelected(value, `palette-result-${props.searchIndex()}`) }} scrollY style={{ flexGrow: 1, marginTop: 1 }}><For each={props.paletteResults()}>{(command, index) => <box id={`palette-result-${index()}`} style={{ flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#d6e5dc">{command.title}</text><text style={{ marginLeft: "auto" }} fg="#f2c66d">{command.shortcut}</text></box>}</For></scrollbox>
         </Show>
         <Show when={props.overlay() === "project-search"} fallback={<box />}>
-          <scrollbox ref={(value) => { projectResultsScroll = value; value.verticalScrollBar.visible = true; scrollToSelectedProjectResult() }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><Show when={!props.projectSearching()} fallback={<box><text fg="#8ca0ae">{t("overlay.searching")}</text></box>}><For each={groupedProjectResults(props.projectResults())}>{([path, results]) => <box style={{ flexDirection: "column", marginBottom: 1 }}><text fg="#8ed1ff">▾ {displayPath(props.root, path)}</text><For each={results}>{(result) => { const index = () => props.projectResults().indexOf(result); return <box id={`project-result-${index()}`} style={{ paddingLeft: 2, flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">L{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box> }}</For></box>}</For></Show></scrollbox>
+           <scrollbox ref={(value) => { projectResultsScroll = value; value.verticalScrollBar.visible = true; scrollToSelected(value, `project-result-${props.searchIndex()}`) }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><Show when={!props.projectSearching()} fallback={<box><text fg="#8ca0ae">{t("overlay.searching")}</text></box>}><For each={groupedProjectResults(props.projectResults())}>{([path, results]) => <box style={{ flexDirection: "column", marginBottom: 1 }}><text fg="#8ed1ff">▾ {displayPath(props.root, path)}</text><For each={results}>{(result) => { const index = () => props.projectResults().indexOf(result); return <box id={`project-result-${index()}`} style={{ paddingLeft: 2, flexDirection: "row", backgroundColor: index() === props.searchIndex() ? "#28404a" : undefined }}><text fg="#f2c66d">L{result.line}</text><text style={{ marginLeft: 1 }} fg="#d6e5dc">{result.preview}</text></box> }}</For></box>}</For></Show></scrollbox>
         </Show>
         <Show when={props.overlay() === "search-exclusions"} fallback={<box />}>
-          <scrollbox scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><For each={props.exclusionSuggestions()}>{(item, index) => <box style={{ flexDirection: "row", backgroundColor: index() === props.exclusionIndex() ? "#28404a" : undefined }}><text fg={item.excluded ? "#c98b8b" : "#70d6a7"}>{item.excluded ? "●" : "○"} {item.pattern}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{item.source === "gitignore" ? ".gitignore" : item.source === "session" ? t("overlay.session") : t("overlay.project")}</text></box>}</For></scrollbox>
+           <scrollbox ref={(value) => { exclusionsScroll = value; scrollToSelected(value, `exclusion-result-${props.exclusionIndex()}`) }} scrollY style={{ flexGrow: 1, minHeight: 0, marginTop: 1 }}><For each={props.exclusionSuggestions()}>{(item, index) => <box id={`exclusion-result-${index()}`} style={{ flexDirection: "row", backgroundColor: index() === props.exclusionIndex() ? "#28404a" : undefined }}><text fg={item.excluded ? "#c98b8b" : "#70d6a7"}>{item.excluded ? "●" : "○"} {item.pattern}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{item.source === "gitignore" ? ".gitignore" : item.source === "session" ? t("overlay.session") : t("overlay.project")}</text></box>}</For></scrollbox>
         </Show>
         <text fg="#8ca0ae">{props.overlay() === "command-palette" ? t("overlay.paletteHelp") : props.overlay() === "project-search" ? t("overlay.projectHelp") : props.overlay() === "search-exclusions" ? t("overlay.exclusionHelp") : props.overlay() === "rename" ? t("overlay.renameHelp") : t("overlay.newFileHelp")}</text>
       </box>
