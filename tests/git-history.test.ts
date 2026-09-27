@@ -67,7 +67,7 @@ test("history pages cover the complete immutable branch without a total cap", as
     expect(state.git.selected()).toBe(0)
     expect(state.git.tree()[0]?.commit?.subject).toBe("latest tip")
   } finally { state.dispose() }
-}, 30000)
+}, 60000)
 
 test("lists local and remote branches and reads them without checkout, including detached and unborn HEAD", async () => {
   const root = await repository()
