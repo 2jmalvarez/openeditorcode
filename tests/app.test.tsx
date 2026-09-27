@@ -249,6 +249,24 @@ test("toggles a Markdown file between preview and source with F4", async () => {
   }
 })
 
+test("renders Mermaid fenced blocks as Unicode diagrams in Markdown preview", async () => {
+  await writeFile(join(root, "diagram.md"), "# Arquitectura\n\n```mermaid\ngraph LR\n  API --> Database\n```", "utf8")
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("diagram.md")
+    await Bun.sleep(80)
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "Database")
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("API")
+    expect(frame).toContain("┌")
+    expect(frame).not.toContain("graph LR")
+  } finally {
+    setup.renderer.destroy()
+  }
+})
+
 test("shows changed file totals, numbering, and line statistics", async () => {
   await git("init", "--quiet")
   await git("config", "user.name", "OEC Tests")

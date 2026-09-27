@@ -6,9 +6,15 @@ export function projectFolderCommand(root: string, platform = process.platform):
   throw new Error(t("platform.openFolderUnsupported"))
 }
 
+export function projectFolderLaunchSucceeded(platform: string, exitCode: number | null): boolean {
+  return exitCode === 0 || (platform === "win32" && exitCode === 1)
+}
+
 export async function openProjectFolder(root: string) {
-  const process = Bun.spawn(projectFolderCommand(root), { stdin: "ignore", stdout: "ignore", stderr: "ignore", windowsHide: true })
-  process.unref()
-  await process.exited
-  if (process.exitCode !== 0) throw new Error(`Folder launcher exited with code ${process.exitCode ?? "unknown"}`)
+  const platform = process.platform
+  const child = Bun.spawn(projectFolderCommand(root, platform), { stdin: "ignore", stdout: "ignore", stderr: "ignore", windowsHide: true })
+  child.unref()
+  const exitCode = await child.exited
+  // Explorer may open the folder successfully while returning exit code 1.
+  if (!projectFolderLaunchSucceeded(platform, exitCode)) throw new Error(`Folder launcher exited with code ${exitCode ?? "unknown"}`)
 }

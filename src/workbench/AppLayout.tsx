@@ -42,7 +42,7 @@ export function AppLayout(props: Props) {
                 </Show>
               </Show>}
             >
-              <LogPane entries={props.logs.entries} active={() => props.active() === "editor"} />
+              <LogPane entries={props.logs.entries} active={() => props.active() === "editor"} setViewer={props.setLogViewer} />
             </Show>}
           >
             <DiffPane diff={props.documents.activeDiff} orientation={() => props.config().layout.diffOrientation} stackBelow={() => props.config().layout.diffStackBelow} />

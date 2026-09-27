@@ -36,7 +36,7 @@ Abra “Abrir configuración” desde Ctrl+P para usar la pantalla TUI o pulse E
 Una configuración inválida o que impide iniciar OEC se copia a config.bkp.json (el mismo backup se sobrescribe en cada recuperación) y se restaura la configuración de fábrica. Las actualizaciones npm no modifican este directorio.
 
 ## Preview
-Los archivos Markdown abren como preview de solo lectura. F4 alterna entre preview y edición; el manual nunca se puede editar. PNG, JPEG, WebP y GIF se muestran como imágenes de solo lectura y usan Kitty, Sixel o bloques de terminal según la capacidad configurada.
+Los archivos Markdown abren como preview de solo lectura. F4 alterna entre preview y edición; el manual nunca se puede editar. Los bloques fenced mermaid muestran diagramas Unicode de terminal para flowcharts, estados, secuencias, clases, ER y gráficos XY; los no compatibles permanecen como código. PNG, JPEG, WebP y GIF se muestran como imágenes de solo lectura y usan Kitty, Sixel o bloques de terminal según la capacidad configurada.
 
 ## Límites
 Solo se editan archivos UTF-8 de hasta 2 MiB. Los binarios, enlaces que salen de la raíz y archivos demasiado grandes se rechazan. El manual completo distribuido está en docs/manual.md y en man oec.`,
@@ -75,7 +75,7 @@ Open “Open settings” from Ctrl+P to use the TUI screen or press E to edit JS
 An invalid configuration or one that prevents OEC from starting is copied to config.bkp.json (the same backup is overwritten on every recovery) and factory settings are restored. npm updates do not modify this directory.
 
 ## Preview
-Markdown files open in a read-only preview. F4 switches between preview and editing; the manual can never be edited. PNG, JPEG, WebP, and GIF are read-only image previews that use Kitty, Sixel, or terminal blocks according to configured capability.
+Markdown files open in a read-only preview. F4 switches between preview and editing; the manual can never be edited. Fenced mermaid blocks render as Unicode terminal diagrams for flowcharts, state, sequence, class, ER, and XY charts; unsupported diagrams remain source code. PNG, JPEG, WebP, and GIF are read-only image previews that use Kitty, Sixel, or terminal blocks according to configured capability.
 
 ## Limits
 Only UTF-8 files up to 2 MiB can be edited. Binaries, links outside the root, and oversized files are rejected. The full distributed manual is in docs/manual.md and man oec.`,

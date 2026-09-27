@@ -2,6 +2,7 @@
 import { SyntaxStyle } from "@opentui/core"
 import type { Accessor } from "solid-js"
 import { t } from "../localization"
+import { renderMermaidBlocks } from "./mermaid"
 
 const markdownStyle = SyntaxStyle.fromStyles({
   default: { fg: "#d6e5dc" },
@@ -25,7 +26,7 @@ export function MarkdownPreview(props: { content: Accessor<string>; active: Acce
   return <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "column", backgroundColor: "#101419" }}>
      <box style={{ height: 1, paddingX: 1, flexShrink: 0, backgroundColor: "#151c23" }}><text fg="#8ca0ae">{t(props.manual() ? "preview.manual" : "preview.markdown")}</text></box>
     <scrollbox focused={props.active()} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, paddingX: 2, paddingY: 1 }}>
-      <markdown content={props.content()} syntaxStyle={markdownStyle} conceal streaming={false} tableOptions={{ style: "grid", widthMode: "full", wrapMode: "word", selectable: true, borders: true, borderColor: "#30404d" }} />
+      <markdown content={renderMermaidBlocks(props.content())} syntaxStyle={markdownStyle} conceal streaming={false} tableOptions={{ style: "grid", widthMode: "full", wrapMode: "word", selectable: true, borders: true, borderColor: "#30404d" }} />
     </scrollbox>
   </box>
 }

@@ -1,6 +1,6 @@
 import type { KeyEvent, TextareaRenderable } from "@opentui/core"
 import { createEffect, createSignal } from "solid-js"
-import { readClipboard, selectedText } from "./clipboard"
+import { readClipboard, selectedText, type TextSelectionSource } from "./clipboard"
 import { t } from "../localization"
 import { findMatches, type FindResult } from "./find"
 import { useEditorMetrics } from "./useEditorMetrics"
@@ -203,8 +203,8 @@ export function useEditor(props: Props) {
     return true
   }
 
-  function copy(copyToClipboard: (text: string) => boolean) {
-    const text = selectedText(renderable)
+  function copy(copyToClipboard: (text: string) => boolean, source: TextSelectionSource | undefined = renderable) {
+    const text = selectedText(source)
     if (!text) return props.setStatus(t("editor.selectText"))
     props.setStatus(t(copyToClipboard(text) ? "editor.copied" : "editor.copyUnsupported"))
   }

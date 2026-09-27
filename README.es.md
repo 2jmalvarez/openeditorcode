@@ -4,7 +4,7 @@
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
-Documentacion para la release **0.2.31**.
+Documentacion para la release **0.2.32**.
 
 Editor de proyectos de código abierto para terminal. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
@@ -27,6 +27,7 @@ Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al m
 - Duplicar la linea actual arriba con `Alt+Shift+Abajo` o abajo con `Alt+Shift+Arriba`.
 - Formateo integrado con `Alt+Shift+F`, Prettier para formatos web comunes, formateo al guardar opcional y formateadores externos configurables.
 - Preview Markdown de solo lectura por defecto, con `F4` para alternar preview y edicion; el manual interno nunca se puede editar.
+- Diagramas Unicode de terminal para bloques Mermaid compatibles en previews Markdown.
 - Preview de PNG, JPEG, WebP y GIF en Kitty/Sixel cuando estan disponibles, con fallback de bloques de terminal.
 - Copia mediante OSC 52 y pegado desde el portapapeles del sistema en Windows, Wayland y X11.
 - Busqueda local literal y busqueda global concurrente con indice reutilizable de hasta 50.000 entradas.
@@ -35,7 +36,7 @@ Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al m
 - Panel Git virtualizado con staging, commits, pull/push, diffs alineados de solo lectura, resaltado intralinea y marcadores laterales.
 - Historial Git paginado sin limite total de commits, navegacion de ramas locales y remotas conocidas sin checkout y diffs historicos en pestanas.
 - Filas compactas del historial Git con IDs de commit (`H`) y fechas (`D`) conmutables de forma independiente.
-- Registro de errores de sesion mediante `F12`.
+- Registro de errores de sesion seleccionable mediante `F12`.
 - Proteccion contra rutas externas, symlinks/junctions que salen de la raiz, UTF-8 invalido, binarios y archivos de mas de 2 MiB.
 
 ## Requisitos
@@ -154,7 +155,7 @@ Al cerrar una pestana modificada, el dialogo muestra **Guardar**, **Guardar y ce
 
 `Ctrl+F` es contextual: en el Explorador filtra archivos de todo el proyecto por nombre y en el Editor busca dentro del archivo abierto. `Esc` cancela y limpia cualquiera de las dos búsquedas. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
 
-Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `F4` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
+Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `F4` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. Los bloques fenced `mermaid` se muestran como diagramas Unicode de terminal para flowcharts, estados, secuencias, clases, ER y graficos XY; los diagramas no compatibles o invalidos permanecen visibles como codigo fuente. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
 
 Cuando una operación falla, OEC conserva la operación, la hora y el detalle técnico en el registro de sesión. El pie indica `F12` mientras haya errores sin leer; `F12` o **Abrir registro de errores** desde la paleta abren una pestaña central de solo lectura que no se persiste al cerrar OEC.
 

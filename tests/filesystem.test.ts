@@ -7,7 +7,7 @@ import { fuzzyScore, filterItems } from "../src/search/file-index"
 import { countProjectLines, searchProjectText } from "../src/search/project-search"
 import { createTree } from "../src/explorer/tree"
 import { pathIsAffected, renamedPath } from "../src/documents/useDocuments"
-import { projectFolderCommand } from "../src/workbench/openProjectFolder"
+import { projectFolderCommand, projectFolderLaunchSucceeded } from "../src/workbench/openProjectFolder"
 import { t } from "../src/localization"
 
 let root = ""
@@ -183,6 +183,14 @@ test("selects the platform file manager command", () => {
   expect(projectFolderCommand("C:\\work folder", "win32")).toEqual(["explorer.exe", "C:\\work folder"])
   expect(projectFolderCommand("/work folder", "linux")).toEqual(["xdg-open", "/work folder"])
   expect(() => projectFolderCommand("/work", "darwin")).toThrow(t("platform.openFolderUnsupported"))
+})
+
+test("accepts Explorer's successful exit code", () => {
+  expect(projectFolderLaunchSucceeded("win32", 0)).toBe(true)
+  expect(projectFolderLaunchSucceeded("win32", 1)).toBe(true)
+  expect(projectFolderLaunchSucceeded("win32", 2)).toBe(false)
+  expect(projectFolderLaunchSucceeded("linux", 0)).toBe(true)
+  expect(projectFolderLaunchSucceeded("linux", 1)).toBe(false)
 })
 
 describe("fuzzy search", () => {

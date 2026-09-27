@@ -76,7 +76,7 @@ La paleta ofrece **Abrir configuración**: una pantalla TUI para las preferencia
 
 El formato exacto se define en `docs/oec-config.schema.json`. Claves desconocidas, JSON inválido, versiones de esquema no compatibles o valores fuera de rango son incompatibles. El archivo de fábrica es:
 
-`preview.markdownDefault` controla si Markdown abre en preview (valor de fábrica) o fuente; `preview.images` habilita previews de PNG, JPEG, WebP y GIF; `preview.imageProtocol` permite `auto`, `kitty`, `sixel` o `blocks`. `F4` alterna fuente y preview de los Markdown del proyecto. El manual siempre usa preview y es de solo lectura.
+`preview.markdownDefault` controla si Markdown abre en preview (valor de fábrica) o fuente; `preview.images` habilita previews de PNG, JPEG, WebP y GIF; `preview.imageProtocol` permite `auto`, `kitty`, `sixel` o `blocks`. Los bloques fenced `mermaid` se muestran como diagramas Unicode de terminal para flowcharts, estados, secuencias, clases, ER y gráficos XY; los diagramas no compatibles o inválidos permanecen visibles como código fuente. `F4` alterna fuente y preview de los Markdown del proyecto. El manual siempre usa preview y es de solo lectura.
 
 ```json
 {
@@ -129,4 +129,4 @@ Los overlays tienen prioridad sobre los atajos globales. En confirmaciones use f
 
 ## Registro de errores
 
-Si falla una operación de Git, archivos u otro servicio del editor, el pie indica `F12`. Ese atajo abre una pestaña central de solo lectura con la operación, hora y detalle técnico. El registro se conserva solo durante la sesión.
+Si falla una operación de Git, archivos u otro servicio del editor, el pie indica `F12`. Ese atajo abre una pestaña central de solo lectura con la operación, hora y detalle técnico; el texto se puede seleccionar y copiar con `Ctrl+C`. El registro se conserva solo durante la sesión.

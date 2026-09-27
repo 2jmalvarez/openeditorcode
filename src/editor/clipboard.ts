@@ -1,4 +1,4 @@
-import type { TextareaRenderable } from "@opentui/core"
+export type TextSelectionSource = { getSelectedText(): string }
 
 export async function readClipboard(): Promise<string> {
   const command = clipboardCommand()
@@ -18,7 +18,7 @@ function clipboardCommand(): string[] | undefined {
   return undefined
 }
 
-export function selectedText(editor: TextareaRenderable | undefined): string | undefined {
+export function selectedText(editor: TextSelectionSource | undefined): string | undefined {
   const text = editor?.getSelectedText()
   return text || undefined
 }

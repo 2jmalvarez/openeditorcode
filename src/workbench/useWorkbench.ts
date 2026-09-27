@@ -1,4 +1,4 @@
-import type { ScrollBoxRenderable } from "@opentui/core"
+import type { ScrollBoxRenderable, TextareaRenderable } from "@opentui/core"
 import { APP_VERSION } from "../bootstrap/version"
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js"
 import { useRenderer } from "@opentui/solid"
@@ -52,6 +52,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   const logs = useLogs()
   let explorerScroll: ScrollBoxRenderable | undefined
   let gitScroll: ScrollBoxRenderable | undefined
+  let logViewer: TextareaRenderable | undefined
   let exclusionsReturn: "project-search" | "file-search" = "file-search"
   const overlays = useOverlays()
   const editor = useEditor({ active, overlay: overlays.overlay, filePath: () => documents.filePath(), setStatus, wrapMode: initialConfig.editor.wrap, syntaxTheme, vimEnabled: () => config().keyboard.profile === "vim" })
@@ -363,7 +364,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: t("command.save"), shortcut: bindingLabel(config().keyboard.bindings, "file.save", "Ctrl+S"), run: () => void saveDocument() },
     { title: t("command.close"), shortcut: bindingLabel(config().keyboard.bindings, "file.close", "Ctrl+W"), run: requestClose },
     { title: t("command.nextTab"), shortcut: "Shift+Tab", run: () => documents.changeTab(1) },
-    { title: t("command.copy"), shortcut: "Ctrl+C", run: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)) },
+    { title: t("command.copy"), shortcut: "Ctrl+C", run: copy },
     { title: t("command.paste"), shortcut: "Ctrl+V", run: () => void editor.paste() },
     { title: t("command.wrap"), shortcut: "Ctrl+L", run: toggleWrap },
     { title: t("command.undo"), shortcut: "Ctrl+Z", run: editor.undo },
@@ -452,6 +453,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
 
   function openManual() { documents.openManual("MANUAL.md", oecManual(language())) }
   function openLogs() { documents.openLogs(); logs.markRead() }
+  function copy() { editor.copy((text) => renderer.copyToClipboardOSC52(text), documents.activeLogs() ? logViewer : undefined) }
 
   function closeSearchExclusions() {
     if (exclusionsReturn === "project-search") overlays.open("project-search")
@@ -575,7 +577,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     active, overlay: overlays.overlay, setConfirmChoice: overlays.setConfirmChoice, searchIndex: search.searchIndex, setSearchIndex: search.setSearchIndex,
     closeOverlay: overlays.close, cancelProjectSearch, acceptConfirm, acceptDeletion, acceptRename, acceptGitRevert, acceptExternalChange, quit, refreshActivePanel, save: saveDocument, undo: editor.undo, redo: editor.redo, duplicateLine: editor.duplicateLine, moveEditorPage: editor.movePage,
     openPalette: () => openOverlay("command-palette"), openLogs, openNewFile: () => openOverlay("new-file"), openProjectSearch: () => openOverlay("project-search"), openTextSearch: openContextSearch, editorFindOpen: editor.findOpen, moveEditorFindResult: editor.moveFindResult, acceptEditorFind: editor.acceptFind, closeEditorFind: editor.closeFind,
-    focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, togglePreview: documents.togglePreview, requestClose, copy: () => editor.copy((text) => renderer.copyToClipboardOSC52(text)), paste: editor.paste,
+    focusLeft, focusRight, toggleExplorer, toggleGit, changeTab: () => documents.changeTab(1), cycleFocus, toggleWrap, togglePreview: documents.togglePreview, requestClose, copy, paste: editor.paste,
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
     moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, requestRename, openProjectFolder: () => void revealProjectFolder(), moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.commitFocused()) return void commitGitChanges(); if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, gitCommitFocused: git.commitFocused,
@@ -621,5 +623,6 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
       revealSelected(value, searching ? search.fileResults().length : explorer.tree().length, searching ? search.fileSearchIndex() : explorer.selected(), searching ? `file-search-${search.fileSearchIndex()}` : `tree-${explorer.selected()}`)
     },
     setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value; revealSelected(value, git.tree().length, git.selected(), `git-${git.selected()}`) },
+    setLogViewer: (value: TextareaRenderable | undefined) => { logViewer = value },
   }
 }
