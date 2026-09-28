@@ -6,8 +6,10 @@ export type GitFileStatus = "modified" | "added" | "deleted" | "renamed" | "untr
 export type GitFileArea = "staged" | "changes"
 
 export type GitFile = {
-  /** Relative to the open workspace, not necessarily the repository root. */
+  /** Relative to the repository used for Git commands. */
   path: string
+  /** Relative to the open workspace, used for documents and filesystem access. */
+  workspacePath?: string
   status: GitFileStatus
   area: GitFileArea
   previousPath?: string
@@ -26,6 +28,8 @@ export type GitState = {
 
 export type GitDiff = {
   file: GitFile
+  repositoryId?: string
+  workspacePath?: string
   previous: string
   current: string
   /** Immutable commit IDs; null denotes the empty tree before a root commit. */
@@ -80,7 +84,7 @@ export function parseGitStatus(output: string): GitFile[] {
     const renamedFrom = hasRenamedPath ? entries[index + 1] : undefined
     if (hasRenamedPath) index += 1
     if (code === "??") {
-      files.push({ path, status: "untracked", area: "changes", additions: null, deletions: null })
+       files.push({ path, status: "untracked", area: "changes", additions: null, deletions: null })
       continue
     }
     for (const [area, statusCode] of [["staged", code[0]], ["changes", code[1]]] as const) {
@@ -89,7 +93,7 @@ export function parseGitStatus(output: string): GitFile[] {
         : statusCode === "D" ? "deleted"
           : statusCode === "A" ? "added"
             : "modified"
-      const file = { path, status, area, additions: null, deletions: null }
+     const file = { path, status, area, additions: null, deletions: null }
       files.push(status !== "renamed" || renamedFrom === undefined ? file : { ...file, previousPath: renamedFrom })
     }
   }
@@ -136,7 +140,7 @@ function workspacePath(root: string, path: string): string {
   return path
 }
 
-export async function readGitState(root: string, signal?: AbortSignal): Promise<GitState> {
+export async function readGitState(root: string, workspacePrefix = "", signal?: AbortSignal): Promise<GitState> {
   const repository = await runGit(root, ["rev-parse", "--is-inside-work-tree"], signal)
   if (!repository.success || repository.stdout.trim() !== "true") return emptyState(t("git.notRepository"))
 
@@ -152,7 +156,7 @@ export async function readGitState(root: string, signal?: AbortSignal): Promise<
   const prefix = prefixResult.stdout.replace(/\r?\n$/, "")
   const stagedStats = stagedNumstat.success ? parseGitNumstat(stagedNumstat.stdout) : new Map()
   const changesStats = changesNumstat.success ? parseGitNumstat(changesNumstat.stdout) : new Map()
-  const files = parseGitStatus(status.stdout).flatMap((file): GitFile[] => {
+   const files = parseGitStatus(status.stdout).flatMap((file): GitFile[] => {
     const newInside = file.path.startsWith(prefix)
     const oldInside = (file.previousPath ?? file.path).startsWith(prefix)
     if (!newInside && !oldInside) return []
@@ -169,9 +173,9 @@ export async function readGitState(root: string, signal?: AbortSignal): Promise<
       file.path = file.path.slice(prefix.length)
       if (file.previousPath !== undefined) file.previousPath = file.previousPath.slice(prefix.length)
     }
-    workspacePath(root, file.path)
-    if (file.previousPath !== undefined) workspacePath(root, file.previousPath)
-    return [file]
+     workspacePath(root, file.path)
+     if (file.previousPath !== undefined) workspacePath(root, file.previousPath)
+     return [workspacePrefix ? { ...file, workspacePath: `${workspacePrefix}/${file.path}` } : file]
   })
   await Promise.all(files.map(async (file) => {
     if (file.status !== "untracked") return
@@ -271,5 +275,5 @@ export async function readGitDiff(root: string, file: GitFile): Promise<GitDiff>
     : file.status === "deleted" ? "" : await readTextFile(root, join(root, file.path))
   if (file.area === "staged" && !indexed.success) throw new Error(t("git.stagedFailed"))
   if (!previous.success) throw new Error(t("git.previousFailed"))
-  return { file, previous: previous.stdout, current }
+   return { file, workspacePath: file.workspacePath ?? file.path, previous: previous.stdout, current }
 }

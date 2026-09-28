@@ -210,12 +210,13 @@ export function useDocuments(props: Props) {
   function openDiff(diff: GitDiff) {
     props.blurEditor()
     syncActiveTab()
-    const existing = tabs().findIndex((tab) => tab.kind === "diff" && tab.path === diff.file.path && tab.diff.file.area === diff.file.area && tab.diff.revision === diff.revision)
+    const workspacePath = diff.workspacePath ?? diff.file.workspacePath ?? diff.file.path
+    const existing = tabs().findIndex((tab) => tab.kind === "diff" && tab.diff.repositoryId === diff.repositoryId && tab.path === workspacePath && tab.diff.file.area === diff.file.area && tab.diff.revision === diff.revision)
     if (existing >= 0) {
       setTabs((current) => current.map((tab, index) => index === existing && tab.kind === "diff" ? { ...tab, diff } : tab))
       return loadTab(existing, tabs().map((tab, index) => index === existing && tab.kind === "diff" ? { ...tab, diff } : tab))
     }
-    const nextTabs: OpenTab[] = [...tabs(), { kind: "diff", path: diff.file.path, diff }]
+    const nextTabs: OpenTab[] = [...tabs(), { kind: "diff", path: workspacePath, diff }]
     setTabs(nextTabs)
     loadTab(nextTabs.length - 1, nextTabs)
   }
@@ -223,7 +224,7 @@ export function useDocuments(props: Props) {
   async function openActiveDiffFile(): Promise<boolean> {
     const diff = activeDiff()
     if (!diff) return false
-    return openFile(join(props.root, diff.file.path), true)
+    return openFile(join(props.root, diff.workspacePath ?? diff.file.workspacePath ?? diff.file.path), true)
   }
 
   async function save(force = false, expectedPath?: string): Promise<boolean> {

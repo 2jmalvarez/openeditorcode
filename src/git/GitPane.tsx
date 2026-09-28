@@ -54,11 +54,11 @@ export function GitPane(props: Props) {
 
   return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, flexDirection: "column", border: ["left"], borderColor: "#30404d" }}>
     <box style={{ minHeight: 3, flexShrink: 0, paddingX: 1, paddingTop: 1, paddingBottom: props.mode?.() === "history" ? 0 : 1, flexDirection: "column", border: ["bottom"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
-       <Show when={props.state().available} fallback={<text fg="#71808b">{translateKnown(props.state().message)}</text>}>
-         <box style={{ minWidth: 0 }}><text wrapMode="char" fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{translateKnown(props.state().branch)}</text></box>
-         <text style={{ alignSelf: "flex-end" }} fg="#71808b">{remoteLabel(props.state())}</text>
-      </Show>
-      <Show when={props.mode && props.mode() !== "local"}>
+       <Show when={props.mode?.() === "repositories"} fallback={<Show when={props.state().available} fallback={<text fg="#71808b">{translateKnown(props.state().message)}</text>}>
+          <box style={{ minWidth: 0 }}><text wrapMode="char" fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{translateKnown(props.state().branch)}</text></box>
+          <text style={{ alignSelf: "flex-end" }} fg="#71808b">{remoteLabel(props.state())}</text>
+       </Show>}><text fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.historyTitle?.()}</text></Show>
+       <Show when={props.mode && props.mode() !== "local" && props.mode() !== "repositories"}>
            <box style={{ flexDirection: "row", minWidth: 0 }}>
            <box style={{ width: 0, flexGrow: 1, minWidth: 0, overflow: "hidden" }}><text wrapMode="none" fg="#8ed1ff">{props.historyTitle?.()}</text></box>
             <Show when={props.mode?.() === "history"}><text style={{ flexShrink: 0, marginLeft: 1 }} fg="#71808b">{t(props.loading?.() ? "git.loading" : props.tree().length ? "git.readOnly" : "git.noResults")}</text></Show>

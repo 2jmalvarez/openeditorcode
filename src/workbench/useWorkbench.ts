@@ -269,7 +269,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     if (git.mode() !== "local") return overlays.close()
     const files = overlays.pendingGitRevert()
     if (!files.length) return overlays.close()
-    if (files.some((file) => documents.hasDirtyTabsAffectedBy(join(root, file.path), false))) {
+    if (files.some((file) => documents.hasDirtyTabsAffectedBy(join(root, file.workspacePath ?? file.path), false))) {
       overlays.close()
       setStatus(t("status.discardBlocked"))
       return
@@ -277,11 +277,11 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     try {
       const untracked = files.filter((file) => file.status === "untracked")
       const tracked = files.filter((file) => file.status !== "untracked")
-      const removed = await Promise.all(untracked.map(async (file) => removeProjectEntry(root, join(root, file.path))))
+      const removed = await Promise.all(untracked.map(async (file) => removeProjectEntry(root, join(root, file.workspacePath ?? file.path))))
       const restored = tracked.length === 0 || await git.restore(tracked)
       const discarded = removed.length === untracked.length && restored
       if (discarded) {
-        for (const file of files) documents.closeTabsAffectedBy(join(root, file.path), false)
+        for (const file of files) documents.closeTabsAffectedBy(join(root, file.workspacePath ?? file.path), false)
         if (!tracked.length) await git.refresh()
       }
       setStatus(t(discarded ? "status.discarded" : "status.discardFailed"))
@@ -584,7 +584,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     openFileSearch: openContextSearch, fileSearchOpen: search.fileSearchOpen, closeFileSearch: search.closeFileSearch, moveFileSearchSelection: search.moveFileSelection, fileSearchResultsLength: () => search.fileResults().length, openFileSearchResult,
     openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion, bindings: () => config().keyboard.bindings, formatDocument: formatActiveDocument, handleVimKey: editor.handleVimKey, settingsIndex: overlays.settingsIndex, setSettingsIndex: overlays.setSettingsIndex, settingsScope: overlays.settingsScope, setSettingsScope: overlays.setSettingsScope, toggleSetting, openSettingsJson: () => { const scope = overlays.settingsScope(); overlays.close(); if (scope === "global") void openOecConfig(); else void openProjectConfig() },
     activeDiff: () => Boolean(documents.activeDiff()), openDiffFile: documents.openActiveDiffFile,
-    gitHistoryActive: () => git.mode() !== "local", gitCommitHistoryActive: () => git.mode() === "history", toggleCommitHashes: git.toggleCommitHashes, toggleCommitDates: git.toggleCommitDates, showGitHistory, showGitBranches, goBackGit: git.goBack,
+    gitHistoryActive: () => git.mode() !== "repositories", gitCommitHistoryActive: () => git.mode() === "history", toggleCommitHashes: git.toggleCommitHashes, toggleCommitDates: git.toggleCommitDates, showGitHistory, showGitBranches, goBackGit: git.goBack,
   })
 
   function revealSelected(scroll: ScrollBoxRenderable | undefined, total: number, selected: number, id: string) {

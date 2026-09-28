@@ -86,7 +86,7 @@ async function commitContext(root: string, ref: string, signal?: AbortSignal) {
   return { revision, previousRevision: parents!.trim().split(/\s+/)[1] ?? null, prefix: prefix!.replace(/\r?\n$/, "") }
 }
 
-export async function readGitCommitFiles(root: string, ref: string, signal?: AbortSignal): Promise<GitFile[]> {
+export async function readGitCommitFiles(root: string, ref: string, workspacePath = "", signal?: AbortSignal): Promise<GitFile[]> {
   const { revision, previousRevision, prefix } = await commitContext(root, ref, signal)
   const base = ["diff-tree", "--no-commit-id", "--no-ext-diff", "--no-textconv", "-r", "-M"]
   const comparison = previousRevision ? [previousRevision, revision] : ["--root", revision]
@@ -111,7 +111,7 @@ export async function readGitCommitFiles(root: string, ref: string, signal?: Abo
     const previousPath = status === "renamed" ? before.slice(prefix.length) : undefined
     if (previousPath) safePath(root, previousPath)
     const counts = stats.get(after)
-    files.push({ path, previousPath, status, area: "changes", additions: counts?.additions ?? null, deletions: counts?.deletions ?? null })
+     files.push({ path, workspacePath: [workspacePath, path].filter(Boolean).join("/"), previousPath, status, area: "changes", additions: counts?.additions ?? null, deletions: counts?.deletions ?? null })
   }
   return files
 }
@@ -131,5 +131,5 @@ export async function readGitHistoricalDiff(root: string, ref: string, file: Git
   }
   const previous = file.status === "added" ? "" : await blob(previousRevision, file.previousPath ?? file.path)
   const current = file.status === "deleted" ? "" : await blob(revision, file.path)
-  return { file, previous, current, revision, previousRevision }
+   return { file, workspacePath: file.workspacePath ?? file.path, previous, current, revision, previousRevision }
 }
