@@ -4,7 +4,7 @@
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
-Documentacion para la release **0.2.32**.
+Documentacion para la release **0.2.33**.
 
 Editor de proyectos de código abierto para terminal. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
@@ -176,7 +176,7 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Ctrl+Alt+B` | Mostrar u ocultar Cambios Git |
 | `Ctrl+Shift+Enter` | Contraer todas las carpetas del panel activo |
 | `F5` | Actualizar el panel activo; en Git ejecuta fetch, relee el estado local y refresca la vista historica cuando corresponde |
-| `F10` | Abrir la carpeta del proyecto en el explorador de archivos del sistema |
+| `F10` | Abrir la carpeta del proyecto en una nueva ventana del explorador de archivos del sistema |
 | `F8` | Con foco en Git, abrir el historial completo paginado de la rama actual en el panel derecho |
 | `F9` | Con foco en Git, listar ramas locales y remotas conocidas en el panel derecho |
 | `F12` | Abrir el registro de errores de la sesion |

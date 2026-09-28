@@ -4,7 +4,7 @@ English | [Español](README.es.md)
 
 Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
-Documentation for release **0.2.32**.
+Documentation for release **0.2.33**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
@@ -176,7 +176,7 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 | `Ctrl+Alt+B` | Show or hide Git Changes |
 | `Ctrl+Shift+Enter` | Collapse all folders in the active pane |
 | `F5` | Refresh the active pane; in Git, fetch, reread local status, and refresh the historical view when applicable |
-| `F10` | Open the project folder in the system file manager |
+| `F10` | Open the project folder in a new system file manager window |
 | `F8` | With Git focused, open the current branch's complete paginated history in the right pane |
 | `F9` | With Git focused, list known local and remote branches in the right pane |
 | `F12` | Open the session error log |

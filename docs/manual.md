@@ -116,7 +116,7 @@ Solo se editan archivos UTF-8 de hasta 2 MiB (2.097.152 bytes). Archivos con NUL
 | `Ctrl+F`, `Ctrl+Alt+F`, `Ctrl+E` | Buscar local/contextual, proyecto, exclusiones temporales |
 | `F4` | En diff, abrir archivo actual del proyecto sin cerrar el diff; fuera de diffs, alternar preview/edicion de Markdown |
 | `F5` | Actualizar panel activo; en Git, fetch, lectura local y refresco historico cuando corresponde |
-| `F10` | Abrir la carpeta del proyecto en el explorador de archivos del sistema |
+| `F10` | Abrir la carpeta del proyecto en una nueva ventana del explorador de archivos del sistema |
 | `F8` / `F9` | Con foco en Git, historial completo paginado / ramas locales y remotas conocidas |
 | `F12` | Abrir el registro de errores de la sesión |
 | `F2` | Renombrar el archivo o carpeta seleccionado en el Explorador |

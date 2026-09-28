@@ -180,15 +180,15 @@ describe("file access", () => {
 })
 
 test("selects the platform file manager command", () => {
-  expect(projectFolderCommand("C:\\work folder", "win32")).toEqual(["explorer.exe", "C:\\work folder"])
+  expect(projectFolderCommand("C:\\work folder", "win32")).toEqual(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "Start-Process -FilePath explorer.exe -ArgumentList '/n,', 'C:\\work folder' -ErrorAction Stop"])
+  expect(projectFolderCommand("C:\\O'Brien", "win32").at(-1)).toBe("Start-Process -FilePath explorer.exe -ArgumentList '/n,', 'C:\\O''Brien' -ErrorAction Stop")
   expect(projectFolderCommand("/work folder", "linux")).toEqual(["xdg-open", "/work folder"])
   expect(() => projectFolderCommand("/work", "darwin")).toThrow(t("platform.openFolderUnsupported"))
 })
 
-test("accepts Explorer's successful exit code", () => {
+test("accepts successful folder launcher exit codes", () => {
   expect(projectFolderLaunchSucceeded("win32", 0)).toBe(true)
-  expect(projectFolderLaunchSucceeded("win32", 1)).toBe(true)
-  expect(projectFolderLaunchSucceeded("win32", 2)).toBe(false)
+  expect(projectFolderLaunchSucceeded("win32", 1)).toBe(false)
   expect(projectFolderLaunchSucceeded("linux", 0)).toBe(true)
   expect(projectFolderLaunchSucceeded("linux", 1)).toBe(false)
 })

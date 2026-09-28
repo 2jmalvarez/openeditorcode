@@ -1,13 +1,13 @@
 import { t } from "../localization"
 
 export function projectFolderCommand(root: string, platform = process.platform): string[] {
-  if (platform === "win32") return ["explorer.exe", root]
+  if (platform === "win32") return ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `Start-Process -FilePath explorer.exe -ArgumentList '/n,', '${root.replace(/'/g, "''")}' -ErrorAction Stop`]
   if (platform === "linux") return ["xdg-open", root]
   throw new Error(t("platform.openFolderUnsupported"))
 }
 
 export function projectFolderLaunchSucceeded(platform: string, exitCode: number | null): boolean {
-  return exitCode === 0 || (platform === "win32" && exitCode === 1)
+  return exitCode === 0
 }
 
 export async function openProjectFolder(root: string) {
@@ -15,6 +15,5 @@ export async function openProjectFolder(root: string) {
   const child = Bun.spawn(projectFolderCommand(root, platform), { stdin: "ignore", stdout: "ignore", stderr: "ignore", windowsHide: true })
   child.unref()
   const exitCode = await child.exited
-  // Explorer may open the folder successfully while returning exit code 1.
   if (!projectFolderLaunchSucceeded(platform, exitCode)) throw new Error(`Folder launcher exited with code ${exitCode ?? "unknown"}`)
 }
