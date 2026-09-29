@@ -1,5 +1,10 @@
 import { spawn } from "node:child_process"
+import { chmod, copyFile, mkdtemp, rm, stat } from "node:fs/promises"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+const registry = "https://registry.npmjs.org/"
 
 const packages = {
   "linux-x64": "@2jmalvarez/oec-linux-x64",
@@ -34,8 +39,17 @@ export function createLauncherDependencies() {
         child.on("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)))
       })
     },
-    wait(milliseconds) {
-      return new Promise((resolve) => setTimeout(resolve, milliseconds))
+    async backup(executable, platform) {
+      const directory = await mkdtemp(join(tmpdir(), "oec-update-"))
+      const path = join(directory, platform === "win32" ? "oec.exe" : "oec")
+      try {
+        await copyFile(executable, path)
+        if (platform !== "win32") await chmod(path, (await stat(executable)).mode & 0o777)
+        return { path, cleanup: () => rm(directory, { recursive: true, force: true }) }
+      } catch (error) {
+        await rm(directory, { recursive: true, force: true })
+        throw error
+      }
     },
   }
 }
@@ -60,20 +74,32 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
   const appCode = await dependencies.run(executable, args, appEnv)
   if (appCode !== 42) return appCode
 
-  const npm = dependencies.platform === "win32"
-    ? { command: dependencies.env.ComSpec || "cmd.exe", args: ["/d", "/s", "/c", "npm install -g openeditorcode@latest"] }
-    : { command: "npm", args: ["install", "-g", "openeditorcode@latest"] }
-  let updateCode = await dependencies.run(npm.command, npm.args)
-  if (updateCode !== 0) {
-    await dependencies.wait(1000)
-    updateCode = await dependencies.run(npm.command, npm.args)
-  }
-  if (updateCode !== 0) return updateCode
-
+  let backup
   try {
-    executable = dependencies.resolve(packageName, dependencies.platform)
-  } catch {
-    return 1
+    backup = await dependencies.backup(executable, dependencies.platform)
+  } catch (error) {
+    console.error(spanish ? `No se pudo preparar la actualización: ${error.message}` : `Could not prepare the update: ${error.message}`)
+    return dependencies.run(executable, args, appEnv)
   }
-  return dependencies.run(executable, args, appEnv)
+
+  const install = `npm install -g openeditorcode@latest --registry=${registry} --@2jmalvarez:registry=${registry}`
+  const npm = dependencies.platform === "win32"
+    ? { command: dependencies.env.ComSpec || "cmd.exe", args: ["/d", "/s", "/c", install] }
+    : { command: "npm", args: ["install", "-g", "openeditorcode@latest", `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`] }
+  try {
+    const updateCode = await dependencies.run(npm.command, npm.args)
+    if (updateCode !== 0) {
+      console.error(spanish ? "La actualización falló. Reabriendo la versión anterior de OEC." : "Update failed. Reopening the previous version of OEC.")
+      return await dependencies.run(backup.path, args, appEnv)
+    }
+    try {
+      executable = dependencies.resolve(packageName, dependencies.platform)
+    } catch {
+      console.error(spanish ? "No se encontró el binario actualizado. Reabriendo la versión anterior de OEC." : "Updated binary not found. Reopening the previous version of OEC.")
+      return await dependencies.run(backup.path, args, appEnv)
+    }
+    return await dependencies.run(executable, args, appEnv)
+  } finally {
+    await backup.cleanup().catch(() => undefined)
+  }
 }

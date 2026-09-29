@@ -24,8 +24,12 @@ function dependencies(codes) {
       calls.push({ command, args, env })
       return codes.shift() ?? 0
     },
-    async wait() {
-      calls.push({ command: "wait", args: [], env: undefined })
+    async backup(executable) {
+      calls.push({ command: "backup", args: [executable] })
+      return {
+        path: "/tmp/oec-update/oec",
+        async cleanup() { calls.push({ command: "cleanup" }) },
+      }
     },
   }
 }
@@ -40,19 +44,41 @@ test("launcher updates and resolves the application again after exit 42", async 
   const deps = dependencies([42, 0, 0])
   expect(await launch(["project"], deps)).toBe(0)
   expect(deps.resolutions).toBe(2)
-  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "npm", "/bin/oec-2"])
+  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "backup", "npm", "/bin/oec-2", "cleanup"])
   expect(deps.calls[0].env.OEC_NPM_LAUNCHER).toBe("1")
-  expect(deps.calls[2].args).toEqual(["project"])
+  expect(deps.calls[2].args).toEqual(["install", "-g", "openeditorcode@latest", "--registry=https://registry.npmjs.org/", "--@2jmalvarez:registry=https://registry.npmjs.org/"])
+  expect(deps.calls[3].args).toEqual(["project"])
 })
 
-test("launcher retries one failed update before relaunching", async () => {
-  const deps = dependencies([42, 1, 0, 0])
+test("launcher reopens the previous version when npm fails, without retrying the same registry", async () => {
+  const deps = dependencies([42, 1, 0])
   expect(await launch([], deps)).toBe(0)
-  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "npm", "wait", "npm", "/bin/oec-2"])
+  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "backup", "npm", "/tmp/oec-update/oec", "cleanup"])
+  expect(deps.resolutions).toBe(1)
 })
 
-test("launcher stops after two failed updates", async () => {
-  const deps = dependencies([42, 1, 9])
-  expect(await launch([], deps)).toBe(9)
+test("launcher reopens the previous version if the updated binary is missing", async () => {
+  const deps = dependencies([42, 0, 0])
+  const resolve = deps.resolve
+  deps.resolve = () => {
+    if (deps.resolutions) throw new Error("missing package")
+    return resolve()
+  }
+  expect(await launch(["project"], deps)).toBe(0)
+  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "backup", "npm", "/tmp/oec-update/oec", "cleanup"])
   expect(deps.resolutions).toBe(1)
+})
+
+test("launcher keeps the installed version when backup cannot be created", async () => {
+  const deps = dependencies([42, 0])
+  deps.backup = async () => { throw new Error("disk full") }
+  expect(await launch([], deps)).toBe(0)
+  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "/bin/oec-1"])
+})
+
+test("Windows update overrides the registry for both packages", async () => {
+  const deps = dependencies([42, 0, 0])
+  deps.platform = "win32"
+  expect(await launch([], deps)).toBe(0)
+  expect(deps.calls[2]).toMatchObject({ command: "cmd.exe", args: ["/d", "/s", "/c", "npm install -g openeditorcode@latest --registry=https://registry.npmjs.org/ --@2jmalvarez:registry=https://registry.npmjs.org/"] })
 })
