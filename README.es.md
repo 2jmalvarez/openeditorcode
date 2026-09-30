@@ -4,7 +4,7 @@
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
-Documentacion para la release **0.2.35**.
+Documentacion para la release **0.2.36**.
 
 Editor de proyectos de código abierto para terminal. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
@@ -100,7 +100,7 @@ oec -v
 
 `-v`, `-V` y `--version` son equivalentes para ambos aliases. `--version <VERSION>` del instalador elige la release a instalar; `--version` del editor solo imprime la version instalada.
 
-Al iniciarse mediante npm, OEC comprueba actualizaciones en segundo plano salvo que `updates.checkOnStartup` sea falso. Si hay una version nueva, la muestra junto a la version actual. **Actualizar OEC** aparece en `Ctrl+P` solo para ese modo de inicio; cierra el editor, instala el paquete npm mas reciente desde el registro publico (incluido el paquete de plataforma) y vuelve a abrir el mismo proyecto. Si falla la instalacion, reabre el binario anterior desde una copia temporal. Los binarios directos no consultan npm ni ofrecen su accion de actualizacion; se actualizan repitiendo el instalador directo indicado arriba.
+Al iniciarse mediante npm, OEC comprueba actualizaciones en segundo plano salvo que `updates.checkOnStartup` sea falso. Si hay una version nueva, la muestra junto a la version actual. **Actualizar OEC** aparece en `Ctrl+P` solo para ese modo de inicio; cierra el editor, actualiza la instalacion desde la que se ejecuto (tambien con prefijos npm personalizados) usando el registro publico para OEC y su paquete de plataforma, y vuelve a abrir el mismo proyecto. No cambia el registro configurado en npm. Si falla la instalacion o la verificacion de versiones, reabre el binario anterior desde una copia temporal. Los binarios directos no consultan npm ni ofrecen su accion de actualizacion; se actualizan repitiendo el instalador directo indicado arriba.
 
 La instalacion npm incluye unicamente el lanzador y el binario de la plataforma actual; las dependencias de compilacion no se instalan globalmente.
 

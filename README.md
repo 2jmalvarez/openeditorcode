@@ -4,7 +4,7 @@ English | [Español](README.es.md)
 
 Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
-Documentation for release **0.2.35**.
+Documentation for release **0.2.36**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
@@ -100,7 +100,7 @@ oec -v
 
 `-v`, `-V`, and `--version` are equivalent for both command aliases. The installer's `--version <VERSION>` selects a release to install; the editor's `--version` only prints its installed version.
 
-When launched through npm, OEC checks for updates in the background after startup unless `updates.checkOnStartup` is false. If a new version is found, it is displayed alongside the current version. **Update OEC** is available in `Ctrl+P` only for that launch method; it closes the editor, installs the latest npm package from the public npm registry (including the platform package), and reopens the same project. If installation fails, it reopens the previous binary from a temporary backup. Direct binaries do not query npm or offer the npm update action; update them by repeating the direct installer as described above.
+When launched through npm, OEC checks for updates in the background after startup unless `updates.checkOnStartup` is false. If a new version is found, it is displayed alongside the current version. **Update OEC** is available in `Ctrl+P` only for that launch method; it closes the editor, updates the installation from which it was launched (including custom npm prefixes) using the public npm registry for OEC and its platform package, and reopens the same project. It does not change the configured npm registry. If installation or version verification fails, it reopens the previous binary from a temporary backup. Direct binaries do not query npm or offer the npm update action; update them by repeating the direct installer as described above.
 
 The npm installation includes only the launcher and the current platform binary; build dependencies are not installed globally.
 
