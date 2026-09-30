@@ -58,6 +58,29 @@ Git es opcional. Cambios muestra áreas STAGED y CAMBIOS, estadísticas `+/-` y 
 
 OEC consulta npm al iniciar solo cuando se inicio con el lanzador npm, salvo que `updates.checkOnStartup` sea falso. Si encuentra una version nueva, la muestra y ofrece la actualizacion interactiva en la paleta: cierra el editor, actualiza la instalacion desde la que se ejecuto (incluso con un prefijo personalizado) usando el registro publico para OEC y su paquete de plataforma, y reabre el proyecto. No modifica el registro configurado en npm. Si falla la instalacion o la verificacion de versiones, reabre el binario anterior desde una copia temporal. Conserva la carpeta de proyecto y toda la configuración de usuario, porque ésta nunca se guarda en el directorio de instalación. Los binarios directos no consultan npm ni ofrecen esa accion; para actualizarlos, cierre OEC y repita el instalador directo. No se crea una instalacion npm adicional.
 
+Si una instalacion npm antigua intenta actualizar OEC desde un registro privado y devuelve 404, ese lanzador ya cargado no puede recibir una correccion mediante la misma actualizacion fallida. En Bash, identifique primero el comando efectivo con `type -a oec npm` y `readlink -f "$(type -P oec)"`. Si este ultimo termina en `/lib/node_modules/openeditorcode/bin/oec.js`, la siguiente reparacion instala la version publica en **ese mismo prefijo**, sin modificar `.npmrc` ni el prefijo predeterminado de npm:
+
+```bash
+repair_oec() {
+  local oec_entry oec_prefix npm_command
+  oec_entry=$(readlink -f "$(type -P oec)") || return 1
+  case "$oec_entry" in
+    */lib/node_modules/openeditorcode/bin/oec.js) oec_prefix=${oec_entry%/lib/node_modules/openeditorcode/bin/oec.js} ;;
+    *) printf 'El comando oec no apunta a una instalacion npm global conocida: %s\n' "$oec_entry" >&2; return 1 ;;
+  esac
+  npm_command="$oec_prefix/bin/npm"
+  if [[ ! -x "$npm_command" ]]; then npm_command=$(type -P npm) || return 1; fi
+  "$npm_command" install --global --prefix "$oec_prefix" openeditorcode@latest \
+    --registry=https://registry.npmjs.org/ \
+    --@2jmalvarez:registry=https://registry.npmjs.org/ || return 1
+  "$oec_prefix/bin/oec" --version
+}
+repair_oec
+unset -f repair_oec
+```
+
+Si el comando apunta a otra estructura, no ejecute un `npm install -g` sin prefijo: podria actualizar otra instalacion distinta.
+
 ### Historial, ramas y diffs
 
 Con foco en Git, `F8` abre el historial completo de la rama actual en el panel derecho, cargado por paginas al navegar y sin limite total de commits. `F9` lista las ramas locales y remotas conocidas; las remotas son referencias locales, no una consulta en vivo al servidor.

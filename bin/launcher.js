@@ -34,11 +34,27 @@ export function installationTarget(packageRoot, platform, exists = existsSync) {
   return { prefix: global ? globalPrefix : parent, global }
 }
 
-export function updateCommand(target, platform) {
-  const args = ["install", ...(target.global ? ["--global"] : ["--no-save", "--package-lock=false"]), "openeditorcode@latest", `--prefix=${target.prefix}`, `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`]
+function npmCommand(args, platform) {
   return platform === "win32"
     ? { command: "cmd.exe", args: ["/d", "/s", "/c", `npm ${args.map((arg) => arg.includes(" ") ? `"${arg}"` : arg).join(" ")}`] }
     : { command: "npm", args }
+}
+
+async function commandOutput(command, args, env, timeout = 30_000) {
+  const child = spawn(command, args, { env, timeout, stdio: ["ignore", "pipe", "inherit"], windowsVerbatimArguments: process.platform === "win32" && /(?:^|[\\/])cmd\.exe$/i.test(command) })
+  const exited = new Promise((resolve) => { child.on("error", () => resolve(1)); child.on("exit", (code) => resolve(code ?? 1)) })
+  let output = ""
+  for await (const chunk of child.stdout) {
+    output += chunk
+    if (output.length > 10_000) { child.kill(); throw new Error("unexpected output") }
+  }
+  if (await exited !== 0) throw new Error("command failed")
+  return output.trim()
+}
+
+export function updateCommand(target, platform, version) {
+  const args = ["install", ...(target.global ? ["--global"] : ["--global=false", "--no-save", "--package-lock=false"]), `openeditorcode@${version}`, `--prefix=${target.prefix}`, `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`]
+  return npmCommand(args, platform)
 }
 
 export function createLauncherDependencies() {
@@ -52,6 +68,12 @@ export function createLauncherDependencies() {
     exists: existsSync,
     readVersion: () => JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version,
     readPlatformVersion: (packageName) => JSON.parse(readFileSync(require.resolve(`${packageName}/package.json`), "utf8")).version,
+    binaryVersion: (executable, env) => commandOutput(executable, ["--version"], env, 5_000),
+    latestVersion: async (env) => {
+      const npm = npmCommand(["view", "openeditorcode@latest", "version", `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`], process.platform)
+      if (process.platform === "win32") npm.command = env.ComSpec || "cmd.exe"
+      return commandOutput(npm.command, npm.args, env)
+    },
     resolve(packageName, platform) {
       return require.resolve(`${packageName}/bin/oec${platform === "win32" ? ".exe" : ""}`)
     },
@@ -106,10 +128,13 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
     return dependencies.run(executable, args, appEnv)
   }
   let previousVersion
+  let requestedVersion
   try {
     previousVersion = dependencies.readVersion()
+    requestedVersion = await dependencies.latestVersion(dependencies.env)
+    if (!/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(requestedVersion) || requestedVersion === previousVersion) throw new Error("invalid version")
   } catch {
-    console.error(spanish ? "No se pudo leer la versión de OEC instalada." : "Could not read the installed OEC version.")
+    console.error(spanish ? "No se pudo determinar la versión de OEC a instalar desde npm público." : "Could not determine the OEC version from the public npm registry.")
     return dependencies.run(executable, args, appEnv)
   }
 
@@ -121,7 +146,7 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
     return dependencies.run(executable, args, appEnv)
   }
 
-  const npm = updateCommand(target, dependencies.platform)
+  const npm = updateCommand(target, dependencies.platform, requestedVersion)
   if (dependencies.platform === "win32") npm.command = dependencies.env.ComSpec || "cmd.exe"
   try {
     const updateCode = await dependencies.run(npm.command, npm.args, dependencies.env)
@@ -131,8 +156,9 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
     }
     try {
       const version = dependencies.readVersion()
-      if (version === previousVersion || dependencies.readPlatformVersion(packageName) !== version) throw new Error("unverified version")
+      if (version !== requestedVersion || dependencies.readPlatformVersion(packageName) !== version) throw new Error("unverified version")
       executable = dependencies.resolve(packageName, dependencies.platform)
+      if (await dependencies.binaryVersion(executable, dependencies.env) !== version) throw new Error("unverified binary")
     } catch {
       console.error(spanish ? "No se pudo verificar la instalación actualizada. Reabriendo la versión anterior de OEC." : "Could not verify the updated installation. Reopening the previous version of OEC.")
       return await dependencies.run(backup.path, args, appEnv)
