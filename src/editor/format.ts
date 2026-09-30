@@ -7,7 +7,7 @@ export async function formatDocument(path: string, source: string, config: OecCo
   const extension = extname(path).toLowerCase()
   const formatter = config.editor.formatting.byExtension[extension] ?? config.editor.formatting.defaultFormatter
   if (formatter === "none") return undefined
-  if (formatter === "prettier") return prettierFormat(source, { filepath: path, ...config.editor.formatting.prettier })
+  if (formatter === "prettier") return prettierFormat(source, { filepath: path, ...config.editor.formatting.prettier, ...(extension === ".svg" ? { parser: "html" as const } : {}) })
   const external = config.formatters.external[formatter]
   if (!external || !external.extensions.includes(extension)) return undefined
   const process = Bun.spawn([external.command, ...external.args], { stdin: new TextEncoder().encode(source), stdout: "pipe", stderr: "pipe" })

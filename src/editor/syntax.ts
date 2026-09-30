@@ -24,6 +24,8 @@ const patterns = {
   keyword: /\b(?:abstract|and|as|async|await|bool|break|case|catch|class|const|continue|def|default|else|enum|export|false|finally|for|from|function|if|import|in|interface|let|new|null|or|pass|private|protected|public|return|self|static|string|switch|this|throw|true|try|type|undefined|var|void|while)\b/g,
   tag: /<\/?[A-Za-z][\w:-]*/g,
   property: /\b[A-Za-z_$][\w$-]*(?=\s*:)/g,
+  attribute: /(?<=\s)[A-Za-z_:][\w:.-]*(?=\s*=)/g,
+  hexColor: /(?<![\w#])#[0-9a-fA-F]{6}(?!\w)/g,
 }
 
 // Regex highlighting scales with the whole document; preserve editor responsiveness for large files.
@@ -31,6 +33,7 @@ const MAX_HIGHLIGHTED_CHARACTERS = 200_000
 const slashCommentExtensions = new Set([".ts", ".tsx", ".js", ".jsx"])
 const hashCommentExtensions = new Set([".py", ".yml", ".yaml", ".sh"])
 const blockCommentExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".css"])
+const highlightedExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".html", ".svg", ".md", ".py", ".yml", ".yaml", ".sh"])
 
 function addMatches(editor: TextareaRenderable, text: string, expression: RegExp, styleId: number, priority = 1) {
   for (const [lineIndex, line] of text.split("\n").entries()) {
@@ -41,11 +44,30 @@ function addMatches(editor: TextareaRenderable, text: string, expression: RegExp
   }
 }
 
+function addHexColors(editor: TextareaRenderable, text: string, theme: SyntaxTheme) {
+  for (const [lineIndex, line] of text.split("\n").entries()) {
+    patterns.hexColor.lastIndex = 0
+    for (let match = patterns.hexColor.exec(line); match; match = patterns.hexColor.exec(line)) {
+      const color = match[0].toLowerCase()
+      const name = `color.${color}`
+      let styleId = theme.style.getStyleId(name)
+      if (styleId === null) {
+        const red = parseInt(color.slice(1, 3), 16)
+        const green = parseInt(color.slice(3, 5), 16)
+        const blue = parseInt(color.slice(5, 7), 16)
+        const light = (red * 299 + green * 587 + blue * 114) / 1000 >= 128
+        styleId = theme.style.registerStyle(name, { bg: color, fg: light ? "#101419" : "#ffffff" })
+      }
+      editor.addHighlight(lineIndex, { start: match.index, end: match.index + match[0].length, styleId, priority: 4 })
+    }
+  }
+}
+
 export function highlightEditor(editor: TextareaRenderable | undefined, path: string | undefined, text: string, theme = fallbackTheme) {
   if (!editor) return
   editor.clearAllHighlights()
   const extension = extname(path || "").toLocaleLowerCase()
-  if (text.length > MAX_HIGHLIGHTED_CHARACTERS || !new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".html", ".md", ".py", ".yml", ".yaml", ".sh"]).has(extension)) return
+  if (text.length > MAX_HIGHLIGHTED_CHARACTERS || !highlightedExtensions.has(extension)) return
 
   // Comments and strings must win when their ranges overlap token-like content.
   if (slashCommentExtensions.has(extension)) addMatches(editor, text, patterns.slashComment, theme.ids.comment, 3)
@@ -54,6 +76,8 @@ export function highlightEditor(editor: TextareaRenderable | undefined, path: st
   addMatches(editor, text, patterns.string, theme.ids.string, 2)
   addMatches(editor, text, patterns.number, theme.ids.number)
   addMatches(editor, text, patterns.keyword, theme.ids.keyword)
-  if (extension === ".html" || extension === ".tsx" || extension === ".jsx") addMatches(editor, text, patterns.tag, theme.ids.tag)
+  if (extension === ".html" || extension === ".svg" || extension === ".tsx" || extension === ".jsx") addMatches(editor, text, patterns.tag, theme.ids.tag)
+  if (extension === ".svg") addMatches(editor, text, patterns.attribute, theme.ids.property)
   if (extension === ".json" || extension === ".yml" || extension === ".yaml" || extension === ".css") addMatches(editor, text, patterns.property, theme.ids.property)
+  addHexColors(editor, text, theme)
 }

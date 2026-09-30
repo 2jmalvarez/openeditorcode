@@ -24,7 +24,7 @@ export const DEFAULT_CONFIG: OecConfig = {
         comment: { foreground: "#7d8590", italic: true, dim: true }, number: { foreground: "#e3b341" }, tag: { foreground: "#ffab70", bold: true }, property: { foreground: "#d2a8ff" },
       },
     },
-    formatting: { formatOnSave: false, defaultFormatter: "prettier", byExtension: { ".js": "prettier", ".jsx": "prettier", ".ts": "prettier", ".tsx": "prettier", ".json": "prettier", ".css": "prettier", ".html": "prettier", ".md": "prettier", ".yml": "prettier", ".yaml": "prettier" }, prettier: { printWidth: 100, tabWidth: 2, useTabs: false, semi: true, singleQuote: false } },
+    formatting: { formatOnSave: false, defaultFormatter: "prettier", byExtension: { ".js": "prettier", ".jsx": "prettier", ".ts": "prettier", ".tsx": "prettier", ".json": "prettier", ".css": "prettier", ".html": "prettier", ".svg": "prettier", ".md": "prettier", ".yml": "prettier", ".yaml": "prettier" }, prettier: { printWidth: 100, tabWidth: 2, useTabs: false, semi: true, singleQuote: false } },
   },
   keyboard: { profile: "default", bindings: {} },
   formatters: { external: {} },
