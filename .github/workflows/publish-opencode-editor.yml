@@ -1,0 +1,102 @@
+name: Publish OpenCode editor plugin
+
+on:
+  push:
+    tags: ["opencode-editor-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-opencode-editor-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        opencode: ["2.0.26", "2.0.27"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
+      - run: bun run plugin:preflight
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run plugin:test
+      - run: bun run plugin:build
+      - run: bun run plugin:pack:check
+      - name: Acquire and test isolated OpenCode host
+        shell: bash
+        env:
+          HOST_VERSION: ${{ matrix.opencode }}
+        run: |
+          set -euo pipefail
+          executable="$(bun run plugins/opencode-editor/scripts/host-executable.ts "$HOST_VERSION" "$RUNNER_TEMP/host")"
+          archive="$(bun -e 'const p = await Bun.file("plugins/opencode-editor/dist/release/pack.json").json(); console.log("plugins/opencode-editor/dist/release/" + p.filename)')"
+          bun run plugin:smoke "$executable" "$archive"
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.opencode == '2.0.27'
+        with:
+          name: opencode-editor-package
+          path: plugins/opencode-editor/dist/release/
+          if-no-files-found: error
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
+      - run: bun run plugin:preflight
+      - uses: actions/download-artifact@v4
+        with:
+          name: opencode-editor-package
+          path: plugins/opencode-editor/dist/release
+      - name: Check existing version and artifact integrity
+        id: registry
+        run: bun run plugin:registry before plugins/opencode-editor/dist/release/pack.json
+      - name: Publish only the verified plugin tarball using OIDC
+        if: steps.registry.outputs.exists != 'true'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          archive="$(bun -e 'const p = await Bun.file("plugins/opencode-editor/dist/release/pack.json").json(); console.log("plugins/opencode-editor/dist/release/" + p.filename)')"
+          dist_tag="$(bun -e 'import { validateTag } from "./plugins/opencode-editor/scripts/release.ts"; const p = await Bun.file("plugins/opencode-editor/package.json").json(); console.log(validateTag(process.env.RELEASE_TAG, p.version))')"
+          npm publish "$archive" --access public --provenance --tag "$dist_tag" --registry https://registry.npmjs.org --ignore-scripts
+      - name: Verify published registry artifact and provenance
+        run: bun run plugin:registry after plugins/opencode-editor/dist/release/pack.json
+      - name: Test actual installation by package name
+        run: |
+          set -euo pipefail
+          executable="$(bun run plugins/opencode-editor/scripts/host-executable.ts 2.0.27 "$RUNNER_TEMP/published-host")"
+          package="$(bun -e 'const p = await Bun.file("plugins/opencode-editor/package.json").json(); console.log(p.name + "@" + p.version)')"
+          bun run plugin:smoke "$executable" "$package"

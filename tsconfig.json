@@ -11,5 +11,5 @@
     "resolveJsonModule": true,
     "types": ["bun-types"]
   },
-  "include": ["src", "tests", "build.ts"]
+  "include": ["src", "tests", "build.ts", "plugins/opencode-editor/src", "plugins/opencode-editor/build.ts", "plugins/opencode-editor/tests", "plugins/opencode-editor/scripts"]
 }

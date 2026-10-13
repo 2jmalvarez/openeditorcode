@@ -8,6 +8,8 @@ Documentation for release **0.2.37**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
+An optional local editor plugin for **OpenCode 2** is developed in [`plugins/opencode-editor/`](plugins/opencode-editor/README.md). It adds a right-side file explorer and an editor view with document tabs without modifying OpenCode; the standalone application remains independent.
+
 The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open settings** and **Open OEC manual**.
 
 ## Main view

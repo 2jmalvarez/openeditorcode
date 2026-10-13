@@ -6,6 +6,7 @@
     "url": "git+https://github.com/2jmalvarez/openeditorcode.git"
   },
   "devDependencies": {
+    "@opencode/plugin": "2.0.26",
     "@opentui/core": "^0.5.1",
     "@opentui/solid": "^0.5.1",
     "@types/bun": "1.3.14",
@@ -57,7 +58,13 @@
     "preflight": "bun run scripts/release-preflight.ts",
     "pack:check": "bun run scripts/package-check.ts",
     "smoke:check": "bun run scripts/executable-smoke.ts",
-    "smoke:tui": "bun run scripts/tui-smoke.ts"
+    "smoke:tui": "bun run scripts/tui-smoke.ts",
+    "plugin:build": "bun run plugins/opencode-editor/build.ts",
+    "plugin:test": "bun test --preload @opentui/solid/preload plugins/opencode-editor/tests",
+    "plugin:preflight": "bun run plugins/opencode-editor/scripts/preflight.ts",
+    "plugin:pack:check": "bun run plugins/opencode-editor/scripts/pack-check.ts",
+    "plugin:smoke": "bun run plugins/opencode-editor/scripts/smoke-host.ts",
+    "plugin:registry": "bun run plugins/opencode-editor/scripts/registry.ts"
   },
   "type": "module"
 }

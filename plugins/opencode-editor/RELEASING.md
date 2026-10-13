@@ -1,0 +1,118 @@
+# Releases del plugin OpenCode
+
+Este procedimiento publica únicamente `@2jmalvarez/opencode-editor`. No cambiar las versiones raíz/Windows/Linux, ni `.github/workflows/publish.yml`. `dist/` no se versiona. El tarball contiene exactamente `package.json`, `dist/tui.js`, `tui.ts`, `README.md` y `LICENSE`. Las dependencias OEC se incluyen en el bundle; las APIs OpenCode/OpenTUI/Solid permanecen externas.
+
+## Bootstrap inicial (intervención humana)
+
+Estado inicial: `0.1.0` preparada, publicación no confirmada. No anunciar instalación pública hasta comprobar Actions, registro y smoke por nombre.
+
+npm requiere que el paquete exista antes de registrar confianza (`npm trust`); no hereda el Trusted Publisher de `openeditorcode`. La documentación actual permite staging de un paquete nuevo, que crea un placeholder público `0.0.0-stage`. Ese bootstrap requiere autorización excepcional y autenticación del titular del scope, con 2FA; no ejecutar un `npm publish` local como fallback.
+
+Los staging pendientes reservan la versión: no se puede publicar `0.1.0` por OIDC mientras esté stageada. El titular debe rechazar ese staging (no aprobarlo); la documentación permite volver a usar una versión stageada tras rechazarla. Verificar después que el placeholder y la confianza continúan existiendo antes de subir el tag. Si desaparecen o npm no permite esta transición, detenerse: no inventar éxito ni cambiar a publicación local.
+
+Después de las verificaciones, con autorización excepcional y autenticación npm resuelta por el titular, desde la raíz:
+
+```powershell
+# npm temporal: no reemplaza la CLI global. Requiere la sesión del titular y 2FA.
+npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage publish ./plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.0.tgz --access public --registry=https://registry.npmjs.org
+npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage list @2jmalvarez/opencode-editor --json --registry=https://registry.npmjs.org
+```
+
+Configurar el Trusted Publisher de la siguiente sección por la web npm. Revisar el stage ID que pertenece exclusivamente a este paquete y versión; después, el titular rechaza ese staging con 2FA:
+
+```powershell
+npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage reject <STAGE_ID> --registry=https://registry.npmjs.org
+npm view @2jmalvarez/opencode-editor versions --json --registry=https://registry.npmjs.org
+```
+
+No ejecutar `npm stage approve` ni `npm publish` local para `0.1.0`. No guardar ni compartir tokens/códigos 2FA con el agente; resolver la autenticación interactivamente por el titular. Si este bootstrap no está disponible, pedir autorización para otra excepción.
+
+Fuentes oficiales:
+
+- https://docs.npmjs.com/cli/v12/commands/npm-trust
+- https://docs.npmjs.com/staged-publishing
+- https://docs.npmjs.com/cli/v11/commands/npm-stage
+- https://docs.npmjs.com/trusted-publishers
+- https://opencode.ai/v2/docs/build/plugins/cli
+- https://opencode.ai/v2/docs/cli/config
+
+## Trusted Publisher por paquete
+
+Con el workflow ya subido y el paquete existente, el titular configura npm → paquete → Settings → Trusted publishing:
+
+- Provider: GitHub Actions
+- Organization/user: `2jmalvarez`
+- Repository: `openeditorcode`
+- Workflow filename: `publish-opencode-editor.yml` (sin `.github/workflows/`)
+- Environment: `npm`
+- Allowed action: **npm publish** (staging solamente no autoriza publicación directa)
+
+Revisar la configuración guardada y los permisos del scope. Una confianza nueva debe completar su primer publish dentro de dos días; si expira, el titular debe reemplazarla. No tocar las confianzas de los tres paquetes OEC.
+
+GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restringen tags, conservar las reglas existentes para OEC y añadir `opencode-editor-v*`. No endurecer o cambiar el entorno compartido sin revisar el efecto sobre OEC. El workflow usa runners hospedados, Node 24, npm 11.5.1+ y Bun 1.3.14. Solo el job de publicación tiene `id-token: write`; no tiene `NPM_TOKEN` ni permisos de escritura GitHub. Provenance se genera por OIDC en el repositorio público (se solicita explícitamente también).
+
+## Futuras versiones normales
+
+1. Cambiar **solo** `plugins/opencode-editor/package.json:version`. Actualizar README/notas relacionadas; lockfile solo si cambian dependencias (este plugin no es un workspace instalado en el lock raíz).
+2. Desde la raíz ejecutar, reemplazando `<VERSION>` y la ruta del host:
+
+```sh
+bun install --frozen-lockfile
+bun run typecheck
+bun run test
+bun run build
+bun run plugin:build
+bun run plugin:test
+bun run plugin:preflight opencode-editor-v<VERSION>
+bun run plugin:pack:check
+bun run plugin:smoke /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz
+```
+
+3. Inspeccionar `git diff`, agregar únicamente archivos/hunks pertinentes y comprobar `git diff --cached`. No usar `git add .`; excluir trabajo ajeno, particularmente `packageManager` preexistente del manifiesto raíz.
+4. Commit de release y push por el flujo de `main` del repositorio. Si hay protecciones, usar rama/PR y esperar integración, sin saltarlas. El tag debe apuntar al commit revisado que pertenece a `origin/main`:
+
+```sh
+git commit -m "Release OpenCode editor plugin <VERSION>"
+git push origin main
+git tag -a opencode-editor-v<VERSION> -m "OpenCode editor plugin <VERSION>"
+git push origin opencode-editor-v<VERSION>
+gh run list --workflow publish-opencode-editor.yml --limit 5
+gh run watch <RUN_ID> --exit-status
+npm view @2jmalvarez/opencode-editor@<VERSION> version dist.integrity gitHead --registry=https://registry.npmjs.org
+bun run plugin:smoke /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION>
+```
+
+5. Verificar que el `gitHead` es el commit del tag y que el paquete tiene provenance. Actions compara SRI del artefacto con el registro, descarga y verifica su contenido y prueba instalación por nombre. Conservar `pack.json`, tarball y `SHA256SUMS` del artefacto del run.
+6. Solo tras el workflow exitoso y la instalación real, actualizar la web ES/EN: `plugin.commit` al commit publicado; no cambiar `product.commit/version`. Ejecutar `bun run build`, `bun run verify:docs`, `bun run verify:docs --plugin-source ../openeditorcode`; revisar escritorio/móvil, enlaces, buscador y copiar ejemplos; commit y push de documentación por el flujo existente.
+
+## Prereleases, reintentos y fallos
+
+- Tags anotados `opencode-editor-v0.1.1-beta.1` publican con dist-tag **next**, nunca latest. SemVer estable publica con latest. No se soporta metadata `+build` en tags de release.
+- No hay `workflow_dispatch`: se reintenta el mismo run con `gh run rerun <RUN_ID> --failed`, sin permitir publicar una revisión arbitraria.
+- Concurrencia por tag, sin cancelar un publish activo. No sobrescribir tags existentes.
+- El registro solo se considera ausente con HTTP 404; fallos de red/auth/5xx bloquean. Una versión existente no equivale a éxito: debe coincidir versión, commit, SRI y provenance. Si todo coincide, un retry verifica sin republicar y repite la instalación por nombre.
+- Las versiones npm son inmutables. Si `0.1.0` salió defectuosa, informar y obtener autorización para incrementar; nunca republicar ni borrar a ciegas.
+- Si falla bootstrap, OIDC o permisos, detenerse y pedir al titular la acción precisa. Un workflow creado o un paquete stageado **no** son un release exitoso.
+
+## Configuración pública de OpenCode (solo después de confirmar npm)
+
+Integrar este objeto en el array `plugins` del `cli.json` **global**, conservando ajustes y plugins existentes:
+
+```json
+{
+  "$schema": "https://opencode.ai/v2/cli.json",
+  "plugins": [
+    {
+      "package": "@2jmalvarez/opencode-editor@0.1.0",
+      "options": {
+        "localRoot": "C:/Projects/my-project",
+        "toggleBinding": "f6",
+        "filesBinding": "f7",
+        "explorerWidth": 30
+      }
+    }
+  ]
+}
+```
+
+En Linux usar una raíz absoluta local. La carga por carpeta compilada sigue siendo alternativa. Los defaults del código continúan siendo Ctrl+Alt+O/J. `npm install -g openeditorcode` instala únicamente el editor autónomo.

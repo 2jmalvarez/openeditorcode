@@ -44,7 +44,7 @@ async function nearestExistingPath(target: string): Promise<string> {
   }
 }
 
-async function ensurePhysicallyInsideRoot(root: string, target: string): Promise<string> {
+export async function ensurePhysicallyInsideRoot(root: string, target: string): Promise<string> {
   const safePath = ensureInsideRoot(root, target)
   const physicalRoot = await realpath(resolve(root))
   const existingPath = await nearestExistingPath(safePath)

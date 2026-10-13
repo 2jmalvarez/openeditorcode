@@ -1,5 +1,7 @@
 # openeditorcode (OEC)
 
+Integración opcional: [`plugins/opencode-editor/`](plugins/opencode-editor/README.md) contiene el MVP local para **OpenCode 2**, con explorador derecho y vista de editor con pestañas propias. No modifica OpenCode y conserva OEC autónomo.
+
 [English](README.md) | Español
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
