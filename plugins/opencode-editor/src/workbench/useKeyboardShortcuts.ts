@@ -45,7 +45,7 @@ export function editorCommands(props: Props): KeymapCommand[] {
     edit("alt+down", (editor) => moveLine(editor, 1)),
     edit("ctrl+shift+k", (editor) => { editor.clearSelection(); editor.deleteLine() }),
     edit("ctrl+d", selectWord),
-    edit("ctrl+a", (editor) => { editor.selectAll() }),
+    { id: "oec.select.all", title: "OEC: select all file contents", palette: true, ...edit("ctrl+a", (editor) => { editor.selectAll() }) },
     edit("ctrl+home", (editor) => { editor.gotoBufferHome() }),
     edit("ctrl+end", (editor) => { editor.gotoBufferEnd() }),
     edit("ctrl+shift+home", (editor) => { editor.gotoBufferHome({ select: true }) }),

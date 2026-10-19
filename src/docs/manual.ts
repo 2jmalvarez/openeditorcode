@@ -9,6 +9,8 @@ OEC abre el directorio actual o el proyecto indicado como argumento. La raíz de
 ## Paneles y editor
 Ctrl+B alterna el explorador; Ctrl+Alt+B alterna Cambios. Si el terminal no tiene espacio para ambos paneles laterales, OEC muestra uno por vez. Ctrl+S guarda, Ctrl+W cierra y Ctrl+Q sale. Un asterisco indica cambios sin guardar.
 
+Ctrl+A selecciona todo el archivo activo con foco en el editor, sin cambiar su contenido. También está disponible en la paleta como “Seleccionar todo el archivo”. No actúa detrás de búsquedas ni diálogos. Puede reasignarse mediante keyboard.bindings["editor.selectAll"].
+
 ## Búsqueda e ignorados
 Ctrl+F busca archivos desde el explorador o texto desde el editor. Ctrl+Alt+F busca texto en el proyecto. La raíz .gitignore se respeta de forma predeterminada y .git siempre está excluido. Ctrl+E modifica exclusiones solo durante la sesión; nunca se persisten.
 
@@ -47,6 +49,8 @@ OEC opens the current directory or the project supplied as an argument. The proj
 
 ## Panels and editor
 Ctrl+B toggles the explorer; Ctrl+Alt+B toggles Changes. When the terminal does not have room for both side panels, OEC shows one at a time. Ctrl+S saves, Ctrl+W closes, and Ctrl+Q quits. An asterisk marks unsaved changes.
+
+Ctrl+A selects the entire active file while the editor has focus, without changing its contents. It is also available in the palette as “Select all file contents”. It does not act behind searches or dialogs. Remap it through keyboard.bindings["editor.selectAll"].
 
 ## Search and ignored files
 Ctrl+F searches files from the explorer or text from the editor. Ctrl+Alt+F searches text in the project. The root .gitignore is respected by default and .git is always excluded. Ctrl+E changes exclusions only for the current session; they are never persisted.

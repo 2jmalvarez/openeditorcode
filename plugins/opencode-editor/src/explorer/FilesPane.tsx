@@ -34,6 +34,10 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
   })
   const measure = () => {
     if (!scroll) return
+    // Host confirmation restores the prompt after resolving its promise. Recover
+    // desired tree focus only in the input mode that requested it, not in modals.
+    const mode = props.keyboardMode ?? controller.filesInputMode
+    if (mode !== undefined && props.focused() && !controller.modal && controller.context.keymap.mode.current() === mode && panel && !panel.isDestroyed && !panel.focused) panel.focus()
     tree().scrollTop = scroll.scrollTop
     const next = virtualRange(tree().items.length, scroll.scrollTop, scroll.viewport.height || props.height || 20)
     const current = range()
@@ -51,7 +55,7 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
   })
   onMount(() => { controller.context.renderer.on("frame", measure); void controller.run(() => tree().refresh()) })
   onCleanup(() => { measure(); controller.context.renderer.off("frame", measure) })
-  return <box ref={(value) => { panel = value }} focusable focused={props.focused() && !controller.modal}
+  return <box id="oec-files-pane" ref={(value) => { panel = value }} focusable focused={props.focused() && !controller.modal}
     width={props.width ?? "100%"} height={props.height ?? "100%"} minHeight={0} flexShrink={0} flexDirection="column"
     border={["left"]} borderColor={controller.context.theme.text.muted} onMouseDown={props.onFocus}>
     <text fg={controller.context.theme.text.base}> FILES · ↑↓ Enter</text>

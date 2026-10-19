@@ -42,6 +42,8 @@ El explorador se muestra inicialmente. Cambios se muestra también si el ancho d
 
 Los archivos abiertos se muestran en pestañas. `*` significa que el contenido difiere del último guardado. `Ctrl+S` guarda, `Ctrl+W` cierra y `Shift+Tab` selecciona la siguiente pestaña. Al cerrar, salir o actualizar con cambios sin guardar OEC pide guardar o descartar. Los diffs Git (`Delta`) son de solo lectura.
 
+Con foco en el editor, `Ctrl+A` selecciona todo el contenido del archivo activo sin modificarlo; también está en la paleta como `Seleccionar todo el archivo`. Las búsquedas y los diálogos conservan prioridad. El atajo admite reasignación mediante `keyboard.bindings["editor.selectAll"]`.
+
 El editor ofrece ajuste de línea (`Ctrl+L`), formateo (`Alt+Shift+F`), deshacer (`Ctrl+Z`), rehacer (`Ctrl+Shift+Z`), navegación por pantalla (`RePág` y `AvPág`), duplicar la línea arriba (`Alt+Shift+Down`) o abajo (`Alt+Shift+Up`), copia OSC 52 (`Ctrl+C`) y pegado (`Ctrl+V`). Resalta TS, TSX, JS, JSX, JSON, CSS, HTML, Markdown, Python, YAML y shell hasta 200.000 caracteres.
 
 ## Búsqueda y rutas ignoradas
@@ -144,6 +146,7 @@ Solo se editan archivos UTF-8 de hasta 2 MiB (2.097.152 bytes). Archivos con NUL
 | `F12` | Abrir el registro de errores de la sesión |
 | `F2` | Renombrar el archivo o carpeta seleccionado en el Explorador |
 | `Ctrl+C`, `Ctrl+V`, `Ctrl+Z`, `Ctrl+Shift+Z` | Copiar, pegar, deshacer, rehacer |
+| `Ctrl+A` | Seleccionar todo el archivo activo, con foco en el editor |
 | `RePág`, `AvPág` | Mover el cursor una pantalla arriba, abajo |
 | `Alt+Shift+Down` / `Alt+Shift+Up` | Duplicar la línea arriba / abajo |
 | `Esc` | Cerrar busqueda o dialogo; con foco en historial Git, retroceder hacia cambios locales sin cerrar diffs |

@@ -209,6 +209,13 @@ export function useEditor(props: Props) {
     props.setStatus(t(copyToClipboard(text) ? "editor.copied" : "editor.copyUnsupported"))
   }
 
+  function selectAll() {
+    if (props.active() !== "editor" || props.overlay() || findOpen() || !props.filePath() || !renderable) return
+    renderable.focus()
+    renderable.selectAll()
+    updateCursor()
+  }
+
   async function paste() {
     if (props.active() !== "editor" || !renderable) return
     try {
@@ -271,5 +278,5 @@ export function useEditor(props: Props) {
     else renderable?.focus()
   })
 
-  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, vimMode, metrics, setEditor, onContentChange, onCursorChange, undo, redo, duplicateLine, movePage, replaceCurrentText, handleVimKey, copy, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
+  return { content, setText, clear, detachEditor, currentText, blur, wrapMode, setLineWrap, cursor, vimMode, metrics, setEditor, onContentChange, onCursorChange, undo, redo, duplicateLine, movePage, replaceCurrentText, handleVimKey, copy, selectAll, paste, openFind, findOpen, findQuery, findResults, findIndex, updateFindQuery, moveFindResult, acceptFind, closeFind, resetFind, gotoLine }
 }

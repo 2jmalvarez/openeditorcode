@@ -8,6 +8,7 @@ import { installPackedPlugin } from "./install-check"
 const executable = process.argv[2]
 if (!executable) throw new Error("Pass the path to an OpenCode 2 executable")
 const source = process.argv[3]
+const automaticRoot = process.argv[4] === "--auto-root"
 if (!source) throw new Error("Pass a packed .tgz or @2jmalvarez/opencode-editor@<version>; checkout loading is not a release test")
 const temporary = await createTemporary("oec-host-")
 const project = join(temporary, "project")
@@ -43,7 +44,10 @@ export default {
       await context.data.session.sync(sessionID)
       context.renderer.resize(160, 30)
       context.ui.router.navigate({ type: "session", sessionID })
-       setTimeout(() => key("f7"), 500)
+        setTimeout(() => {
+          key("f7")
+          if (${automaticRoot}) setTimeout(() => key("return"), 500)
+        }, 500)
     }, 1500)
     let stage = 0
     let result
@@ -125,7 +129,7 @@ try {
        TERM: "xterm-256color", TEMP: temporary, TMP: temporary, LOCALAPPDATA: temporary, APPDATA: temporary,
       HOME: temporary, USERPROFILE: temporary,
       XDG_CONFIG_HOME: join(temporary, "config"), XDG_DATA_HOME: join(temporary, "data"), XDG_CACHE_HOME: join(temporary, "cache"), XDG_STATE_HOME: join(temporary, "state"),
-       OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { localRoot: project, toggleBinding: "f6", filesBinding: "f7", explorerWidth: 30 } }, wrapper] }),
+       OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { ...(automaticRoot ? {} : { localRoot: project }), toggleBinding: "f6", filesBinding: "f7", explorerWidth: 30 } }, wrapper] }),
     },
   })
   const [stdout, stderr, exitCode] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
@@ -140,7 +144,7 @@ try {
       }
     }
     await logs(temporary)
-    throw new Error(`OpenCode host smoke failed (exit=${exitCode}): ${stderr}\n${diagnostics.join("\n")}\n${stdout.slice(0, 2000)}`)
+    throw new Error(`OpenCode host smoke failed (exit=${exitCode}): ${stderr}\n${diagnostics.join("\n")}\n${stdout.slice(-12000)}`)
   }
    const result = JSON.parse(await readFile(marker, "utf8")) as { version: string; route: { type: string; name: string }; commands: string[]; returned: boolean; documents: boolean }
    if (exitCode !== 0 || result.route.type !== "plugin" || result.route.name !== "oec.editor" || !result.commands.includes("oec.save") || !result.returned || !result.documents) throw new Error(`Invalid host state: ${JSON.stringify(result)}, exit=${exitCode}`)

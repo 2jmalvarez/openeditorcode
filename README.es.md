@@ -195,6 +195,7 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Ctrl+W` | Cerrar pestana actual |
 | `Shift+Tab` | Ir a la pestana siguiente |
 | `Ctrl+C` | Copiar el texto seleccionado |
+| `Ctrl+A` | Seleccionar todo el archivo activo (con foco en el editor) |
 | `Ctrl+V` | Pegar desde el portapapeles del sistema |
 | `Ctrl+Z` | Deshacer el ultimo cambio |
 | `Ctrl+Shift+Z` | Rehacer el ultimo cambio |

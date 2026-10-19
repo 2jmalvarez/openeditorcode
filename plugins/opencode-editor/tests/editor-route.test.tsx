@@ -100,3 +100,63 @@ test("mouse opens a sidebar file in the editor without duplicating tabs", async 
     expect(controller.workspace.documents).toHaveLength(1)
   } finally { setup.renderer.destroy(); await controller.dispose() }
 })
+
+test("Ctrl+A selects the entire file, only in editor focus and outside find/modal", async () => {
+  const content = "primera línea café\n\núltima línea\n"
+  await writeFile(join(root, "hello.ts"), content)
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
+  await controller.workspace.open(join(root, "hello.ts"))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <EditorRoute controller={controller} />
+  }, { width: 110, height: 18 })
+  try {
+    await setup.renderOnce()
+    const editor = setup.renderer.root.findDescendantById("oec-editor-buffer") as TextareaRenderable
+    const layer = () => [...host.layers].map((factory) => factory()).find((entry) => entry.mode === "oec-editor")!
+    const command = (id: string) => layer().commands!.find((entry) => entry.id === id)!
+    const enabled = () => { const value = command("oec.select.all").enabled; return typeof value === "function" ? value() : value }
+    const select = command("oec.select.all")
+    expect(select.bind).toBe("ctrl+a")
+    expect(select.palette).toBe(true)
+    expect(enabled()).toBe(true)
+    editor.setCursor(1, 0)
+    await select.run?.()
+    expect(editor.getSelectedText()).toBe(content)
+    expect(controller.workspace.active?.content).toBe(content)
+    await command("oec.focus").run?.()
+    expect(enabled()).toBe(false)
+    await command("oec.focus").run?.()
+    await command("oec.find").run?.()
+    expect(enabled()).toBe(false)
+    let finish!: () => void
+    const pending = controller.dialog(() => new Promise<void>((resolve) => { finish = resolve }))
+    expect(layer().enabled).toBe(false)
+    finish(); await pending
+    expect(layer().enabled).toBe(true)
+  } finally { setup.renderer.destroy(); await controller.dispose() }
+  expect(host.layers.size).toBe(0)
+})
+
+test("sidebar tree restores focus after host confirmation, but never over a modal", async () => {
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
+  await controller.toggleFiles()
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <SessionFiles controller={controller} sessionID="session-1" />
+  }, { width: 40, height: 20 })
+  try {
+    await setup.renderOnce()
+    const target = setup.renderer.root.findDescendantById("oec-files-pane")
+    expect(target).toBeDefined()
+    const pop = host.context.keymap.mode.push("modal")
+    target!.blur()
+    await setup.renderOnce()
+    expect(target!.focused).toBe(false)
+    pop()
+    await setup.renderOnce()
+    expect(target!.focused).toBe(true)
+  } finally { setup.renderer.destroy(); await controller.dispose() }
+})

@@ -2,8 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete público independiente: [`@2jmalvarez/opencode-editor@0.1.1`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.1).
-**Publicación e instalación verificadas:** [GitHub Actions/OIDC](https://github.com/2jmalvarez/openeditorcode/actions/runs/39194432774), integridad/provenance y carga por nombre en OpenCode 2.0.26/2.0.27. `0.1.0` se publicó, pero falló la instalación por un conflicto de peers: usar `0.1.1`.
+Paquete independiente: `@2jmalvarez/opencode-editor`, versión `0.1.2` preparada para publicación por GitHub Actions/OIDC. Confirmar workflow, registro e instalación antes de anunciar el release. La última publicación verificada es [0.1.1](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.1); `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -14,6 +13,7 @@ Paquete público independiente: [`@2jmalvarez/opencode-editor@0.1.1`](https://ww
 - Navegación con teclado y ratón; árbol virtualizado que mantiene visible la selección.
 - Edición UTF-8, resaltado por línea, guardar, copiar/pegar, deshacer/rehacer y búsqueda literal local.
 - Documentos, cursor y scroll conservados al alternar vistas y archivos.
+- `Ctrl+A` selecciona todo el contenido del archivo activo; también está en la paleta como **OEC: select all file contents** en la copia local actual. Solo actúa con foco en el editor, sin búsqueda ni modal; no captura `Ctrl+A` del chat.
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
 
@@ -34,36 +34,33 @@ Probado con OpenCode **2.0.26 y 2.0.27**. Runtime Bun **1.3.14+**; compatibilida
 
 ## Cargar el plugin
 
-Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, preservando sus demás valores. No existe `cli.json` de proyecto.
+### Carpeta automática desde 0.1.2
+
+El plugin toma automáticamente la carpeta de la sesión activa de OpenCode; desde inicio usa `context.location` o la ubicación predeterminada del anfitrión. No usa la carpeta de instalación del plugin ni el directorio del servicio. Al cambiar de proyecto conserva documentos y borradores separados por raíz; volver al mismo proyecto recupera sus pestañas.
+
+Una vez confirmada la publicación, añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, preservando sus demás valores. No existe `cli.json` de proyecto. No se necesita clonar OEC ni compilar:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/v2/cli.json",
-  "plugins": [
-    {
-      "package": "@2jmalvarez/opencode-editor@0.1.1",
-      "options": {
-        "localRoot": "C:/ruta/mi-proyecto",
-         "toggleBinding": "f6",
-         "filesBinding": "f7",
-        "explorerWidth": 30
-      }
-    }
-  ]
+  "plugins": [{
+    "package": "@2jmalvarez/opencode-editor@0.1.2",
+    "options": { "toggleBinding": "f6", "filesBinding": "f7", "explorerWidth": 30 }
+  }]
 }
 ```
 
-En Linux usar una `localRoot` absoluta como `/home/usuario/mi-proyecto`.
+Al abrir los archivos por primera vez, confirmar acceso a la carpeta **en esta computadora**, una vez por carpeta hasta salir de la TUI. La ubicación del servidor no prueba que exista un filesystem compartido: cancelar no lee archivos ni crea un workspace. Workspaces remotos requieren una `localRoot` explícita; no se implementa lectura remota. Una ubicación ausente o relativa produce un aviso, sin recurrir silenciosamente a otra carpeta. `localRoot` sigue disponible como override absoluto, conservando el comportamiento anterior.
 
-No usar solo el nombre como entrada: `options.localRoot` es obligatorio. OpenCode instala el paquete; no se necesita un `postinstall` ni compilar desde el checkout. Para la alternativa local, compilar y reemplazar únicamente `package` por la ruta absoluta de `plugins/opencode-editor` dentro del checkout. No cargar simultáneamente las entradas npm y local del mismo plugin.
+`localRoot` ya no es obligatoria desde 0.1.2. Si una configuración anterior conserva esa opción, quitarla para seguir automáticamente cada proyecto. Opcionalmente fijar `"localRoot": "C:/ruta/mi-proyecto"` (Linux: `/home/usuario/mi-proyecto`) para mantener el opt-in explícito de una sola raíz; solo integra sesiones cuya ubicación coincide con ella. No utilizarlo para editar proyectos remotos aunque sus rutas textuales coincidan con carpetas locales.
 
-`localRoot` es obligatorio: autoriza acceso **al filesystem local de la terminal**, no al del servidor. El MVP admite una raíz por configuración; únicamente integra sesiones cuya `location.directory` coincide con esa raíz. No utilizarlo para editar un proyecto remoto, aunque su ruta textual coincida con una carpeta local. El acceso remoto requiere un backend RPC y no forma parte de este MVP.
+Para la alternativa local, compilar y reemplazar únicamente `package` por la ruta absoluta de `plugins/opencode-editor` dentro del checkout. No cargar simultáneamente las entradas npm y local del mismo plugin. Las versiones anteriores a 0.1.2 sí requieren `localRoot`.
 
 Volver a cargar el plugin o reiniciar la TUI tras cambiar la configuración. El build debe existir antes de cargar la alternativa por carpeta local.
 
 ## Uso
 
-1. Abrir una sesión en el proyecto configurado.
+1. Abrir una sesión en el proyecto deseado. Desde 0.1.2 se detecta automáticamente; confirmar acceso al disco local cuando se solicite.
 2. `F7` (con la configuración del ejemplo) o **OEC: show/hide session files** muestra el explorador en la conversación.
 3. Flechas navegan el árbol; `Enter` expande una carpeta o abre un archivo en el editor. Un clic también lo abre.
 4. `F6` (con la configuración del ejemplo) o **OEC: toggle conversation/editor** alterna entre ambas vistas.
@@ -128,14 +125,16 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.1.1
+bun run plugin:preflight opencode-editor-v0.1.2
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.1.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.2.tgz
+# Además, comprobar detección automática y confirmación del acceso local:
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.2.tgz --auto-root
 ```
 
 El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.1.1` en lugar del tarball.

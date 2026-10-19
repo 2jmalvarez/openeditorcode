@@ -195,6 +195,7 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 | `Ctrl+W` | Close the current tab |
 | `Shift+Tab` | Go to the next tab |
 | `Ctrl+C` | Copy selected text |
+| `Ctrl+A` | Select the entire active file (editor focus) |
 | `Ctrl+V` | Paste from the system clipboard |
 | `Ctrl+Z` | Undo the last change |
 | `Ctrl+Shift+Z` | Redo the last change |

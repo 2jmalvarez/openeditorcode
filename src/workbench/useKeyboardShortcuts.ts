@@ -45,6 +45,7 @@ type Props = {
   openDiffFile: () => Promise<boolean>
   requestClose: () => void
   copy: () => void
+  selectAll: () => void
   paste: () => Promise<void>
   paletteLength: () => number
   acceptCommand: () => void
@@ -224,6 +225,7 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) return consume(key, props.acceptEditorFind)
       return
     }
+    if (props.active() === "editor" && matches("editor.selectAll", "ctrl+a")) return consume(key, props.selectAll)
     if (props.active() === "editor" && keyName === "pageup" && props.moveEditorPage("up")) return consume(key, () => undefined)
     if (props.active() === "editor" && keyName === "pagedown" && props.moveEditorPage("down")) return consume(key, () => undefined)
     if (props.handleVimKey(key)) return consume(key, () => undefined)

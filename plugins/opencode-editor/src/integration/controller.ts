@@ -22,6 +22,7 @@ export class EditorController {
   status = "OEC · Local files"
   filesVisible = false
   filesFocused = false
+  filesInputMode: string | undefined
   capture: (() => void) | undefined
 
   constructor(readonly context: Context, readonly options: EditorOptions) {
@@ -84,7 +85,7 @@ export class EditorController {
   }
   accepts(sessionID: string): boolean {
     const directory = this.sessionRoot(sessionID)
-    // Explicit localRoot is the user's local-access opt-in, never infer it from a remote location.
+    // Root access is explicit via localRoot or confirmed by EditorProjects.
     return Boolean(directory && resolve(directory) === this.workspace.root)
   }
 
@@ -92,7 +93,7 @@ export class EditorController {
     const generation = ++this.navigation
     const route = this.context.ui.router.current()
     const origin = sessionID ?? (route.type === "session" ? route.sessionID : this.origin)
-    if (origin && !this.accepts(origin)) throw new Error("OEC: this session is not in the configured localRoot")
+    if (origin && !this.accepts(origin)) throw new Error("OEC: this session is not in the selected project (localRoot)")
     await ensurePhysicallyInsideRoot(this.workspace.root, this.workspace.root)
     await this.ready()
     if (this.disposed || generation !== this.navigation) return
@@ -167,6 +168,7 @@ export class EditorController {
     const route = this.context.ui.router.current()
     if (route.type !== "session" || !this.accepts(route.sessionID)) throw new Error("OEC: open a session in localRoot first")
     this.filesVisible = !this.filesVisible
+    this.filesInputMode ??= this.context.keymap.mode.current()
     this.filesFocused = this.filesVisible
     this.changed()
     if (this.filesVisible) await this.tree.refresh()

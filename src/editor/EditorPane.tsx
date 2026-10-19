@@ -85,6 +85,7 @@ export function EditorPane(props: Props) {
           <text fg="#60717f">{props.lineLabels()}</text>
         </box></Show>
       <textarea
+        id="oec-source-editor"
         ref={props.setEditor}
         initialValue={props.content()}
         focused={props.active() === "editor"}

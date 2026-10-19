@@ -59,6 +59,8 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
+Candidata 0.1.2: carpeta automática por sesión con confirmación de acceso local y controllers independientes por raíz; `localRoot` pasa a ser override opcional. `Ctrl+A` tiene comando de paleta y pruebas de scope. Antes de publicar ejecutar ambos smokes, con override y con `--auto-root`; este último omite `localRoot` y confirma mediante teclado. No anunciar éxito hasta verificar la instalación por nombre de la nueva versión.
+
 1. Cambiar **solo** `plugins/opencode-editor/package.json:version`. Actualizar README/notas relacionadas; lockfile solo si cambian dependencias (este plugin no es un workspace instalado en el lock raíz).
 2. Desde la raíz ejecutar, reemplazando `<VERSION>` y la ruta del host:
 
@@ -72,6 +74,7 @@ bun run plugin:test
 bun run plugin:preflight opencode-editor-v<VERSION>
 bun run plugin:pack:check
 bun run plugin:smoke /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz
+bun run plugin:smoke /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz --auto-root
 ```
 
 3. Inspeccionar `git diff`, agregar únicamente archivos/hunks pertinentes y comprobar `git diff --cached`. No usar `git add .`; excluir trabajo ajeno, particularmente `packageManager` preexistente del manifiesto raíz.
@@ -109,9 +112,8 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "@2jmalvarez/opencode-editor@0.1.1",
+      "package": "@2jmalvarez/opencode-editor@0.1.2",
       "options": {
-        "localRoot": "C:/Projects/my-project",
         "toggleBinding": "f6",
         "filesBinding": "f7",
         "explorerWidth": 30
@@ -121,4 +123,4 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
 }
 ```
 
-En Linux usar una raíz absoluta local. La carga por carpeta compilada sigue siendo alternativa. Los defaults del código continúan siendo Ctrl+Alt+O/J. `npm install -g openeditorcode` instala únicamente el editor autónomo.
+Desde 0.1.2 se detecta automáticamente la carpeta de la sesión activa y se confirma acceso al disco local una vez por carpeta/TUI. Quitar `localRoot` de configuraciones anteriores para seguir cada proyecto. Conservarla como override absoluto sigue permitido. No inferir filesystem local desde servidor remoto. La carga por carpeta compilada sigue siendo alternativa. Los defaults del código continúan siendo Ctrl+Alt+O/J. `npm install -g openeditorcode` instala únicamente el editor autónomo.

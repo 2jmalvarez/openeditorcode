@@ -4,10 +4,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { KeyCodes } from "@opentui/core/testing"
+import type { TextareaRenderable } from "@opentui/core"
 import { testRender } from "@opentui/solid"
 import { App } from "../src/workbench/App"
 import { DiffPane } from "../src/git/DiffPane"
 import { configureLanguage } from "../src/localization"
+import { factoryConfig } from "../src/config/defaults"
 
 let root = ""
 
@@ -618,6 +620,94 @@ test("moves the source editor by a visible page with PageUp and PageDown", async
   } finally {
     setup.renderer.destroy()
   }
+})
+
+test("Ctrl+A selects the entire source file without modifying it or acting behind searches and palettes", async () => {
+  const text = "primera línea café\n\núltima línea\n"
+  await writeFile(join(root, "hello.txt"), text, "utf8")
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await waitForText(setup, "hello.txt")
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "primera línea")
+    const editor = setup.renderer.root.findDescendantById("oec-source-editor") as TextareaRenderable
+    editor.setCursor(1, 0)
+    setup.mockInput.pressKey("a", { ctrl: true })
+    await setup.renderOnce()
+    expect(editor.getSelectedText(), "keyboard selects entire file").toBe(text)
+    expect(editor.plainText).toBe(text)
+    expect(setup.captureCharFrame()).not.toContain("* hello.txt")
+    editor.clearSelection()
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.renderOnce()
+    setup.mockInput.pressKey("a", { ctrl: true })
+    await setup.renderOnce()
+    expect(editor.getSelectedText()).toBe("")
+    setup.renderer.keyInput.processParsedKey({ name: "escape", ctrl: false, meta: false, shift: false, option: false, number: false, eventType: "press", source: "raw", sequence: "\u001b", raw: "\u001b" })
+    await setup.renderOnce()
+    setup.mockInput.pressKey("p", { ctrl: true })
+    await setup.renderOnce()
+    setup.mockInput.pressKey("a", { ctrl: true })
+    await setup.renderOnce()
+    expect(editor.getSelectedText()).toBe("")
+    await setup.mockInput.typeText("Seleccionar todo el archivo")
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("Seleccionar todo el archivo")
+    expect(setup.captureCharFrame()).toContain("Ctrl+A")
+    setup.mockInput.pressEnter()
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("COMANDOS Y CONFIGURACIÓN")
+    expect(editor.getSelectedText(), "palette selects entire file").toBe(text)
+    editor.clearSelection()
+    setup.mockInput.pressArrow("left", { ctrl: true, shift: true })
+    await setup.renderOnce()
+    setup.mockInput.pressKey("a", { ctrl: true })
+    await setup.renderOnce()
+    expect(editor.getSelectedText()).toBe("")
+  } finally { setup.renderer.destroy() }
+})
+
+test("select-all can be remapped and still works with the Vim profile", async () => {
+  const config = factoryConfig()
+  config.keyboard.profile = "vim"
+  config.keyboard.bindings["editor.selectAll"] = ["ctrl+g"]
+  const setup = await testRender(() => <App root={root} config={config} />, { width: 100, height: 30 })
+  try {
+    await waitForText(setup, "hello.txt")
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "contenido de prueba")
+    const editor = setup.renderer.root.findDescendantById("oec-source-editor") as TextareaRenderable
+    setup.mockInput.pressKey(KeyCodes.ESCAPE)
+    await setup.renderOnce()
+    setup.renderer.keyInput.processParsedKey({ name: "g", ctrl: true, meta: false, shift: false, option: false, number: false, eventType: "press", source: "raw", sequence: "\u0007", raw: "\u0007" })
+    await setup.renderOnce()
+    expect(editor.getSelectedText(), "remapped binding selects file in Vim normal mode").toBe("contenido de prueba")
+    expect(editor.plainText).toBe("contenido de prueba")
+  } finally { setup.renderer.destroy() }
+})
+
+test("Ctrl+A handles an empty file and cannot select behind a save confirmation", async () => {
+  await writeFile(join(root, "hello.txt"), "", "utf8")
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await waitForText(setup, "hello.txt")
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "hello.txt ×")
+    const editor = setup.renderer.root.findDescendantById("oec-source-editor") as TextareaRenderable
+    setup.mockInput.pressKey("a", { ctrl: true })
+    await setup.renderOnce()
+    expect(editor.plainText).toBe("")
+    expect(editor.getSelectedText()).toBe("")
+    expect(setup.captureCharFrame()).not.toContain("* hello.txt")
+    await setup.mockInput.typeText("unsaved")
+    setup.mockInput.pressKey("w", { ctrl: true })
+    await waitForText(setup, "Hay cambios sin guardar")
+    setup.mockInput.pressKey("a", { ctrl: true })
+    await setup.renderOnce()
+    expect(editor.getSelectedText()).toBe("")
+    expect(editor.plainText).toBe("unsaved")
+    expect(setup.captureCharFrame()).toContain("Hay cambios sin guardar")
+  } finally { setup.renderer.destroy() }
 })
 
 test("receives Shift+Enter in the explorer with the extended keyboard protocol", async () => {
