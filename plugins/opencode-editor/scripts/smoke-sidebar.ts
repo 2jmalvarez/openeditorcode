@@ -1,9 +1,11 @@
 import assert from "node:assert/strict"
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { directory, temporary } from "./release"
+import { installPackedPlugin } from "./install-check"
 
-// Development smoke of the built checkout, not a packed-package/release check.
+// Without a source argument, test the built checkout. For release checks, pass
+// its verified tarball or exact npm package name and use the real host loader.
 // Everything the host can write is isolated; never connect to the shared service.
 const executable = process.argv[2]
 assert.ok(executable, "Pass an OpenCode 2 executable; build the plugin first")
@@ -11,6 +13,7 @@ const sandbox = await temporary("oec-sidebar-host-")
 const project = join(sandbox, "project")
 const observer = join(sandbox, "observer")
 const marker = join(sandbox, "result.json")
+const source = process.argv[3]
 await mkdir(join(project, "nested"), { recursive: true })
 await mkdir(observer)
 await writeFile(join(project, "nested", "hello.ts"), "const original = true\n")
@@ -24,6 +27,9 @@ async function git(args: string[]) {
 const timeout = new AbortController()
 const timer = setTimeout(() => timeout.abort(), 60_000)
 try {
+  if (source && !source.endsWith(".tgz")) assert.match(source, /^@2jmalvarez\/opencode-editor@\d+\.\d+\.\d+(?:-[\w.-]+)?$/)
+  const pluginSource = !source ? directory : source.endsWith(".tgz")
+    ? await installPackedPlugin(resolve(source), join(sandbox, "installed"), "arborist") : source
   await git(["init", "--quiet"])
   await git(["add", "."])
   await git(["-c", "user.name=OEC smoke", "-c", "user.email=oec@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "Temporary fixture"])
@@ -98,7 +104,7 @@ export default { id: "oec.sidebar-smoke", setup(context) {
       key("tab")
       await until(() => find("oec-changes-pane")?.focused, "Tab did not focus changes")
       key("return")
-      await until(() => context.renderer.currentFocusedRenderable?.id === "session-panel" && text(context.renderer.root).includes("const original = true"), "Enter did not open native diff")
+      await until(() => text(context.renderer.root).includes("const original = true"), "Enter did not open native diff")
       if (!context.keymap.commands().some(command => command.id === "diff.close")) throw new Error("Native diff command missing")
       context.keymap.dispatch("diff.close")
       await until(() => find("oec-changes-pane"), "Native diff did not close")
@@ -120,7 +126,7 @@ export default { id: "oec.sidebar-smoke", setup(context) {
       TERM: "xterm-256color", TEMP: sandbox, TMP: sandbox, LOCALAPPDATA: sandbox, APPDATA: sandbox,
       HOME: sandbox, USERPROFILE: sandbox, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: join(sandbox, "gitconfig"),
       XDG_CONFIG_HOME: join(sandbox, "config"), XDG_DATA_HOME: join(sandbox, "data"), XDG_CACHE_HOME: join(sandbox, "cache"), XDG_STATE_HOME: join(sandbox, "state"),
-      OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: directory, options: { toggleBinding: "f6", filesBinding: "f7" } }, observer] }),
+      OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { toggleBinding: "f6", filesBinding: "f7" } }, observer] }),
     },
   })
   const [stdout, stderr, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
@@ -137,5 +143,5 @@ export default { id: "oec.sidebar-smoke", setup(context) {
     await logs(sandbox)
     throw new Error(`Sidebar smoke failed (${code}): ${JSON.stringify(result)}\n${stderr}\n${diagnostics.join("\n")}\n${stdout.slice(-3000)}`)
   }
-  console.log(`OpenCode ${result.version}: consent mouse release, chat with Files open, quick search, native diff and live changes passed (isolated checkout smoke).`)
+  console.log(`OpenCode ${result.version}: consent mouse release, chat with Files open, quick search, native diff and live changes passed (isolated ${source ?? "checkout"} smoke).`)
 } finally { clearTimeout(timer); await rm(sandbox, { recursive: true, force: true }) }

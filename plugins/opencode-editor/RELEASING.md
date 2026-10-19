@@ -59,6 +59,8 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
+Versión preparada `0.2.0`: búsqueda rápida y cambios automáticos en el sidebar, apertura del visor nativo, foco de chat/confirmación corregidos y protección de borradores/guardado. No anunciarla como publicada hasta verificar el workflow OIDC, provenance y carga por nombre. La corrección de `PSModulePath` del helper compartido evita cargar módulos PowerShell 7 en Windows PowerShell a través de un proceso intermedio; conservar su regresión en Windows CI.
+
 Release 0.1.2 confirmada el 2026-10-19, commit `4ec990107c3c405bee4e8f1d38080fc171fd5495`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39198286708): carpeta automática por sesión con confirmación de acceso local y controllers independientes por raíz; `localRoot` es override opcional. `Ctrl+A` tiene comando de paleta y pruebas de scope. Pasaron registro/provenance, instalación por nombre y ambos smokes (override y `--auto-root`), también en Linux. Para futuras versiones ejecutar ambos antes y después de publicar; `--auto-root` omite `localRoot` y confirma mediante teclado.
 
 1. Cambiar **solo** `plugins/opencode-editor/package.json:version`. Actualizar README/notas relacionadas; lockfile solo si cambian dependencias (este plugin no es un workspace instalado en el lock raíz).
@@ -75,6 +77,7 @@ bun run plugin:preflight opencode-editor-v<VERSION>
 bun run plugin:pack:check
 bun run plugin:smoke /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz
 bun run plugin:smoke /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz --auto-root
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz
 ```
 
 3. Inspeccionar `git diff`, agregar únicamente archivos/hunks pertinentes y comprobar `git diff --cached`. No usar `git add .`; excluir trabajo ajeno, particularmente `packageManager` preexistente del manifiesto raíz.
@@ -89,6 +92,8 @@ gh run list --workflow publish-opencode-editor.yml --limit 5
 gh run watch <RUN_ID> --exit-status
 npm view @2jmalvarez/opencode-editor@<VERSION> version dist.integrity gitHead --registry=https://registry.npmjs.org
 bun run plugin:smoke /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION>
+bun run plugin:smoke /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION> --auto-root
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION>
 ```
 
 5. Verificar que el `gitHead` es el commit del tag y que el paquete tiene provenance. Actions compara SRI del artefacto con el registro, descarga y verifica su contenido y prueba instalación por nombre. Conservar `pack.json`, tarball y `SHA256SUMS` del artefacto del run.
@@ -112,7 +117,7 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "@2jmalvarez/opencode-editor@0.1.2",
+      "package": "@2jmalvarez/opencode-editor@0.2.0",
       "options": {
         "toggleBinding": "f6",
         "filesBinding": "f7",

@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete público independiente: [`@2jmalvarez/opencode-editor@0.1.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.2). [Publicación por GitHub Actions/OIDC verificada](https://github.com/2jmalvarez/openeditorcode/actions/runs/39198286708), con integridad/provenance e instalación por nombre en Linux y Windows; carpeta automática confirmada en OpenCode 2.0.26/2.0.27. `0.1.0` tuvo un conflicto de peers.
+Paquete independiente, versión preparada: **`@2jmalvarez/opencode-editor@0.2.0`**. La publicación se realiza por GitHub Actions/OIDC; confirmar la disponibilidad en npm antes de instalar. La [publicación anterior `0.1.2`](https://github.com/2jmalvarez/openeditorcode/actions/runs/39198286708) tiene integridad/provenance e instalación por nombre verificadas en Linux y Windows. `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -18,6 +18,13 @@ Paquete público independiente: [`@2jmalvarez/opencode-editor@0.1.2`](https://ww
 - `Ctrl+A` selecciona todo el contenido del archivo activo; también está en la paleta como **OEC: select all file contents** en la copia local actual. Solo actúa con foco en el editor, sin búsqueda ni modal; no captura `Ctrl+A` del chat.
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
+
+### Novedades de 0.2.0
+
+- Búsqueda rápida sobre Files y cambios automáticos debajo, con acceso al visor nativo de OpenCode.
+- Correcciones de foco del chat, navegación F7/Esc y confirmación inicial al soltar el mouse.
+- Borradores con exclusiones de nombres sensibles, opciones de persistencia y eliminación explícita de copias almacenadas.
+- Guardado que conserva permisos/ACL, compatible con Windows PowerShell iniciado desde PowerShell 7, y controles reforzados de publicación.
 
 ## Construcción opcional desde código
 
@@ -46,7 +53,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 {
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
-    "package": "@2jmalvarez/opencode-editor@0.1.2",
+    "package": "@2jmalvarez/opencode-editor@0.2.0",
     "options": { "toggleBinding": "f6", "filesBinding": "f7", "explorerWidth": 30 }
   }]
 }
@@ -139,23 +146,25 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.1.2
+bun run plugin:preflight opencode-editor-v0.2.0
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.2.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.2.0.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.2.tgz --auto-root
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.2.0.tgz --auto-root
 # Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
+# En un release, probar también el sidebar del tarball o paquete instalado:
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.2.0"
 ```
 
-El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.1.1` en lugar del tarball.
+El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.2.0` en lugar del tarball.
 
-`smoke-sidebar.ts` valida consentimiento con mouse down/up, escritura en el chat con Files abierto, F7/Esc, búsqueda en carpetas cerradas, apertura del diff nativo y actualización de cambios. Usa el bundle del checkout en una instancia privada con un repositorio/sesión/configuración temporales; no envía el texto de prueba como prompt ni modifica la instalación o configuración del usuario.
+`smoke-sidebar.ts` valida consentimiento con mouse down/up, escritura en el chat con Files abierto, F7/Esc, búsqueda en carpetas cerradas, apertura del diff nativo y actualización de cambios. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía el texto de prueba como prompt ni modifica la instalación o configuración del usuario. El workflow prueba el sidebar del tarball y, después de publicar, del paquete por nombre.
 
 ## Publicaciones
 

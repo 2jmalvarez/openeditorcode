@@ -9,6 +9,7 @@ import { createTree } from "../src/explorer/tree"
 import { pathIsAffected, renamedPath } from "../src/documents/useDocuments"
 import { projectFolderCommand, projectFolderLaunchSucceeded } from "../src/workbench/openProjectFolder"
 import { t } from "../src/localization"
+import { windowsPowerShellEnvironment } from "../src/documents/windows-save"
 
 let root = ""
 
@@ -21,6 +22,26 @@ afterEach(async () => {
 })
 
 describe("file access", () => {
+  test("removes inherited PowerShell module paths case-insensitively without changing other environment values", () => {
+    const environment = { PATH: "keep", PSModulePath: "PowerShell 7", psmODULEpATH: "another inherited path", TEMP: "temporary" }
+    expect(windowsPowerShellEnvironment(environment)).toEqual({ PATH: "keep", TEMP: "temporary" })
+    expect(environment.PSModulePath).toBe("PowerShell 7")
+  })
+
+  test.skipIf(process.platform !== "win32")("saves even when an intermediate host inherits incompatible PowerShell module paths", async () => {
+    const previous = process.env.PSModulePath
+    const path = join(root, "module-path.txt")
+    await writeFile(path, "old")
+    try {
+      process.env.PSModulePath = join(root, "incompatible-powershell-7-modules")
+      await writeTextFile(root, path, "saved safely", { expectedContent: "old" })
+      expect(await readTextFile(root, path)).toBe("saved safely")
+    } finally {
+      if (previous === undefined) delete process.env.PSModulePath
+      else process.env.PSModulePath = previous
+    }
+  })
+
   test.skipIf(process.platform === "win32")("preserves private and executable POSIX permissions across atomic saves", async () => {
     const path = join(root, "private.env")
     await writeFile(path, "old", { mode: 0o600 })
@@ -41,7 +62,7 @@ describe("file access", () => {
     await writeFile(path, "old")
     const acl = async (protect = false) => {
       const script = `$ErrorActionPreference='Stop'; $p=$env:OEC_ACL_TEST; ${protect ? "$a=[Security.AccessControl.FileSecurity]::new(); $a.SetAccessRuleProtection($true,$false); $a.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().User,'FullControl','Allow')); Set-Acl -LiteralPath $p -AclObject $a;" : ""} (Get-Acl -LiteralPath $p).Sddl`
-      const child = Bun.spawn(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], { env: { ...process.env, OEC_ACL_TEST: path }, stdout: "pipe", stderr: "pipe" })
+      const child = Bun.spawn(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], { env: { ...windowsPowerShellEnvironment(process.env), OEC_ACL_TEST: path }, stdout: "pipe", stderr: "pipe" })
       const [code, output, error] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()])
       if (code) throw new Error(error)
       return output.trim()

@@ -27,10 +27,16 @@ if ($exists) { [IO.File]::Replace($source, $target, [NullString]::Value) }
 else { [IO.File]::Move($source, $target) }
 `
 
+// PowerShell 7 -> Bun -> Windows PowerShell otherwise passes PS7-only modules
+// to the .NET Framework host. Let powershell.exe construct its own module path.
+export function windowsPowerShellEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(environment).filter(([key]) => key.toUpperCase() !== "PSMODULEPATH"))
+}
+
 export async function writeAndReplaceWindowsFile(temporary: string, target: string, content: string): Promise<void> {
   const powershell = join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
   const child = Bun.spawn([powershell, "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], {
-    env: { ...process.env, OEC_SAVE_TEMP: temporary, OEC_SAVE_TARGET: target },
+    env: { ...windowsPowerShellEnvironment(process.env), OEC_SAVE_TEMP: temporary, OEC_SAVE_TARGET: target },
     stdin: new TextEncoder().encode(content), stdout: "ignore", stderr: "pipe", windowsHide: true,
   })
   const timer = setTimeout(() => child.kill(), 15_000)

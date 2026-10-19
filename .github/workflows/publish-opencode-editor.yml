@@ -53,6 +53,7 @@ jobs:
           archive="$(bun -e 'const p = await Bun.file("plugins/opencode-editor/dist/release/pack.json").json(); console.log("plugins/opencode-editor/dist/release/" + p.filename)')"
           bun run plugin:smoke "$executable" "$archive"
           bun run plugin:smoke "$executable" "$archive" --auto-root
+          bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "$executable" "$archive"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: matrix.os == 'ubuntu-latest' && matrix.opencode == '2.0.27'
         with:
@@ -107,3 +108,4 @@ jobs:
           package="$(bun -e 'const p = await Bun.file("plugins/opencode-editor/package.json").json(); console.log(p.name + "@" + p.version)')"
           bun run plugin:smoke "$executable" "$package"
           bun run plugin:smoke "$executable" "$package" --auto-root
+          bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "$executable" "$package"
