@@ -8,24 +8,28 @@ Estado inicial: `0.1.0` preparada, publicación no confirmada. No anunciar insta
 
 npm requiere que el paquete exista antes de registrar confianza (`npm trust`); no hereda el Trusted Publisher de `openeditorcode`. La documentación actual permite staging de un paquete nuevo, que crea un placeholder público `0.0.0-stage`. Ese bootstrap requiere autorización excepcional y autenticación del titular del scope, con 2FA; no ejecutar un `npm publish` local como fallback.
 
-Los staging pendientes reservan la versión: no se puede publicar `0.1.0` por OIDC mientras esté stageada. El titular debe rechazar ese staging (no aprobarlo); la documentación permite volver a usar una versión stageada tras rechazarla. Verificar después que el placeholder y la confianza continúan existiendo antes de subir el tag. Si desaparecen o npm no permite esta transición, detenerse: no inventar éxito ni cambiar a publicación local.
+**No stagear y rechazar `0.1.0` antes del release.** Ese método se intentó: al rechazar el único stage inicial, tanto la consulta pública del paquete como `npm trust list` devolvieron E404. No asumir que el placeholder o su confianza sobreviven al rechazo del último stage sin una versión real publicada.
 
-Después de las verificaciones, con autorización excepcional y autenticación npm resuelta por el titular, desde la raíz:
+Con autorización excepcional y autenticación npm resuelta por el titular, preparar un auxiliar **del mismo paquete**, versión `0.0.0-bootstrap.0`, en un directorio temporal. No cambiar la versión `0.1.0` del plugin. El auxiliar debe contener solo manifiesto, README que advierte no aprobarlo y LICENSE, sin código, dependencias ni scripts de instalación. Empaquetarlo con `npm pack --ignore-scripts --json`, inspeccionar archivos y verificar integridad. No subirlo al repositorio ni publicarlo con `npm publish`.
+
+El titular stagea **ese tarball auxiliar**, reemplazando `RUTA_ABSOLUTA_AL_AUXILIAR.tgz` por la ruta preparada:
 
 ```powershell
 # npm temporal: no reemplaza la CLI global. Requiere la sesión del titular y 2FA.
-npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage publish ./plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.0.tgz --access public --registry=https://registry.npmjs.org
+npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage publish "RUTA_ABSOLUTA_AL_AUXILIAR.tgz" --tag bootstrap --access public --registry=https://registry.npmjs.org
 npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage list @2jmalvarez/opencode-editor --json --registry=https://registry.npmjs.org
 ```
 
-Configurar el Trusted Publisher de la siguiente sección por la web npm. Revisar el stage ID que pertenece exclusivamente a este paquete y versión; después, el titular rechaza ese staging con 2FA:
+**Mantener pendiente el auxiliar: no aprobarlo ni rechazarlo todavía.** Configurar el Trusted Publisher de la siguiente sección por la web npm y comprobar que quedó guardado. Se puede publicar una versión diferente mientras otra está stageada; la reserva de `0.0.0-bootstrap.0` no bloquea `0.1.0`.
+
+Después, subir el tag anotado `opencode-editor-v0.1.0` y publicar **la versión real por GitHub Actions/OIDC**. Solo cuando el workflow, el registro y la instalación por nombre confirmen `0.1.0`, el titular puede rechazar el stage auxiliar con 2FA. Identificar exclusivamente el stage de `0.0.0-bootstrap.0`, no otra versión:
 
 ```powershell
-npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage reject <STAGE_ID> --registry=https://registry.npmjs.org
-npm view @2jmalvarez/opencode-editor versions --json --registry=https://registry.npmjs.org
+npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage reject "ID_DEL_STAGE_AUXILIAR" --registry=https://registry.npmjs.org
+npm view @2jmalvarez/opencode-editor@0.1.0 version --registry=https://registry.npmjs.org
 ```
 
-No ejecutar `npm stage approve` ni `npm publish` local para `0.1.0`. No guardar ni compartir tokens/códigos 2FA con el agente; resolver la autenticación interactivamente por el titular. Si este bootstrap no está disponible, pedir autorización para otra excepción.
+Nunca ejecutar `npm stage approve` para el auxiliar ni `npm publish` local para `0.1.0`. Si falla la configuración o publicación, conservar el stage auxiliar pendiente y diagnosticar antes de borrarlo. No guardar ni compartir tokens/códigos 2FA con el agente; resolver la autenticación interactivamente por el titular. Si este bootstrap no está disponible, pedir autorización para otra excepción.
 
 Fuentes oficiales:
 
