@@ -1,7 +1,7 @@
 import { isAbsolute, resolve } from "node:path"
 
 export type DraftPreferences = { enabled: boolean; exclude: string[] }
-export type EditorPreferences = { toggleBinding: string; filesBinding: string; explorerWidth: number; drafts: DraftPreferences }
+export type EditorPreferences = { toggleBinding: string; diffBinding: string; explorerWidth: number; drafts: DraftPreferences }
 export type EditorOptions = EditorPreferences & { localRoot: string }
 export function parseOptions(value: Readonly<Record<string, unknown>>, directory?: string): EditorOptions {
   const root = value.localRoot === undefined ? directory : value.localRoot
@@ -12,7 +12,7 @@ export function parseOptions(value: Readonly<Record<string, unknown>>, directory
 }
 
 export function parsePreferences(value: Readonly<Record<string, unknown>>): EditorPreferences {
-  for (const key of ["toggleBinding", "filesBinding"] as const) {
+  for (const key of ["toggleBinding", "diffBinding", "filesBinding"] as const) {
     if (value[key] !== undefined && (typeof value[key] !== "string" || !value[key].trim())) throw new Error(`OEC: invalid ${key}`)
   }
   const width = value.explorerWidth ?? 30
@@ -21,5 +21,6 @@ export function parsePreferences(value: Readonly<Record<string, unknown>>): Edit
   if (!drafts || typeof drafts !== "object" || Array.isArray(drafts)) throw new Error("OEC: invalid drafts options")
   const { enabled = true, exclude = [] } = drafts as Record<string, unknown>
   if (typeof enabled !== "boolean" || !Array.isArray(exclude) || !exclude.every((pattern) => typeof pattern === "string" && pattern.trim().length > 0 && !pattern.trimStart().startsWith("!") && !/[\r\n\0]/.test(pattern))) throw new Error("OEC: invalid drafts options (exclude must contain non-negated gitignore patterns)")
-  return { toggleBinding: value.toggleBinding as string ?? "ctrl+alt+o", filesBinding: value.filesBinding as string ?? "ctrl+alt+j", explorerWidth: width, drafts: { enabled, exclude } }
+  // filesBinding remains an alias so existing F7 configurations keep working.
+  return { toggleBinding: value.toggleBinding as string ?? "f6", diffBinding: value.diffBinding as string ?? value.filesBinding as string ?? "f7", explorerWidth: width, drafts: { enabled, exclude } }
 }

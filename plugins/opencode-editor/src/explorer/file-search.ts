@@ -45,15 +45,19 @@ export class FileSearch {
   constructor(readonly root: string) {}
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
-  private filter() {
+  private filter(reset = true) {
+    const selectedPath = reset ? undefined : this.rows[this.selected]?.path
     this.items = this.query.trim() ? filterItems(this.root, this.index ?? [], this.query.trim().replace(/[\\/]/g, sep), 80) : []
-    this.collapsed.clear()
-    this.rows = resultTree(this.root, this.items)
-    this.selected = Math.max(0, this.rows.findIndex((row) => row.path === this.items[0]?.path))
-    this.scrollTop = 0
+    if (reset) this.collapsed.clear()
+    this.rows = resultTree(this.root, this.items, this.collapsed)
+    const retained = this.rows.findIndex((row) => row.path === selectedPath)
+    this.selected = retained >= 0 ? retained : Math.max(0, this.rows.findIndex((row) => row.path === this.items[0]?.path))
+    if (reset) this.scrollTop = 0
   }
   invalidate() { this.index = undefined }
   async search(query: string) {
+    // Remounting an input can emit its existing value; that is not a new query.
+    if (query === this.query) { if (!this.index && query.trim()) await this.refresh(); return }
     this.query = query
     this.error = ""
     if (!query.trim()) { this.filter(); this.changed(); return }
@@ -71,7 +75,7 @@ export class FileSearch {
         if (this.disposed) return
         this.index = result.items.filter((item) => !item.directory)
         this.truncated = result.truncated
-        this.filter()
+        this.filter(false)
       } catch (error) {
         if (!this.disposed) this.error = error instanceof Error ? error.message : String(error)
       } finally { this.loading = false; this.pending = undefined; this.changed() }

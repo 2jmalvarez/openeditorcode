@@ -47,7 +47,7 @@ export default {
     }
     const start = setTimeout(async () => {
       try {
-        // A slow/failed npm install must never type F7 + Enter into the chat.
+     // A slow/failed npm install must never send Enter into the chat.
         await waitFor(() => context.keymap.commands().some(command => command.id === "oec.files"), "OEC did not load; no keys sent")
         const session = await context.client.session.create({ location: { directory: ${JSON.stringify(project)} } })
         sessionID = session.id
@@ -58,7 +58,7 @@ export default {
         await new Promise(resolve => setTimeout(resolve, 250))
         if (!context.keymap.commands().some(command => command.id === "oec.files")) throw new Error("OEC unloaded; no keys sent")
         const mode = context.keymap.mode.current()
-        key("f7")
+         context.keymap.dispatch("oec.files")
         if (${automaticRoot}) {
           await waitFor(() => context.keymap.mode.current() !== mode, "Local access confirmation did not open; Enter not sent")
           key("return")
@@ -150,7 +150,7 @@ try {
        TERM: "xterm-256color", TEMP: temporary, TMP: temporary, LOCALAPPDATA: temporary, APPDATA: temporary,
       HOME: temporary, USERPROFILE: temporary,
       XDG_CONFIG_HOME: join(temporary, "config"), XDG_DATA_HOME: join(temporary, "data"), XDG_CACHE_HOME: join(temporary, "cache"), XDG_STATE_HOME: join(temporary, "state"),
-       OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { ...(automaticRoot ? {} : { localRoot: project }), toggleBinding: "f6", filesBinding: "f7", explorerWidth: 30 } }, wrapper] }),
+        OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { ...(automaticRoot ? {} : { localRoot: project }), toggleBinding: "f6", diffBinding: "f7", explorerWidth: 30 } }, wrapper] }),
     },
   })
   const [stdout, stderr, exitCode] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])

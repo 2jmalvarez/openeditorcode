@@ -2,14 +2,14 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete público independiente: **[`@2jmalvarez/opencode-editor@0.2.1`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.1)**. [Publicación por GitHub Actions/OIDC verificada](https://github.com/2jmalvarez/openeditorcode/actions/runs/39304161290), commit `d8fe0842a4d064c594836d8a0342cf17a9eda150`, con integridad/provenance e instalación real por nombre en Linux y Windows. Los smokes cubren editor, carpeta automática y sidebar con búsqueda/cambios. `0.1.0` tuvo un conflicto de peers.
+Paquete independiente: **[`@2jmalvarez/opencode-editor@0.2.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.2)**. Se publica por GitHub Actions/OIDC con verificación de integridad/provenance e instalación real por nombre. Los smokes cubren editor, carpeta automática y sidebar con acordeones/búsqueda/cambios. La [versión anterior 0.2.1](https://github.com/2jmalvarez/openeditorcode/actions/runs/39304161290) quedó verificada en Linux y Windows. `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
 
 - Explorador de archivos en el panel derecho de la conversación, junto a las contribuciones existentes.
 - Buscador rápido encima de Files, por nombre o ruta y sin distinguir mayúsculas; incluye archivos de carpetas cerradas y respeta `.gitignore` y la exclusión de `.git`.
-- Sección **CHANGES** debajo de Files: archivos añadidos, modificados y eliminados según OpenCode, con conteo de líneas y actualización automática.
+- Acordeones independientes **Files** y **Diff**, con áreas y scroll acotados para evitar superposición. Diff muestra archivos añadidos, modificados y eliminados según OpenCode, con conteo de líneas y actualización automática.
 - Editor en una ruta propia, con explorador derecho y pestañas de archivos independientes de las pestañas de sesiones.
 - Alternancia entre editor y conversación sin enviar prompts ni interrumpir al agente.
 - Navegación con teclado y ratón; árbol virtualizado que mantiene visible la selección.
@@ -18,6 +18,13 @@ Paquete público independiente: **[`@2jmalvarez/opencode-editor@0.2.1`](https://
 - `Ctrl+A` selecciona todo el contenido del archivo activo; también está en la paleta como **OEC: select all file contents** en la copia local actual. Solo actúa con foco en el editor, sin búsqueda ni modal; no captura `Ctrl+A` del chat.
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
+
+### Novedades de 0.2.2
+
+- F6 alterna conversación/editor y deja **solo Files**; F7 muestra u oculta **Diff** sin ocultar Files, en ambas vistas.
+- Cada acordeón se expande/contrae con clic, `Enter` o espacio. Al contraer Files se conserva su consulta, selección y árbol; contraer u ocultar Diff detiene su polling y suscripciones.
+- Corregido el tamaño intrínseco del árbol: búsquedas con muchos resultados ya no invaden Diff. El editor reparte la altura disponible también en terminales bajas.
+- Defaults F6/F7; `diffBinding` configura Diff. La opción anterior `filesBinding` se acepta como alias de `diffBinding`, no como atajo de Files.
 
 ### Novedades de 0.2.1
 
@@ -60,8 +67,8 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 {
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
-    "package": "@2jmalvarez/opencode-editor@0.2.1",
-    "options": { "toggleBinding": "f6", "filesBinding": "f7", "explorerWidth": 30 }
+    "package": "@2jmalvarez/opencode-editor@0.2.2",
+    "options": { "toggleBinding": "f6", "diffBinding": "f7", "explorerWidth": 30 }
   }]
 }
 ```
@@ -77,9 +84,9 @@ Volver a cargar el plugin o reiniciar la TUI tras cambiar la configuración. El 
 ## Uso
 
 1. Abrir una sesión en el proyecto deseado. Desde 0.1.2 se detecta automáticamente; confirmar acceso al disco local cuando se solicite.
-2. `F7` (con la configuración del ejemplo) o **OEC: show/hide session files** muestra el explorador en la conversación.
+2. Clic en **Files**, o **OEC: expand/collapse session Files** en la paleta, abre/contrae el explorador de la conversación. Es independiente de Diff.
 3. Con foco en el árbol, las flechas navegan; `Enter` expande una carpeta o abre un archivo en el editor. Un clic también lo abre. El listado puede permanecer abierto mientras se escribe en el chat: no recupera el foco automáticamente.
-4. `F6` (con la configuración del ejemplo) o **OEC: toggle conversation/editor** alterna entre ambas vistas.
+4. `F6` o **OEC: toggle conversation/editor** alterna entre ambas vistas y muestra solo Files. `F7` o **OEC: show/hide Diff** muestra/oculta Diff sin alterar Files. Abrir un archivo conserva el estado de los acordeones; pulsar explícitamente F6 vuelve a Files solo.
 5. `Ctrl+S` guarda; `Ctrl+W` cierra el archivo activo, con confirmación si está modificado.
 
 Si OpenCode oculta su sidebar por falta de ancho, usar el comando de paleta **OEC: toggle conversation/editor**: el editor tiene su propio explorador. El plugin no fuerza el tamaño o la visibilidad del sidebar del anfitrión.
@@ -89,15 +96,17 @@ Si OpenCode oculta su sidebar por falta de ancho, usar el comando de paleta **OE
 - Tanto en F6 como en el panel de conversación: clic en **Search files…**, o `/` con foco en el árbol, para buscar. Los archivos coincidentes aparecen bajo sus carpetas padre, expandidas automáticamente. `↑`/`↓` navegan el árbol; `Enter` expande/contrae carpetas o abre archivos. Se muestran hasta 80 archivos coincidentes; el índice tiene un límite de 50.000 entradas. Limpiar la consulta restaura el árbol normal sin perder su selección y expansión.
 - Los nombres largos seleccionados se desplazan horizontalmente tras una pausa y se detienen al mostrar el final. Cambiar de selección reinicia el desplazamiento.
 - `Esc` limpia la búsqueda y vuelve al árbol; con el input vacío, devuelve el foco a la conversación. `F5` actualiza el índice. Los eventos de archivos invalidan la caché mientras el panel está visible.
-- `Tab` desde el buscador enfoca el árbol sin limpiar los resultados. En F6, `Tab` conserva la alternancia entre árbol y editor; `/` desde el árbol enfoca el buscador. En conversación, `Tab` desde el árbol enfoca **CHANGES**; `Shift+Tab` desde cambios vuelve al árbol. `Esc` primero limpia una búsqueda activa; sin búsqueda, vuelve al editor o conversación.
-- **CHANGES** muestra el estado del proyecto, no solamente los archivos tocados por la sesión. Se actualiza con eventos del anfitrión y, como respaldo, cada tres segundos mientras Files está visible. `F5` fuerza una actualización. Ocultar el panel elimina sus suscripciones y temporizadores.
-- Clic o `Enter` en un archivo cambiado abre el visor nativo de OpenCode mediante `diff.open`. **Se abre la vista general**: la API pública no documenta un parámetro para seleccionar directamente ese archivo. El alcance y la rama base del visor siguen siendo los elegidos en OpenCode.
+- `Tab` desde el buscador enfoca el árbol sin limpiar los resultados; `/` desde el árbol enfoca el buscador. Desde el árbol, `Tab` enfoca Diff si está visible, o vuelve al editor/chat; `Shift+Tab` desde Diff vuelve a Files. En las cabeceras, `Enter`/espacio alternan el acordeón, `Tab`/`↓` entran a su contenido y `Esc` sale. `Esc` primero limpia una búsqueda activa; sin búsqueda, vuelve al editor o conversación.
+- **Diff** muestra el estado del proyecto, no solamente los archivos tocados por la sesión. Se actualiza con eventos del anfitrión y, como respaldo, cada tres segundos mientras Diff está visible y expandido. `F5` fuerza una actualización. Ocultarlo o contraerlo elimina sus suscripciones y temporizadores, sin afectar Files.
+- Clic o `Enter` en un archivo cambiado abre el visor nativo de OpenCode mediante `diff.open`. Desde el editor vuelve primero a la sesión de origen conservando documentos y ediciones. **Se abre la vista general**: la API pública no documenta un parámetro para seleccionar directamente ese archivo. El alcance y la rama base del visor siguen siendo los elegidos en OpenCode.
 - La API pública actual informa añadido/modificado/eliminado y líneas añadidas/eliminadas; no expone separación staged/unstaged ni un estado específico de renombrado. El plugin no ejecuta mutaciones Git. Los mappings de workspaces remotos no consultan cambios del servidor como si fueran del disco local.
 - La confirmación inicial de acceso local permanece abierta al soltar el mouse; solo una respuesta explícita permite leer el proyecto.
 
 | Acción | Atajo en el editor |
 | --- | --- |
 | Cambiar foco editor/explorador | `Tab` |
+| Alternar conversación/editor con Files solo | `F6` |
+| Mostrar/ocultar Diff sin ocultar Files | `F7` |
 | Nueva línea | `Enter` |
 | Insertar línea debajo / encima | `Ctrl+Enter` / `Ctrl+Shift+Enter` |
 | Duplicar línea arriba / abajo | `Shift+Alt+↑` / `Shift+Alt+↓` |
@@ -123,7 +132,7 @@ Los comandos se registran en la paleta de OpenCode. `Ctrl+P` sigue perteneciendo
 
 Dentro del editor, `Ctrl+Shift+←/→` selecciona por palabras; para cambiar de panel se usa `Tab`. `Ctrl+D` selecciona la palabra actual, sin multicursor. Duplicar/mover opera sobre la línea del cursor y se puede deshacer con `Ctrl+Z`. `Ctrl+C` copia solo la selección; `Ctrl+V` reemplaza la selección y conserva los saltos de línea del portapapeles. Si cambia el documento o cursor mientras se lee el portapapeles, la operación se cancela para no pegar en otro lugar.
 
-Se recomiendan **F6** (conversación/editor) y **F7** (archivos), configurados explícitamente. Los defaults del código siguen siendo `Ctrl+Alt+O/J`; este procedimiento de publicación no los cambia.
+Los defaults son **F6** (conversación/editor con Files solo) y **F7** (Diff). Se pueden cambiar con `toggleBinding` y `diffBinding`. Si existe `filesBinding` de una configuración anterior se usa como alias de `diffBinding`; `diffBinding` tiene prioridad cuando se configuran ambos. No se modifica la configuración del usuario automáticamente.
 
 ## Cambios externos y recuperación
 
@@ -156,25 +165,25 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.2.1
+bun run plugin:preflight opencode-editor-v0.2.2
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.2.1.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.2.2.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.2.1.tgz --auto-root
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.2.2.tgz --auto-root
 # Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
 # En un release, probar también el sidebar del tarball o paquete instalado:
-bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.2.1"
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.2.2"
 ```
 
-El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.2.1` en lugar del tarball.
+El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.2.2` en lugar del tarball.
 
-`smoke-sidebar.ts` valida consentimiento con mouse down/up, escritura en el chat con Files abierto, F7/Esc, búsqueda en carpetas cerradas, apertura del diff nativo y actualización de cambios. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía el texto de prueba como prompt ni modifica la instalación o configuración del usuario. El workflow prueba el sidebar del tarball y, después de publicar, del paquete por nombre.
+`smoke-sidebar.ts` valida consentimiento con mouse down/up, chat con Files abierto, acordeones independientes, F6 con Files solo, F7 para Diff en ambas vistas, búsqueda de 80 resultados sin invadir Diff, apertura del diff nativo y actualización de cambios. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía el texto de prueba como prompt ni modifica la instalación o configuración del usuario. El workflow prueba el sidebar del tarball y, después de publicar, del paquete por nombre.
 
 ## Publicaciones
 

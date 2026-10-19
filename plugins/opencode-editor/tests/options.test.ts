@@ -8,7 +8,11 @@ test("defaults to the active directory and retains an optional absolute override
   expect(() => parseOptions({ localRoot: null }, resolve("project"))).toThrow("localRoot")
   expect(parseOptions({}, resolve("project")).localRoot).toBe(resolve("project"))
   expect(parseOptions({ localRoot: resolve("override") }, resolve("project")).localRoot).toBe(resolve("override"))
-  expect(parseOptions({ localRoot: resolve(".") }).toggleBinding).toBe("ctrl+alt+o")
+  expect(parseOptions({ localRoot: resolve(".") }).toggleBinding).toBe("f6")
+  expect(parseOptions({ localRoot: resolve(".") }).diffBinding).toBe("f7")
+  expect(parseOptions({ localRoot: resolve("."), filesBinding: "ctrl+alt+j" }).diffBinding).toBe("ctrl+alt+j")
+  expect(parseOptions({ localRoot: resolve("."), filesBinding: "f7", diffBinding: "f9" }).diffBinding).toBe("f9")
+  expect(() => parseOptions({ localRoot: resolve("."), diffBinding: "" })).toThrow("diffBinding")
   expect(() => parseOptions({ localRoot: resolve("."), explorerWidth: 0 })).toThrow("explorerWidth")
 })
 

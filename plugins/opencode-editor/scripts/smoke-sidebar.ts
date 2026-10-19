@@ -15,6 +15,8 @@ const observer = join(sandbox, "observer")
 const marker = join(sandbox, "result.json")
 const source = process.argv[3]
 await mkdir(join(project, "nested"), { recursive: true })
+await mkdir(join(project, "crowded"))
+await Promise.all(Array.from({ length: 100 }, (_, index) => writeFile(join(project, "crowded", `entry-${String(index).padStart(3, "0")}.ts`), "fixture\n")))
 await mkdir(observer)
 await writeFile(join(project, "nested", "hello.ts"), "const original = true\n")
 await writeFile(join(sandbox, "gitconfig"), "")
@@ -50,7 +52,7 @@ export default { id: "oec.sidebar-smoke", setup(context) {
   const key = (name, modifiers = {}) => context.renderer.keyInput.processParsedKey({ name, ctrl: false, meta: false, shift: false, option: false, number: false, eventType: "press", source: "raw", sequence: name === "return" ? "\\r" : name, raw: name === "return" ? "\\r" : name, ...modifiers })
   const type = value => { for (const character of value) key(character === " " ? "space" : character, { sequence: character, raw: character }) }
   const mouse = (target, release) => context.renderer.stdin.emit("data", Buffer.from("\\x1b[<0;" + (target.screenX + 2) + ";" + (target.screenY + 1) + (release ? "m" : "M")))
-  const click = async target => { mouse(target, false); await sleep(40); mouse(target, true); await sleep(100) }
+   const click = async target => { await sleep(100); mouse(target, false); await sleep(40); mouse(target, true); await sleep(100) }
   const start = setTimeout(async () => {
     let stage = "session"
     try {
@@ -80,11 +82,31 @@ export default { id: "oec.sidebar-smoke", setup(context) {
       type("chat-with-files-open")
       await sleep(500)
       if (!prompt.plainText.includes("chat-with-files-open") || !prompt.focused) throw new Error("Files stole chat focus")
-      key("f7")
-      await until(() => !find("oec-files-pane"), "F7 did not hide Files")
-      key("f7")
-      await until(() => find("oec-files-pane")?.focused, "F7 did not restore keyboard access to Files")
-      key("escape")
+       stage = "independent accordions"
+       key("f7")
+       await until(() => find("oec-changes-pane"), "F7 did not show Diff")
+       if (!find("oec-files-pane")) throw new Error("F7 hid Files")
+       await click(find("oec-diff-toggle"))
+       await until(() => !find("oec-changes-pane") && find("oec-diff-toggle"), "Diff accordion did not collapse")
+       await click(find("oec-files-toggle"))
+       await until(() => !find("oec-files-pane"), "Files accordion did not collapse")
+       await click(find("oec-diff-toggle"))
+       await until(() => find("oec-changes-pane") && !find("oec-files-pane"), "Accordions are not independent")
+       await click(find("oec-files-toggle"))
+       await until(() => find("oec-files-pane"), "Files accordion did not expand")
+       stage = "large search clipping"
+       await click(find("oec-files-search"))
+       type("entry")
+       await until(() => text(find("oec-files-pane")).includes("entry-"), "Large search did not populate tree")
+       for (let i = 0; i < 85; i++) key("down")
+       await sleep(200)
+       if (find("oec-files-pane").screenY + find("oec-files-pane").height > find("oec-diff-toggle").screenY) throw new Error("Files overlaps Diff after large search")
+       if (!text(find("oec-files-pane")).includes("entry-079")) throw new Error("Search selection did not scroll within its viewport")
+       key("escape")
+       await until(() => find("oec-files-pane")?.focused, "Search Escape did not focus Files")
+       key("f7")
+       await until(() => !find("oec-diff-toggle") && find("oec-files-pane"), "F7 did not hide only Diff")
+       key("escape")
       await until(() => prompt.focused, "Escape from Files did not restore chat focus")
       stage = "quick search"
       await click(find("oec-files-search"))
@@ -97,6 +119,13 @@ export default { id: "oec.sidebar-smoke", setup(context) {
        if (!find("oec-editor-buffer").plainText.includes("changed")) throw new Error("Wrong search result")
        stage = "F6 search and wrap"
        await until(() => find("oec-files-search") && find("oec-files-pane"), "F6 search/tree missing")
+       if (find("oec-diff-toggle")) throw new Error("F6 must start with Files only")
+       key("f7")
+       await until(() => find("oec-changes-pane"), "F7 did not show Diff in the editor")
+       await sleep(150)
+       if (find("oec-files-pane").screenY + find("oec-files-pane").height > find("oec-diff-toggle").screenY) throw new Error("Editor Files overlaps Diff")
+       key("f7")
+       await until(() => !find("oec-diff-toggle") && find("oec-files-pane"), "Editor F7 did not hide only Diff")
        const buffer = find("oec-editor-buffer")
        const content = buffer.plainText
        key("l", { ctrl: true })
@@ -109,6 +138,19 @@ export default { id: "oec.sidebar-smoke", setup(context) {
        if (find("oec-files-search").value !== "HELLO") throw new Error("Search query lost on route change")
        key("escape")
        await until(() => find("oec-files-pane")?.focused && find("oec-files-search")?.value === "", "F6 Escape did not clear search")
+       stage = "native diff from editor"
+       key("f7")
+       await until(() => find("oec-changes-pane") && text(find("oec-changes-pane")).includes("hello.ts"), "Editor Diff did not populate")
+       key("tab")
+       await until(() => find("oec-changes-pane")?.focused, "Editor Diff did not receive keyboard focus")
+       key("return")
+       await until(() => context.keymap.commands().some(command => command.id === "diff.close") && text(context.renderer.root).includes("const original = true"), "Editor Diff did not open native viewer")
+       context.keymap.dispatch("diff.close")
+       await until(() => find("oec-files-search") && !find("oec-editor-buffer"), "Native viewer did not restore session")
+       key("f6")
+       await until(() => context.ui.router.current().type === "plugin" && find("oec-editor-buffer"), "F6 did not return to the editor")
+       if (find("oec-diff-toggle")) throw new Error("Explicit F6 must reset to Files only")
+       if (find("oec-editor-buffer").plainText !== content) throw new Error("Native Diff lost the document")
        key("f6")
        await until(() => context.ui.router.current().type === "session" && find("oec-files-search") && !find("oec-editor-buffer"), "Conversation did not restore sidebar")
        await sleep(200)
@@ -117,7 +159,9 @@ export default { id: "oec.sidebar-smoke", setup(context) {
        await until(() => text(find("oec-files-pane")).includes("hello.ts"), "Sidebar search did not restore results")
        key("escape")
       await until(() => find("oec-files-pane")?.focused, "Escape did not return to tree")
-      stage = "native diff"
+       stage = "native diff"
+       key("f7")
+       await until(() => find("oec-changes-pane"), "F7 did not restore Diff")
       await until(() => text(find("oec-changes-pane")).includes("hello.ts"), "Changes API did not populate")
       key("tab")
       await until(() => find("oec-changes-pane")?.focused, "Tab did not focus changes")
@@ -144,7 +188,7 @@ export default { id: "oec.sidebar-smoke", setup(context) {
       TERM: "xterm-256color", TEMP: sandbox, TMP: sandbox, LOCALAPPDATA: sandbox, APPDATA: sandbox,
       HOME: sandbox, USERPROFILE: sandbox, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: join(sandbox, "gitconfig"),
       XDG_CONFIG_HOME: join(sandbox, "config"), XDG_DATA_HOME: join(sandbox, "data"), XDG_CACHE_HOME: join(sandbox, "cache"), XDG_STATE_HOME: join(sandbox, "state"),
-      OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { toggleBinding: "f6", filesBinding: "f7" } }, observer] }),
+       OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { toggleBinding: "f6", diffBinding: "f7" } }, observer] }),
     },
   })
   const [stdout, stderr, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])

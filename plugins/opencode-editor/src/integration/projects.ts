@@ -61,7 +61,7 @@ export class EditorProjects {
     return controller
   }
 
-  private async activate(files: boolean, sessionID?: string) {
+  private async activate(view: "editor" | "files" | "diff", sessionID?: string) {
     if (this.pending || this.disposed || this.modal) return
     const route = this.context.ui.router.current()
     const id = sessionID ?? (route.type === "session" ? route.sessionID : undefined)
@@ -73,18 +73,25 @@ export class EditorProjects {
       const current = this.context.ui.router.current()
       if (!controller || this.disposed || current.type !== route.type || (current.type === "session" && route.type === "session" && current.sessionID !== route.sessionID)) return
       this.active = controller
-      if (files) { controller.filesInputMode = mode; await controller.toggleFiles() }
-      else await controller.enter(id)
+      if (view === "files") { controller.filesInputMode = mode; await controller.toggleFiles() }
+      else if (view === "diff") { controller.filesInputMode = mode; controller.toggleDiff() }
+      else { controller.showFilesOnly(); await controller.enter(id) }
       this.changed()
     } finally { this.pending = undefined }
   }
 
   async toggle() {
     const route = this.context.ui.router.current()
-    if (route.type === "plugin" && route.name === EDITOR_ROUTE && this.active) await this.active.back()
-    else await this.activate(false)
+    if (route.type === "plugin" && route.name === EDITOR_ROUTE && this.active) { this.active.showFilesOnly(); await this.active.back() }
+    else await this.activate("editor")
   }
-  async toggleFiles() { await this.activate(true) }
+  async toggleFiles() { await this.activate("files") }
+  async toggleDiff() {
+    if (this.modal) return
+    const controller = this.current()
+    if (controller) controller.toggleDiff()
+    else if (this.context.ui.router.current().type === "session") await this.activate("diff")
+  }
   async run(action: () => Promise<unknown>) {
     try { await action() } catch (error) {
       if (!this.disposed) this.context.ui.toast.show({ title: "OEC", message: error instanceof Error ? error.message : String(error), variant: "error" })

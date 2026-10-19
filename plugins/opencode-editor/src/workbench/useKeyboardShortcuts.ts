@@ -6,7 +6,7 @@ import { duplicateLine, insertLine, moveLine, movePage, pasteClipboard, selectWo
 
 type Props = {
   controller: EditorController
-  focused: () => "editor" | "explorer" | "search"
+  focused: () => "editor" | "explorer" | "search" | "panels"
   editor: () => TextareaRenderable | undefined
   findOpen: () => boolean
   openFind: () => void

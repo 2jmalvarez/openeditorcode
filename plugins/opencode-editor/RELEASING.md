@@ -59,6 +59,8 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
+Release **`0.2.2` en preparación**: acordeones Files/Diff independientes y sin superposición; F6 muestra Files solo, F7 alterna Diff en conversación/editor. Defaults F6/F7 y nueva opción `diffBinding` (`filesBinding` es alias de compatibilidad). El smoke del sidebar exige colapso independiente y búsqueda masiva acotada. No cambiar versiones raíz/plataformas ni configuración personal.
+
 Release **`0.2.1` confirmada** el 2026-10-19, commit `d8fe0842a4d064c594836d8a0342cf17a9eda150`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39304161290): guardado nativo WSL desde Windows, búsqueda jerárquica compartida en F6/sidebar, nombres largos con desplazamiento y `Ctrl+L` para ajuste visual. Registro, SRI y provenance coinciden con el artefacto CI; instalación por nombre comprobada en Linux y Windows, con editor, carpeta automática y sidebar. CI cubrió OpenCode 2.0.26/2.0.27 en ambos sistemas. La última etapa Linux por nombre requirió un reintento tras `NpmInstallFailedError`; el reintento verificó el artefacto existente sin republicarlo. Tag y paquete publicados son inmutables; versión raíz y paquetes de plataforma sin cambios.
 
 Primer intento de `0.2.1`: [run `39303088388`](https://github.com/2jmalvarez/openeditorcode/actions/runs/39303088388), commit `aa27db4526b491bef9f9d63f2f2ec5cf152eb80e`. Tres entornos pasaron; Linux/OpenCode 2.0.26 detectó cinco aserciones españolas dependientes del idioma heredado en las pruebas de documentos e historial Git. El job publish no se ejecutó. La recuperación fija explícitamente español durante cada prueba de esas suites y restaura el idioma previo; no modifica el plugin ni omite verificaciones. Conservar ese commit/run como evidencia y aplicar las comprobaciones de ausencia y lease antes de reubicar el tag fallido.
@@ -67,7 +69,7 @@ Release **`0.2.0` confirmada** el 2026-10-19, commit `388aa11bf00f0905a7796e3d55
 
 Intentos previos del run `39260152869` sobre `b54f34a395ed8d8df58f082fd3d633e701aff5a4`: Linux pasó, Windows detectó un bloqueo del guardado en el anfitrión aislado. La recuperación usa APIs .NET Framework sin autoload de módulos y lectura por cantidad exacta de bytes UTF-8 en vez de esperar EOF; conserva ACL y reemplazo seguro. El tag fallido solo puede reubicarse tras las comprobaciones de ausencia y lease descritas más abajo; no hubo publicación npm de ese artefacto.
 
-Los smokes deben esperar el comando OEC antes de inyectar F7 y confirmar que existe el modal antes de inyectar Enter: una instalación npm lenta/fallida nunca debe convertir las teclas de prueba en un prompt del chat. Las copias públicas de `0.2.0` no incluyen los scripts de prueba; esta protección del harness se mantiene en `main` para futuras verificaciones.
+Los smokes deben esperar el comando OEC antes de abrir Files desde la paleta y confirmar que existe el modal antes de inyectar Enter: una instalación npm lenta/fallida nunca debe convertir las teclas de prueba en un prompt del chat. Desde 0.2.2 F7 controla Diff, no Files. Las copias públicas de `0.2.0` no incluyen los scripts de prueba; esta protección del harness se mantiene en `main` para futuras verificaciones.
 
 Release 0.1.2 confirmada el 2026-10-19, commit `4ec990107c3c405bee4e8f1d38080fc171fd5495`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39198286708): carpeta automática por sesión con confirmación de acceso local y controllers independientes por raíz; `localRoot` es override opcional. `Ctrl+A` tiene comando de paleta y pruebas de scope. Pasaron registro/provenance, instalación por nombre y ambos smokes (override y `--auto-root`), también en Linux. Para futuras versiones ejecutar ambos antes y después de publicar; `--auto-root` omite `localRoot` y confirma mediante teclado.
 
@@ -125,10 +127,10 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "@2jmalvarez/opencode-editor@0.2.1",
+      "package": "@2jmalvarez/opencode-editor@0.2.2",
       "options": {
         "toggleBinding": "f6",
-        "filesBinding": "f7",
+        "diffBinding": "f7",
         "explorerWidth": 30
       }
     }
@@ -136,4 +138,4 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
 }
 ```
 
-Desde 0.1.2 se detecta automáticamente la carpeta de la sesión activa y se confirma acceso al disco local una vez por carpeta/TUI. Quitar `localRoot` de configuraciones anteriores para seguir cada proyecto. Conservarla como override absoluto sigue permitido. No inferir filesystem local desde servidor remoto. La carga por carpeta compilada sigue siendo alternativa. Los defaults del código continúan siendo Ctrl+Alt+O/J. `npm install -g openeditorcode` instala únicamente el editor autónomo.
+Desde 0.1.2 se detecta automáticamente la carpeta de la sesión activa y se confirma acceso al disco local una vez por carpeta/TUI. Quitar `localRoot` de configuraciones anteriores para seguir cada proyecto. Conservarla como override absoluto sigue permitido. No inferir filesystem local desde servidor remoto. La carga por carpeta compilada sigue siendo alternativa. Desde 0.2.2 los defaults son F6/F7; `filesBinding` previo se acepta como alias de `diffBinding`. `npm install -g openeditorcode` instala únicamente el editor autónomo.

@@ -69,10 +69,11 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
   onCleanup(() => { measure(); controller.context.renderer.off("frame", measure) })
   return <box id="oec-files-pane" ref={(value) => { panel = value }} focusable focused={props.focused() && !controller.modal}
     on:blurred={props.onBlur}
-    width={props.width ?? "100%"} height={props.height} flexGrow={props.height === undefined ? 1 : 0} minHeight={0} flexShrink={0} flexDirection="column"
-    border={["left"]} borderColor={controller.context.theme.text.muted} onMouseDown={props.onFocus}>
-    <text fg={controller.context.theme.text.base}> FILES · ↑↓ Enter</text>
-    <scrollbox ref={(value) => { scroll = value; value.scrollTop = tree().scrollTop; measure() }} flexGrow={1} minHeight={0} scrollY>
+    width={props.width ?? "100%"} height={props.height} flexGrow={props.height === undefined ? 1 : 0} flexBasis={props.height === undefined ? 0 : undefined}
+    minHeight={0} flexShrink={1} flexDirection="column"
+    border={["left"]} borderColor={controller.context.theme.text.muted} overflow="hidden" onMouseDown={props.onFocus}>
+    <scrollbox ref={(value) => { scroll = value; value.scrollTop = tree().scrollTop; measure() }} flexGrow={1} flexBasis={0} minHeight={0} scrollY
+      viewportOptions={{ overflow: "hidden" }}>
       <box height={range().top} flexShrink={0} />
       <For each={rows()}>{(item, index) => {
         const logicalIndex = () => range().start + index()

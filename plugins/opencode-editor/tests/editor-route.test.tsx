@@ -60,7 +60,7 @@ test("editor route retains document cursor, scroll, and edits across unmount and
   try {
     for (let i = 0; i < 4; i++) { await setup.renderOnce(); await Bun.sleep(25) }
     expect(setup.captureCharFrame()).toContain("hello.ts")
-    expect(setup.captureCharFrame()).toContain("FILES")
+    expect(setup.captureCharFrame()).toContain("▾ Files")
     expect(host.mode()).toBe("oec-editor")
     const position = { ...controller.workspace.active!.position }
     expect(position.row).toBe(24)

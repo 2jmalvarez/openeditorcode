@@ -2,14 +2,11 @@
 import { Show } from "solid-js"
 import type { EditorController } from "../integration/controller"
 import { useRevision } from "../workbench/reactive"
-import { FilesExplorer } from "./FilesExplorer"
-import { FilesToggle } from "./FilesToggle"
-import { ChangesPane } from "../changes/ChangesPane"
+import { ProjectPanels } from "./ProjectPanels"
 import type { BoxRenderable, Renderable } from "@opentui/core"
 
 export function SessionFiles(props: { controller: EditorController; sessionID: string }) {
   const revision = useRevision(props.controller)
-  const visible = () => { revision(); return props.controller.filesVisible && props.controller.accepts(props.sessionID) }
   const focused = () => { revision(); return props.controller.filesFocused }
   let container: BoxRenderable | undefined
   let returnFocus: Renderable | null = props.controller.context.renderer.currentFocusedRenderable
@@ -30,13 +27,10 @@ export function SessionFiles(props: { controller: EditorController; sessionID: s
   }
   const focusOther = () => { rememberFocus(); props.controller.focusFiles(false) }
   return <box ref={(value) => { container = value }} flexDirection="column" flexShrink={0}>
-    <FilesToggle context={props.controller.context} label={`OEC · ${visible() ? "Hide files" : "Show files"}`}
-      toggle={() => { rememberFocus(); void props.controller.run(async () => { await props.controller.toggleFiles(); if (!props.controller.filesVisible) releaseFocus() }) }} />
-    <Show when={visible()}>
-      <FilesExplorer controller={props.controller} sessionID={props.sessionID} height={15} focused={focused}
-        onFocus={focusTree} onSearchFocus={focusOther} onBlur={() => props.controller.focusFiles(false)} onExit={releaseFocus}
-        onNext={() => { focusOther(); container?.findDescendantById("oec-changes-pane")?.focus() }} />
-      <ChangesPane controller={props.controller} sessionID={props.sessionID} onFocus={focusOther} focusTree={() => { void props.controller.fileSearch.search(""); focusTree() }} releaseFocus={releaseFocus} />
+    <Show when={props.controller.accepts(props.sessionID)}>
+      <ProjectPanels controller={props.controller} sessionID={props.sessionID} focused={focused}
+        onFocus={focusTree} onSearchFocus={focusOther} onOtherFocus={focusOther}
+        onBlur={() => props.controller.focusFiles(false)} onExit={releaseFocus} />
     </Show>
   </box>
 }

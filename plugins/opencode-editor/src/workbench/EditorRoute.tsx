@@ -6,7 +6,7 @@ import { findMatches } from "../../../../src/editor/find"
 import type { OpenTab } from "../../../../src/documents/types"
 import type { EditorController } from "../integration/controller"
 import { isDirty } from "../documents/workspace"
-import { FilesExplorer } from "../explorer/FilesExplorer"
+import { ProjectPanels } from "../explorer/ProjectPanels"
 import { EditorBuffer, type BufferHandle } from "./EditorBuffer"
 import { useRevision } from "./reactive"
 import { editorCommands } from "./useKeyboardShortcuts"
@@ -16,7 +16,7 @@ export function EditorRoute(props: { controller: EditorController }) {
   const revision = useRevision(controller.workspace)
   const statusRevision = useRevision(controller)
   const active = () => { revision(); return controller.workspace.active }
-  const [focus, setFocus] = createSignal<"editor" | "explorer" | "search">(active() ? "editor" : "explorer")
+  const [focus, setFocus] = createSignal<"editor" | "explorer" | "search" | "panels">(active() ? "editor" : "explorer")
   const [handle, setHandle] = createSignal<BufferHandle>()
   const [findOpen, setFindOpen] = createSignal(false)
   const [query, setQuery] = createSignal("")
@@ -26,7 +26,10 @@ export function EditorRoute(props: { controller: EditorController }) {
   const tabs = createMemo<OpenTab[]>(() => { revision(); return controller.workspace.documents.map((document) => ({ kind: "file", source: "project", path: document.path, content: document.content, savedContent: document.savedContent, view: "source" })) })
   const editor = () => handle()?.editor()
   const focusEditor = () => { setFindOpen(false); setFocus("editor") }
-  const focusExplorer = () => { setFindOpen(false); setFocus("explorer") }
+  const focusExplorer = () => {
+    setFindOpen(false); setFocus("explorer")
+    if (!controller.editorFilesVisible) controller.context.renderer.root.findDescendantById("oec-files-toggle")?.focus()
+  }
   createEffect(on(() => active()?.path, (path) => { setFindOpen(false); setFocus(path ? "editor" : "explorer") }))
   const popMode = controller.context.keymap.mode.push("oec-editor")
   onCleanup(popMode)
@@ -36,7 +39,7 @@ export function EditorRoute(props: { controller: EditorController }) {
       openFind: () => { setFindOpen(true); setFindIndex(0) }, closeFind: () => setFindOpen(false),
       moveFind: (direction) => setFindIndex((index) => Math.max(0, Math.min(index + direction, results().length - 1))),
       acceptFind: () => { const result = results()[findIndex()]; if (result) editor()?.setCursor(result.line - 1, result.column - 1); setFindOpen(false) },
-      cycleFocus: () => setFocus((value) => value === "editor" ? "explorer" : "editor"), focusEditor, focusExplorer,
+      cycleFocus: () => { if (focus() === "editor") focusExplorer(); else focusEditor() }, focusEditor, focusExplorer,
     }),
   }))
   const poll = setInterval(() => { if (!controller.modal) void controller.run(() => controller.workspace.checkExternal()) }, 3000)
@@ -62,8 +65,9 @@ export function EditorRoute(props: { controller: EditorController }) {
             onQuery={(value) => { setQuery(value); setFindIndex(0) }} maxWidth={() => 70} />
         </box>
       </box>
-      <FilesExplorer controller={controller} width={controller.options.explorerWidth} focused={() => focus() === "explorer" && !modal()}
-        onFocus={focusExplorer} onSearchFocus={() => { setFindOpen(false); setFocus("search") }} onNext={focusEditor} onExit={focusEditor} keyboardMode="oec-editor" />
+      <ProjectPanels controller={controller} editor focused={() => focus() === "explorer" && !modal()}
+        onFocus={focusExplorer} onSearchFocus={() => { setFindOpen(false); setFocus("search") }}
+        onOtherFocus={() => { setFindOpen(false); setFocus("panels") }} onExit={focusEditor} />
     </box>
     <text height={1} fg={controller.context.theme.text.muted}>{(() => { statusRevision(); revision(); const document = active(); return `${controller.status}  ·  ${focus()}  ·  ${document ? `${document.position.row + 1}:${document.position.column + 1}` : ""}  · Ctrl+S save / Ctrl+F find / Ctrl+L wrap / Tab focus` })()}</text>
   </box>

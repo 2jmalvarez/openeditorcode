@@ -27,6 +27,9 @@ export class EditorController {
   status = "OEC · Local files"
   wrapMode: "none" | "word" = "none"
   filesVisible = false
+  editorFilesVisible = true
+  diffVisible = false
+  diffExpanded = true
   filesFocused = false
   filesInputMode: string | undefined
   capture: (() => void) | undefined
@@ -88,6 +91,7 @@ export class EditorController {
     this.setStatus("Stored drafts deleted. Open documents were not changed.")
   }
   get modal() { return this.modalCount > 0 }
+  get sessionID() { return this.origin }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
   setStatus(message: string) { this.status = message; this.changed() }
@@ -143,9 +147,30 @@ export class EditorController {
   }
 
   async toggle() {
+    this.showFilesOnly()
     const route = this.context.ui.router.current()
     if (route.type === "plugin" && route.name === EDITOR_ROUTE && route.id === "oec.editor") await this.back()
     else await this.enter()
+  }
+
+  showFilesOnly() { this.filesVisible = true; this.editorFilesVisible = true; this.diffVisible = false; this.changed() }
+  toggleDiff() { this.diffVisible = !this.diffVisible; if (this.diffVisible) this.diffExpanded = true; this.changed() }
+  toggleDiffExpanded() { this.diffExpanded = !this.diffExpanded; this.changed() }
+  async toggleEditorFiles() { this.editorFilesVisible = !this.editorFilesVisible; this.changed(); if (this.editorFilesVisible) await this.tree.refresh() }
+  async openNativeDiff(sessionID = this.origin) {
+    if (!sessionID || !this.accepts(sessionID)) { this.setStatus("Open a project session to use OpenCode's diff viewer."); return }
+    if (this.context.ui.router.current().type === "plugin") {
+      await this.back()
+      // Let the host mount the session-owned viewer command before dispatch.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    }
+    const route = this.context.ui.router.current()
+    if (route.type !== "session" || route.sessionID !== sessionID || this.modal || this.disposed) return
+    if (!this.context.keymap.commands().some((command) => command.id === "diff.open")) {
+      this.context.ui.toast.show({ title: "OEC", message: "OpenCode's diff viewer is not available in this context.", variant: "warning" }); return
+    }
+    this.focusFiles(false)
+    this.context.keymap.dispatch("diff.open")
   }
 
   async open(path: string, sessionID?: string) {

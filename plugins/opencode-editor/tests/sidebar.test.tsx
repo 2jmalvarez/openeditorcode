@@ -55,6 +55,7 @@ test("sidebar input searches closed folders, opens results, and changed files di
   host.vcs.files = [{ file: "nested/hello.ts", status: "modified", additions: 2, deletions: 1 }]
   const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
   await controller.toggleFiles()
+  controller.toggleDiff()
   const setup = await testRender(() => {
     Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
     return <SessionFiles controller={controller} sessionID="session-1" />
