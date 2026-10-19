@@ -2,7 +2,7 @@
 
 Seguridad y privacidad: [protecciones, borradores y limitaciones](docs/security.md).
 
-Integración opcional: [`@2jmalvarez/opencode-editor@0.2.1`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.1) ofrece el editor local para **OpenCode 2**, con explorador derecho y pestañas propias. No modifica OpenCode y conserva OEC autónomo. Sigue la carpeta activa del proyecto tras confirmar acceso local; `localRoot` es opcional. La versión 0.2.1 incorpora guardado nativo WSL desde Windows, búsqueda jerárquica en ambas vistas, nombres seleccionados con desplazamiento y ajuste visual con `Ctrl+L`. Consultar la [guía del plugin](plugins/opencode-editor/README.md). La instalación de `openeditorcode` no instala este plugin. Ambos editores admiten `Ctrl+A` para seleccionar todo el archivo activo.
+Integración opcional: [`@2jmalvarez/opencode-editor@0.2.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.2) ofrece el editor local para **OpenCode 2**, con explorador derecho y pestañas propias. No modifica OpenCode y conserva OEC autónomo. Sigue la carpeta activa del proyecto tras confirmar acceso local; `localRoot` es opcional. Incluye guardado nativo WSL desde Windows, búsqueda jerárquica, nombres seleccionados con desplazamiento y ajuste visual con `Ctrl+L`. La versión 0.2.2 separa Files/Diff en acordeones independientes: `F6` alterna conversación/editor con Files solo y `F7` muestra/oculta Diff sin ocultar Files. Consultar la [guía del plugin](plugins/opencode-editor/README.md). La instalación de `openeditorcode` no instala este plugin. Ambos editores admiten `Ctrl+A` para seleccionar todo el archivo activo.
 
 [English](README.md) | Español
 

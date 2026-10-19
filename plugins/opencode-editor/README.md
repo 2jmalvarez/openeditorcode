@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: **[`@2jmalvarez/opencode-editor@0.2.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.2)**. Se publica por GitHub Actions/OIDC con verificación de integridad/provenance e instalación real por nombre. Los smokes cubren editor, carpeta automática y sidebar con acordeones/búsqueda/cambios. La [versión anterior 0.2.1](https://github.com/2jmalvarez/openeditorcode/actions/runs/39304161290) quedó verificada en Linux y Windows. `0.1.0` tuvo un conflicto de peers.
+Paquete público independiente: **[`@2jmalvarez/opencode-editor@0.2.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.2)**. [Publicación por GitHub Actions/OIDC verificada](https://github.com/2jmalvarez/openeditorcode/actions/runs/39310541283), commit `2a236c5087e009f9f38984582ddc22693f0fffa5`, con integridad/provenance e instalación real por nombre en Linux y Windows. Los smokes cubren editor, carpeta automática y sidebar con acordeones/búsqueda/cambios. `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
