@@ -6,7 +6,7 @@ import { duplicateLine, insertLine, moveLine, movePage, pasteClipboard, selectWo
 
 type Props = {
   controller: EditorController
-  focused: () => "editor" | "explorer"
+  focused: () => "editor" | "explorer" | "search"
   editor: () => TextareaRenderable | undefined
   findOpen: () => boolean
   openFind: () => void
@@ -28,6 +28,7 @@ export function editorCommands(props: Props): KeymapCommand[] {
     { id: "oec.close", title: "OEC: close file", palette: true, bind: "ctrl+w", enabled: () => Boolean(controller.workspace.active), run: () => controller.run(async () => { const path = controller.workspace.activePath; if (path) await controller.close(path) }) },
     { id: "oec.reload", title: "OEC: reload file from disk", palette: true, bind: false, enabled: () => Boolean(controller.workspace.active), run: () => controller.run(() => controller.reload()) },
     { id: "oec.find", title: "OEC: find in file", palette: true, bind: "ctrl+f", enabled: editorEnabled, run: props.openFind },
+    { id: "oec.wrap", title: "OEC: toggle line wrap", palette: true, bind: "ctrl+l", enabled: editorEnabled, run: () => controller.toggleWrap() },
     { id: "oec.document.next", title: "OEC: next file", palette: true, bind: "shift+tab", run: () => {
       const workspace = controller.workspace
       const index = workspace.documents.findIndex((document) => document.path === workspace.activePath)

@@ -48,6 +48,14 @@ export function windowsPowerShellEnvironment(environment: NodeJS.ProcessEnv): No
   return Object.fromEntries(Object.entries(environment).filter(([key]) => key.toUpperCase() !== "PSMODULEPATH"))
 }
 
+export function readablePowerShellError(error: string): string {
+  if (!error.includes("#< CLIXML")) return error.trim()
+  const messages = [...error.matchAll(/<S\b[^>]*S="Error"[^>]*>([\s\S]*?)<\/S>/g)].map((match) => match[1]!
+    .replace(/_x([0-9a-f]{4})_/gi, (_, code: string) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&"))
+  return messages.join("").trim() || "Windows could not read or preserve this file's security descriptor. Local edits retained."
+}
+
 export async function writeAndReplaceWindowsFile(temporary: string, target: string, content: string): Promise<void> {
   const powershell = join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
   const bytes = new TextEncoder().encode(content)
@@ -58,6 +66,6 @@ export async function writeAndReplaceWindowsFile(temporary: string, target: stri
   const timer = setTimeout(() => child.kill(), 15_000)
   try {
     const [exit, error] = await Promise.all([child.exited, new Response(child.stderr).text()])
-    if (exit !== 0) throw new Error(`Could not preserve Windows file security: ${error.trim()}`)
+    if (exit !== 0) throw new Error(`Could not preserve Windows file security: ${readablePowerShellError(error)}`)
   } finally { clearTimeout(timer) }
 }

@@ -2,9 +2,8 @@
 import { Show } from "solid-js"
 import type { EditorController } from "../integration/controller"
 import { useRevision } from "../workbench/reactive"
-import { FilesPane } from "./FilesPane"
+import { FilesExplorer } from "./FilesExplorer"
 import { FilesToggle } from "./FilesToggle"
-import { FileSearchPane } from "./FileSearchPane"
 import { ChangesPane } from "../changes/ChangesPane"
 import type { BoxRenderable, Renderable } from "@opentui/core"
 
@@ -12,8 +11,6 @@ export function SessionFiles(props: { controller: EditorController; sessionID: s
   const revision = useRevision(props.controller)
   const visible = () => { revision(); return props.controller.filesVisible && props.controller.accepts(props.sessionID) }
   const focused = () => { revision(); return props.controller.filesFocused }
-  const searchRevision = useRevision(props.controller.fileSearch)
-  const searching = () => { searchRevision(); return Boolean(props.controller.fileSearch.query.trim()) }
   let container: BoxRenderable | undefined
   let returnFocus: Renderable | null = props.controller.context.renderer.currentFocusedRenderable
   const rememberFocus = () => {
@@ -36,13 +33,9 @@ export function SessionFiles(props: { controller: EditorController; sessionID: s
     <FilesToggle context={props.controller.context} label={`OEC · ${visible() ? "Hide files" : "Show files"}`}
       toggle={() => { rememberFocus(); void props.controller.run(async () => { await props.controller.toggleFiles(); if (!props.controller.filesVisible) releaseFocus() }) }} />
     <Show when={visible()}>
-      <FileSearchPane controller={props.controller} sessionID={props.sessionID} onFocus={focusOther} focusTree={focusTree} releaseFocus={releaseFocus} />
-      <Show when={!searching()}>
-        <FilesPane controller={props.controller} sessionID={props.sessionID} height={12} focused={focused} onFocus={focusTree}
-          onBlur={() => props.controller.focusFiles(false)} onExit={releaseFocus}
-          onSearch={() => { focusOther(); container?.findDescendantById("oec-files-search")?.focus() }}
-          onNext={() => { focusOther(); container?.findDescendantById("oec-changes-pane")?.focus() }} />
-      </Show>
+      <FilesExplorer controller={props.controller} sessionID={props.sessionID} height={15} focused={focused}
+        onFocus={focusTree} onSearchFocus={focusOther} onBlur={() => props.controller.focusFiles(false)} onExit={releaseFocus}
+        onNext={() => { focusOther(); container?.findDescendantById("oec-changes-pane")?.focus() }} />
       <ChangesPane controller={props.controller} sessionID={props.sessionID} onFocus={focusOther} focusTree={() => { void props.controller.fileSearch.search(""); focusTree() }} releaseFocus={releaseFocus} />
     </Show>
   </box>

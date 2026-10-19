@@ -6,7 +6,7 @@ import { findMatches } from "../../../../src/editor/find"
 import type { OpenTab } from "../../../../src/documents/types"
 import type { EditorController } from "../integration/controller"
 import { isDirty } from "../documents/workspace"
-import { FilesPane } from "../explorer/FilesPane"
+import { FilesExplorer } from "../explorer/FilesExplorer"
 import { EditorBuffer, type BufferHandle } from "./EditorBuffer"
 import { useRevision } from "./reactive"
 import { editorCommands } from "./useKeyboardShortcuts"
@@ -16,7 +16,7 @@ export function EditorRoute(props: { controller: EditorController }) {
   const revision = useRevision(controller.workspace)
   const statusRevision = useRevision(controller)
   const active = () => { revision(); return controller.workspace.active }
-  const [focus, setFocus] = createSignal<"editor" | "explorer">(active() ? "editor" : "explorer")
+  const [focus, setFocus] = createSignal<"editor" | "explorer" | "search">(active() ? "editor" : "explorer")
   const [handle, setHandle] = createSignal<BufferHandle>()
   const [findOpen, setFindOpen] = createSignal(false)
   const [query, setQuery] = createSignal("")
@@ -62,9 +62,9 @@ export function EditorRoute(props: { controller: EditorController }) {
             onQuery={(value) => { setQuery(value); setFindIndex(0) }} maxWidth={() => 70} />
         </box>
       </box>
-      <FilesPane controller={controller} width={controller.options.explorerWidth} focused={() => focus() === "explorer" && !modal()}
-        onFocus={focusExplorer} keyboardMode="oec-editor" />
+      <FilesExplorer controller={controller} width={controller.options.explorerWidth} focused={() => focus() === "explorer" && !modal()}
+        onFocus={focusExplorer} onSearchFocus={() => { setFindOpen(false); setFocus("search") }} onNext={focusEditor} onExit={focusEditor} keyboardMode="oec-editor" />
     </box>
-    <text height={1} fg={controller.context.theme.text.muted}>{(() => { statusRevision(); revision(); const document = active(); return `${controller.status}  ·  ${focus()}  ·  ${document ? `${document.position.row + 1}:${document.position.column + 1}` : ""}  · Ctrl+S save / Ctrl+F find / Tab focus` })()}</text>
+    <text height={1} fg={controller.context.theme.text.muted}>{(() => { statusRevision(); revision(); const document = active(); return `${controller.status}  ·  ${focus()}  ·  ${document ? `${document.position.row + 1}:${document.position.column + 1}` : ""}  · Ctrl+S save / Ctrl+F find / Ctrl+L wrap / Tab focus` })()}</text>
   </box>
 }

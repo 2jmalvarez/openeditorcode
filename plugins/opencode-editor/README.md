@@ -77,11 +77,12 @@ Volver a cargar el plugin o reiniciar la TUI tras cambiar la configuración. El 
 
 Si OpenCode oculta su sidebar por falta de ancho, usar el comando de paleta **OEC: toggle conversation/editor**: el editor tiene su propio explorador. El plugin no fuerza el tamaño o la visibilidad del sidebar del anfitrión.
 
-### Búsqueda rápida y cambios en la conversación
+### Búsqueda rápida y cambios
 
-- Clic en **Search files…**, o `/` con foco en el árbol, para buscar. `↑`/`↓` eligen un resultado y `Enter` o clic lo abren en el editor. Se muestran hasta 80 resultados, con rutas relativas; el índice tiene un límite de 50.000 entradas.
+- Tanto en F6 como en el panel de conversación: clic en **Search files…**, o `/` con foco en el árbol, para buscar. Los archivos coincidentes aparecen bajo sus carpetas padre, expandidas automáticamente. `↑`/`↓` navegan el árbol; `Enter` expande/contrae carpetas o abre archivos. Se muestran hasta 80 archivos coincidentes; el índice tiene un límite de 50.000 entradas. Limpiar la consulta restaura el árbol normal sin perder su selección y expansión.
+- Los nombres largos seleccionados se desplazan horizontalmente tras una pausa y se detienen al mostrar el final. Cambiar de selección reinicia el desplazamiento.
 - `Esc` limpia la búsqueda y vuelve al árbol; con el input vacío, devuelve el foco a la conversación. `F5` actualiza el índice. Los eventos de archivos invalidan la caché mientras el panel está visible.
-- `Tab` desde el árbol enfoca **CHANGES**; `Shift+Tab` desde cambios vuelve al árbol. `Esc` devuelve el foco a la conversación.
+- `Tab` desde el buscador enfoca el árbol sin limpiar los resultados. En F6, `Tab` conserva la alternancia entre árbol y editor; `/` desde el árbol enfoca el buscador. En conversación, `Tab` desde el árbol enfoca **CHANGES**; `Shift+Tab` desde cambios vuelve al árbol. `Esc` primero limpia una búsqueda activa; sin búsqueda, vuelve al editor o conversación.
 - **CHANGES** muestra el estado del proyecto, no solamente los archivos tocados por la sesión. Se actualiza con eventos del anfitrión y, como respaldo, cada tres segundos mientras Files está visible. `F5` fuerza una actualización. Ocultar el panel elimina sus suscripciones y temporizadores.
 - Clic o `Enter` en un archivo cambiado abre el visor nativo de OpenCode mediante `diff.open`. **Se abre la vista general**: la API pública no documenta un parámetro para seleccionar directamente ese archivo. El alcance y la rama base del visor siguen siendo los elegidos en OpenCode.
 - La API pública actual informa añadido/modificado/eliminado y líneas añadidas/eliminadas; no expone separación staged/unstaged ni un estado específico de renombrado. El plugin no ejecuta mutaciones Git. Los mappings de workspaces remotos no consultan cambios del servidor como si fueran del disco local.
@@ -104,6 +105,7 @@ Si OpenCode oculta su sidebar por falta de ancho, usar el comando de paleta **OE
 | Siguiente archivo | `Shift+Tab` |
 | Guardar / cerrar archivo | `Ctrl+S` / `Ctrl+W` |
 | Búsqueda literal local | `Ctrl+F` |
+| Alternar ajuste visual de líneas largas (sin modificar el archivo) | `Ctrl+L` |
 | Elegir coincidencia | `↑` / `↓`, después `Enter` |
 | Cerrar búsqueda / volver al editor desde el árbol | `Esc` |
 | Copiar / pegar | `Ctrl+C` / `Ctrl+V` |
@@ -123,6 +125,7 @@ Se recomiendan **F6** (conversación/editor) y **F7** (archivos), configurados e
 - El guardado compara contra la última versión conocida en disco. No hay una opción de sobrescritura silenciosa.
 - **OEC: reload file from disk** permite recargar tras confirmar el descarte de ediciones locales.
 - Los archivos eliminados no se recrean automáticamente al guardar.
+- En Windows, las rutas `\\wsl.localhost\Distribución\…` y `\\wsl$\Distribución\…` se guardan dentro de esa distribución mediante `wsl.exe`, preservando permisos, propietario y ACL/atributos Linux antes de escribir el contenido temporal. Requiere las herramientas estándar de GNU coreutils en la distribución. Los archivos Windows conservan su protección ACL habitual; no hay fallback que elimine permisos si falla el guardado.
 - Los borradores guardan contenido y versión base en el storage durable del anfitrión, **fuera del proyecto**. Pueden contener código sensible: no son un almacén cifrado propio.
 - En el código actual, `options.drafts.enabled: false` desactiva nuevas copias; `options.drafts.exclude` admite exclusiones adicionales tipo gitignore. `.env`, claves/certificados, credenciales y configuraciones de autenticación habituales se excluyen por defecto. Esto no detecta secretos dentro de archivos con otros nombres.
 - Para borrar copias anteriores, usar **OEC: delete stored drafts for this project** y confirmar. No borra archivos ni ediciones abiertas; cambiar exclusiones/desactivar persistencia no elimina trabajo antiguo silenciosamente. Ver [seguridad y límites del almacenamiento](https://github.com/2jmalvarez/openeditorcode/blob/main/docs/security.md). Requiere una versión que incluya estos cambios; no modifica paquetes ya publicados.

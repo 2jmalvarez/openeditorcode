@@ -25,6 +25,7 @@ export class EditorController {
   private listeners = new Set<() => void>()
   private clearArchive: () => Promise<void>
   status = "OEC · Local files"
+  wrapMode: "none" | "word" = "none"
   filesVisible = false
   filesFocused = false
   filesInputMode: string | undefined
@@ -90,6 +91,7 @@ export class EditorController {
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
   setStatus(message: string) { this.status = message; this.changed() }
+  toggleWrap() { this.capture?.(); this.wrapMode = this.wrapMode === "none" ? "word" : "none"; this.setStatus(this.wrapMode === "word" ? "Line wrap on" : "Line wrap off") }
   report(error: unknown) {
     this.setStatus(error instanceof Error ? error.message : String(error))
     if (!this.disposed) this.context.ui.toast.show({ title: "OEC", message: this.status, variant: "error" })

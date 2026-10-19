@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { afterEach, beforeEach, expect, test } from "bun:test"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { testRender, useRenderer } from "@opentui/solid"
@@ -10,7 +10,7 @@ import { parseOptions } from "../src/integration/options"
 import { EditorRoute } from "../src/workbench/EditorRoute"
 import { mockHost } from "./host"
 import { SessionFiles } from "../src/explorer/SessionFiles"
-import type { TextareaRenderable } from "@opentui/core"
+import type { InputRenderable, TextareaRenderable } from "@opentui/core"
 
 let root = ""
 beforeEach(async () => {
@@ -166,5 +166,95 @@ test("sidebar never reclaims focus from the chat, including after modal and stat
     expect(chat.plainText).toBe("chat with Files open")
     expect(controller.filesVisible).toBe(true)
     expect(controller.filesFocused).toBe(false)
+  } finally { setup.renderer.destroy(); await controller.dispose() }
+})
+
+test("F6 has a searchable hierarchical tree, input priority, and restores the normal tree", async () => {
+  await mkdir(join(root, "nested", "deeper"), { recursive: true })
+  await writeFile(join(root, "nested", "deeper", "needle.ts"), "needle")
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
+  await controller.workspace.open(join(root, "hello.ts"))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <EditorRoute controller={controller} />
+  }, { width: 110, height: 20 })
+  try {
+    await Bun.sleep(30); await setup.renderOnce()
+    controller.tree.select(controller.tree.items.findIndex((row) => row.name === "nested"))
+    const normalSelection = controller.tree.selected
+    const normalRows = controller.tree.items.map((row) => row.path)
+    const input = setup.renderer.root.findDescendantById("oec-files-search") as InputRenderable
+    expect(input).toBeDefined()
+    input.focus()
+    await setup.mockInput.typeText("needle")
+    await Bun.sleep(30); await setup.renderOnce()
+    expect(setup.renderer.currentFocusedRenderable).toBe(input)
+    expect(controller.fileSearch.rows.map((row) => [row.name, row.depth])).toEqual([["nested", 0], ["deeper", 1], ["needle.ts", 2]])
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("▾ nested")
+    expect(frame).toContain("▾ deeper")
+    expect(frame).toContain("needle.ts")
+    expect(frame).not.toContain("nested/deeper/needle.ts")
+    const layers = () => [...host.layers].map((factory) => factory())
+    const global = () => layers().find((entry) => entry.commands?.some((command) => command.id === "oec.wrap"))!
+    const search = () => layers().find((entry) => entry.priority === 55)!
+    const tree = () => layers().find((entry) => entry.priority === 45)!
+    expect(search().enabled).toBe(true)
+    expect(search().priority).toBeGreaterThan(global().priority!)
+    const wrap = global().commands!.find((entry) => entry.id === "oec.wrap")!
+    expect(typeof wrap.enabled === "function" && wrap.enabled()).toBe(false)
+    await search().commands!.find((entry) => entry.bind === "tab")!.run()
+    await setup.renderOnce()
+    expect(tree().enabled).toBe(true)
+    expect(controller.fileSearch.query).toBe("needle")
+    await tree().commands!.find((entry) => entry.bind === "escape")!.run()
+    await setup.renderOnce()
+    expect(controller.fileSearch.query).toBe("")
+    expect(controller.tree.selected).toBe(normalSelection)
+    expect(controller.tree.items.map((row) => row.path)).toEqual(normalRows)
+    expect(frame).not.toContain("No matching files")
+  } finally { setup.renderer.destroy(); await controller.dispose() }
+  expect(host.layers.size).toBe(0)
+  expect([...host.events.values()].every((handlers) => handlers.size === 0)).toBe(true)
+})
+
+test("Ctrl+L wraps visually without edits and retains wrap/cursor across route remount", async () => {
+  const text = "long line " + "word ".repeat(1000) + "\nsecond line"
+  await writeFile(join(root, "hello.ts"), text)
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
+  await controller.workspace.open(join(root, "hello.ts"))
+  const [visible, setVisible] = createSignal(true)
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <Show when={visible()}><EditorRoute controller={controller} /></Show>
+  }, { width: 85, height: 18 })
+  try {
+    await setup.renderOnce()
+    const editor = () => setup.renderer.root.findDescendantById("oec-editor-buffer") as TextareaRenderable
+    const wrap = () => [...host.layers].map((factory) => factory()).flatMap((layer) => layer.commands ?? []).find((command) => command.id === "oec.wrap")!
+    editor().setCursor(0, 3500)
+    const cursor = { ...editor().logicalCursor }
+    expect(editor().wrapMode).toBe("none")
+    expect(wrap().bind).toBe("ctrl+l")
+    await wrap().run()
+    await setup.renderOnce()
+    expect(editor().wrapMode).toBe("word")
+    expect(editor().virtualLineCount).toBeGreaterThan(2)
+    expect(editor().logicalCursor).toEqual(cursor)
+    expect(editor().plainText).toBe(text)
+    expect(controller.workspace.active?.savedContent).toBe(text)
+    const wrappedScroll = editor().editorView.getViewport().offsetY
+    expect(wrappedScroll).toBeGreaterThan(0)
+    setVisible(false); await setup.renderOnce()
+    setVisible(true); await setup.renderOnce(); await setup.renderOnce()
+    expect(editor().wrapMode).toBe("word")
+    expect(editor().logicalCursor).toEqual(cursor)
+    expect(editor().editorView.getViewport().offsetY).toBe(wrappedScroll)
+    await wrap().run(); await setup.renderOnce()
+    expect(editor().wrapMode).toBe("none")
+    expect(editor().plainText).toBe(text)
+    expect(editor().logicalCursor).toEqual(cursor)
   } finally { setup.renderer.destroy(); await controller.dispose() }
 })

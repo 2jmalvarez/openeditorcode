@@ -13,6 +13,8 @@ export type BufferHandle = { capture: () => void; editor: () => TextareaRenderab
 export function EditorBuffer(props: { controller: EditorController; document: Document; focused: () => boolean; onFocus: () => void; onHandle: (handle: BufferHandle | undefined) => void }) {
   const { controller, document } = props
   const revision = useRevision(controller.workspace)
+  const controllerRevision = useRevision(controller)
+  const wrapMode = createMemo(() => { controllerRevision(); return controller.wrapMode })
   // Cursor notifications can precede content notifications in OpenTUI. A
   // position-only revision must not restore the old document over typed text.
   const content = createMemo(() => { revision(); return document.content })
@@ -40,9 +42,10 @@ export function EditorBuffer(props: { controller: EditorController; document: Do
     const lines = document.content.split("\n")
     const row = Math.min(position.row, Math.max(0, lines.length - 1))
     editor.setCursor(row, Math.min(position.column, Bun.stringWidth(lines[row] ?? "")))
-    // This MVP is unwrapped. virtualLineCount can describe only the materialized viewport;
-    // clamp against the full buffer, otherwise restoring scroll truncates distant positions.
-    editor.editorView.setViewport(position.scrollX, Math.min(position.scrollY, Math.max(0, editor.lineCount - editor.height)), editor.width, editor.height, false)
+    // Wrapped rows are visual, not buffer lines. In unwrapped mode clamp against
+    // the full buffer, not only the currently materialized virtual viewport.
+    const rows = wrapMode() === "none" ? editor.lineCount : Math.max(editor.lineCount, editor.virtualLineCount)
+    editor.editorView.setViewport(wrapMode() === "none" ? position.scrollX : 0, Math.min(position.scrollY, Math.max(0, rows - editor.height)), editor.width, editor.height, false)
   }
   const restore = () => {
     const editor = renderable()
@@ -72,6 +75,16 @@ export function EditorBuffer(props: { controller: EditorController; document: Do
     }
     metrics.scheduleHighlight(document.path, text)
   })
+  createEffect(() => {
+    const mode = wrapMode()
+    const editor = renderable()
+    if (!editor) return
+    const cursor = editor.logicalCursor
+    editor.wrapMode = mode
+    editor.setCursor(cursor.row, cursor.col)
+    metrics.schedule()
+    metrics.scheduleHighlight(document.path, editor.plainText, 16)
+  })
   onMount(() => {
     props.onHandle(handle)
     controller.capture = capture
@@ -90,7 +103,7 @@ export function EditorBuffer(props: { controller: EditorController; document: Do
   })
   return <box flexGrow={1} minHeight={0} minWidth={0} flexDirection="row" onMouseDown={props.onFocus}>
     <box width={6} paddingRight={1} flexShrink={0}><text fg={controller.context.theme.text.muted}>{metrics.lineLabels()}</text></box>
-    <textarea id="oec-editor-buffer" ref={setRenderable} initialValue={document.content} focused={props.focused()} wrapMode="none" syntaxStyle={theme.style}
+    <textarea id="oec-editor-buffer" ref={setRenderable} initialValue={document.content} focused={props.focused()} wrapMode={controller.wrapMode} syntaxStyle={theme.style}
       keyBindings={[...defaultTextareaKeyBindings, { name: "z", ctrl: true, action: "undo" }, { name: "z", ctrl: true, shift: true, action: "redo" }]}
       flexGrow={1} minWidth={0} textColor={controller.context.theme.text.base} backgroundColor={controller.context.theme.background.base}
       onContentChange={() => { if (!replacing) { const editor = renderable(); if (editor) controller.workspace.edit(document.path, editor.plainText); metrics.schedule() } }}

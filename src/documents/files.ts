@@ -3,6 +3,7 @@ import { chmod, lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } 
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
 import { t } from "../localization"
 import { writeAndReplaceWindowsFile } from "./windows-save"
+import { parseWslPath, WslFileChangedError, writeWslFile } from "./wsl-save"
 
 export const MAX_FILE_BYTES = 2 * 1024 * 1024
 export const MAX_IMAGE_BYTES = 16 * 1024 * 1024
@@ -114,6 +115,18 @@ export async function writeTextFile(root: string, filePath: string, content: str
 
   await mkdir(dirname(safePath), { recursive: true })
   await ensureParentPhysicallyInsideRoot(root, safePath)
+
+  const wslTarget = process.platform === "win32" ? parseWslPath(safePath) : undefined
+  if (wslTarget) {
+    const wslRoot = parseWslPath(resolve(root))
+    if (!wslRoot) throw new FileAccessError(t("files.outside"))
+    try { await writeWslFile(wslRoot, wslTarget, content, options.expectedContent) }
+    catch (error) {
+      if (error instanceof WslFileChangedError) throw new ExternalFileChangedError(t("files.externalChange"))
+      throw error
+    }
+    return
+  }
 
   let mode = 0o600
   try { mode = (await stat(safePath)).mode & 0o777 } catch (error) {

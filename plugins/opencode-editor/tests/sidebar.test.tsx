@@ -74,6 +74,8 @@ test("sidebar input searches closed folders, opens results, and changed files di
     expect(controller.fileSearch.items.map((item) => item.path)).toEqual([join(root, "nested", "hello.ts")])
     expect(controller.filesFocused).toBe(false)
     frame = setup.captureCharFrame().split("\n")
+    expect(frame.some((line) => line.includes("▾ nested"))).toBe(true)
+    expect(frame.some((line) => line.includes("nested/hello.ts") && !line.includes("M nested"))).toBe(false)
     const result = frame.findIndex((line) => line.includes("hello.ts") && !line.includes("M nested"))
     expect(result).toBeGreaterThan(0)
     await setup.mockInput.pressEnter()
@@ -84,3 +86,28 @@ test("sidebar input searches closed folders, opens results, and changed files di
   expect([...host.events.values()].every((handlers) => handlers.size === 0)).toBe(true)
   expect(host.layers.size).toBe(0)
 })
+
+test("selected long names scroll once to the end and reset when selection changes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-sidebar-long-name-"))
+  await writeFile(join(root, "abcdefghijklmnop-tail.ts"), "long")
+  await writeFile(join(root, "zshort.ts"), "short")
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
+  await controller.toggleFiles()
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <SessionFiles controller={controller} sessionID="session-1" />
+  }, { width: 20, height: 25 })
+  try {
+    await setup.renderOnce(); await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("abcdef")
+    await Bun.sleep(2600); await setup.renderOnce()
+    const end = setup.captureCharFrame()
+    expect(end).toContain("tail.ts")
+    expect(end).not.toContain("abcdef")
+    await Bun.sleep(350); await setup.renderOnce()
+    expect(setup.captureCharFrame()).toBe(end)
+    controller.tree.select(1); await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("abcdef")
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+}, 8000)
