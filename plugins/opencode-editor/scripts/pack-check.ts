@@ -3,6 +3,7 @@ import { copyFile, mkdir, readdir, rm } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { createHash } from "node:crypto"
 import { allowedFiles, command, directory, integrity, npm, temporary, validateBundle, validateManifest } from "./release"
+import { installPackedPlugin } from "./install-check"
 
 const output = resolve(process.argv[2] ?? join(directory, "dist/release"))
 const stage = await temporary("oec-pack-")
@@ -38,9 +39,12 @@ try {
       validateManifest(packed)
       validateBundle(await Bun.file(join(extracted, "package/dist/tui.js")).text())
       assert.deepEqual(await readdir(join(extracted, "package/dist")), ["tui.js"])
+      for (const installer of ["npm", "arborist"] as const) {
+        await installPackedPlugin(archive, join(stage, `installed-${installer}`), installer)
+      }
       await Bun.write(join(output, "pack.json"), JSON.stringify({ ...result[0], commit: packed.gitHead ?? null, imports }, null, 2) + "\n")
       await Bun.write(join(output, "SHA256SUMS"), `${createHash("sha256").update(bytes).digest("hex")}  ${result[0].filename}\n`)
-      console.log(`Verified isolated tarball: ${archive} (${result[0].integrity})`)
+      console.log(`Verified isolated tarball and npm/Arborist installation without private host runtimes: ${archive} (${result[0].integrity})`)
     }
   }
 } finally { await rm(stage, { recursive: true, force: true }) }

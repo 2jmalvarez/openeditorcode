@@ -4,7 +4,9 @@ Este procedimiento publica únicamente `@2jmalvarez/opencode-editor`. No cambiar
 
 ## Bootstrap inicial (intervención humana)
 
-Estado inicial: `0.1.0` preparada, publicación no confirmada. No anunciar instalación pública hasta comprobar Actions, registro y smoke por nombre.
+Estado: `0.1.0` fue publicada por OIDC, pero la prueba por nombre falló por resolución de peers; no es un release verificado. La corrección `0.1.1` fue autorizada por el titular. No anunciar instalación pública de la corrección hasta comprobar Actions, registro y smoke por nombre. No modificar la versión ni el tag publicados de `0.1.0`.
+
+Regresión obligatoria desde `0.1.1`: `plugin:pack:check` instala el artefacto con npm y Arborist, sin `--legacy-peer-deps`, y exige que el árbol solo contenga el plugin. La API `@opencode/plugin` permanece externa y como dependencia de desarrollo de la raíz, no como peer publicado: el peer opcional de `0.1.0` hacía que Arborist seleccionase transitivamente OpenTUI nuevo e incompatible. OpenTUI/Solid conservan sus peers opcionales; la compatibilidad de OpenCode se documenta en `engines.opencode`. El smoke de tarball carga el paquete instalado real. El verificador de registro espera hasta tres minutos por versión/provenance con revalidación de caché.
 
 npm requiere que el paquete exista antes de registrar confianza (`npm trust`); no hereda el Trusted Publisher de `openeditorcode`. La documentación actual permite staging de un paquete nuevo, que crea un placeholder público `0.0.0-stage`. Ese bootstrap requiere autorización excepcional y autenticación del titular del scope, con 2FA; no ejecutar un `npm publish` local como fallback.
 
@@ -22,11 +24,11 @@ npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage list @2jmalva
 
 **Mantener pendiente el auxiliar: no aprobarlo ni rechazarlo todavía.** Configurar el Trusted Publisher de la siguiente sección por la web npm y comprobar que quedó guardado. Se puede publicar una versión diferente mientras otra está stageada; la reserva de `0.0.0-bootstrap.0` no bloquea `0.1.0`.
 
-Después, subir el tag anotado `opencode-editor-v0.1.0` y publicar **la versión real por GitHub Actions/OIDC**. Solo cuando el workflow, el registro y la instalación por nombre confirmen `0.1.0`, el titular puede rechazar el stage auxiliar con 2FA. Identificar exclusivamente el stage de `0.0.0-bootstrap.0`, no otra versión:
+Después, subir el tag anotado de la versión real autorizada y publicar **por GitHub Actions/OIDC**. Solo cuando el workflow, el registro y la instalación por nombre confirmen la versión correcta (`0.1.1` en esta recuperación), el titular puede rechazar el stage auxiliar con 2FA. Identificar exclusivamente el stage de `0.0.0-bootstrap.0`, no otra versión:
 
 ```powershell
 npm exec --yes --ignore-scripts --package=npm@11.21.0 -- npm stage reject "ID_DEL_STAGE_AUXILIAR" --registry=https://registry.npmjs.org
-npm view @2jmalvarez/opencode-editor@0.1.0 version --registry=https://registry.npmjs.org
+npm view @2jmalvarez/opencode-editor@0.1.1 version --registry=https://registry.npmjs.org
 ```
 
 Nunca ejecutar `npm stage approve` para el auxiliar ni `npm publish` local para `0.1.0`. Si falla la configuración o publicación, conservar el stage auxiliar pendiente y diagnosticar antes de borrarlo. No guardar ni compartir tokens/códigos 2FA con el agente; resolver la autenticación interactivamente por el titular. Si este bootstrap no está disponible, pedir autorización para otra excepción.
@@ -107,7 +109,7 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "@2jmalvarez/opencode-editor@0.1.0",
+      "package": "@2jmalvarez/opencode-editor@0.1.1",
       "options": {
         "localRoot": "C:/Projects/my-project",
         "toggleBinding": "f6",

@@ -58,11 +58,16 @@ export function validateManifest(manifest: Record<string, any>) {
   assert.equal(manifest.repository?.directory, "plugins/opencode-editor")
   assert.equal(manifest.license, "MIT")
   assert.equal(manifest.engines?.bun, ">=1.3.14")
+  assert.equal(manifest.engines?.opencode, ">=2.0.26 <3")
   assert.ok(!manifest.scripts, "The published package must not run lifecycle scripts")
   for (const key of ["dependencies", "optionalDependencies", "bundledDependencies", "devDependencies"]) assert.ok(!manifest[key], `Unexpected ${key}; host runtimes must remain external`)
-  assert.deepEqual(Object.keys(manifest.peerDependencies).sort(), [...hostPackages].sort())
-  for (const host of hostPackages) assert.equal(manifest.peerDependenciesMeta?.[host]?.optional, true, "Host peers must not be auto-installed as private copies")
-  for (const version of ["2.0.26", "2.0.27"]) assert.ok(Bun.semver.satisfies(version, manifest.peerDependencies["@opencode/plugin"]))
+  // The API is supplied by OpenCode's loader, not npm. Even an optional API
+  // peer makes Arborist traverse its optional peers and conflict with OpenTUI.
+  const peers = hostPackages.filter((host) => host !== "@opencode/plugin")
+  assert.deepEqual(Object.keys(manifest.peerDependencies).sort(), [...peers].sort())
+  assert.deepEqual(Object.keys(manifest.peerDependenciesMeta).sort(), [...peers].sort())
+  for (const host of peers) assert.equal(manifest.peerDependenciesMeta?.[host]?.optional, true, "Host peers must not be auto-installed as private copies")
+  for (const version of ["2.0.26", "2.0.27"]) assert.ok(Bun.semver.satisfies(version, manifest.engines.opencode))
   for (const host of ["@opentui/core", "@opentui/solid"]) {
     assert.ok(Bun.semver.satisfies("0.5.17", manifest.peerDependencies[host]))
     assert.ok(!Bun.semver.satisfies("0.6.0", manifest.peerDependencies[host]))
@@ -94,7 +99,7 @@ export function integrity(bytes: Uint8Array) {
 }
 
 export async function metadata(packageName: string, version: string): Promise<Record<string, any> | null> {
-  const response = await fetch(`${registry}/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`, { signal: AbortSignal.timeout(30_000) })
+  const response = await fetch(`${registry}/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`, { signal: AbortSignal.timeout(30_000), cache: "no-store", headers: { "cache-control": "no-cache" } })
   if (response.status === 404) return null
   if (!response.ok) throw new Error(`Registry returned ${response.status}; do not treat this as an absent version`)
   return response.json()

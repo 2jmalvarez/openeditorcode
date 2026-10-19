@@ -15,7 +15,8 @@ const archive = join(resolve(packPath, ".."), pack.filename)
 assert.equal(integrity(new Uint8Array(await Bun.file(archive).arrayBuffer())), pack.integrity)
 let found = await metadata(name, pack.version)
 if (mode === "after") {
-  for (let attempt = 0; !found && attempt < 8; attempt++) {
+  // New versions and their attestations can take several minutes to propagate.
+  for (let attempt = 0; (!found || !found.dist?.attestations?.provenance) && attempt < 36; attempt++) {
     await Bun.sleep(5000)
     found = await metadata(name, pack.version)
   }

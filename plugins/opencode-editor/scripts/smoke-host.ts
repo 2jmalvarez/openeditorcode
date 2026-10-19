@@ -2,6 +2,7 @@ import { access, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promise
 import { join, resolve } from "node:path"
 import assert from "node:assert/strict"
 import { allowedFiles, command, temporary as createTemporary, validateBundle, validateManifest } from "./release"
+import { installPackedPlugin } from "./install-check"
 
 // Explicit executable avoids shell wrappers. No user config, service, sessions, or credentials are touched.
 const executable = process.argv[2]
@@ -17,8 +18,7 @@ if (source.endsWith(".tgz")) {
   const archive = resolve(source)
   const entries = (await command(["tar", "-tzf", archive])).split(/\r?\n/).sort()
   assert.deepEqual(entries, allowedFiles.map((path) => `package/${path}`).sort())
-  await command(["tar", "-xzf", archive, "-C", temporary])
-  pluginSource = join(temporary, "package")
+  pluginSource = await installPackedPlugin(archive, join(temporary, "installed"), "arborist")
   validateManifest(await Bun.file(join(pluginSource, "package.json")).json())
   validateBundle(await Bun.file(join(pluginSource, "dist/tui.js")).text())
 } else assert.match(source, /^@2jmalvarez\/opencode-editor@\d+\.\d+\.\d+(?:-[\w.-]+)?$/)

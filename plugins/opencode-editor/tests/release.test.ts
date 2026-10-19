@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { releaseCommand, validateBundle, validateManifest, validateTag } from "../scripts/release"
 import manifest from "../package.json"
+import { validateInstalledNames } from "../scripts/install-check"
 
 describe("plugin release boundaries", () => {
   test("Windows extraction cannot select Git Bash tar through PATH", () => {
@@ -22,6 +23,11 @@ describe("plugin release boundaries", () => {
     expect(() => validateManifest({ ...manifest, private: true })).toThrow()
     expect(() => validateManifest({ ...manifest, scripts: { postinstall: "download" } })).toThrow()
     expect(() => validateManifest({ ...manifest, dependencies: { "solid-js": "1.9.14" } })).toThrow()
+    expect(() => validateManifest({ ...manifest, peerDependencies: { ...manifest.peerDependencies, "@opencode/plugin": "^2.0.26" }, peerDependenciesMeta: { ...manifest.peerDependenciesMeta, "@opencode/plugin": { optional: true } } })).toThrow()
+  })
+  test("installed package must not bring private host runtimes", () => {
+    validateInstalledNames([manifest.name])
+    for (const host of ["@opencode/plugin", "@opentui/core", "@opentui/solid", "solid-js"]) expect(() => validateInstalledNames([manifest.name, host])).toThrow()
   })
   test("reject checkout imports and host lifecycle ownership", () => {
     const externals = 'import "@opencode/plugin/tui"; import "@opentui/core"; import "@opentui/solid"; import "solid-js";'

@@ -2,8 +2,8 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: `@2jmalvarez/opencode-editor`, versión inicial preparada `0.1.0`.
-**La primera publicación todavía no está confirmada.** No confundir un build o workflow con disponibilidad en npm.
+Paquete independiente: `@2jmalvarez/opencode-editor`, versión correctiva preparada `0.1.1`.
+**`0.1.0` se publicó, pero no superó la instalación por nombre debido a un conflicto de peers. Usar `0.1.1` solo después de confirmar su publicación e instalación.** No confundir un build o workflow con un release verificado.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -28,7 +28,7 @@ bun run plugin:build
 
 El resultado es `plugins/opencode-editor/dist/tui.js`. Incluye los módulos OEC compartidos y sus dependencias de búsqueda de archivos; OpenTUI, Solid y la API de plugins se resuelven en el anfitrión.
 
-Probado con OpenCode **2.0.26 y 2.0.27**. Runtime Bun **1.3.14+**; peers OpenCode `^2.0.26`, OpenTUI `>=0.5.17 <0.6.0`, Solid `>=1.9.0 <2.0.0`. Los peers son opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. No instalar una copia privada de OpenTUI/Solid dentro del plugin. El OEC autónomo conserva sus dependencias actuales.
+Probado con OpenCode **2.0.26 y 2.0.27**. Runtime Bun **1.3.14+**; compatibilidad de anfitrión declarada en `engines.opencode` (`>=2.0.26 <3`, metadata informativa, no certificación de todas las versiones posteriores). OpenTUI `>=0.5.17 <0.6.0` y Solid `>=1.9.0 <2.0.0` son peers opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. La API `@opencode/plugin` se declara solo como dependencia de desarrollo en la raíz de OEC: agregarla como peer del paquete publicado hace que Arborist atraviese sus peers opcionales y puede producir conflictos con versiones nuevas de OpenTUI. El loader provee esa API y el build la mantiene externa. No instalar copias privadas de OpenTUI/Solid. El OEC autónomo conserva sus dependencias actuales.
 
 ## Cargar el plugin
 
@@ -53,7 +53,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 
 En Linux usar rutas absolutas como `/home/usuario/openeditorcode/plugins/opencode-editor` y `/home/usuario/mi-proyecto`.
 
-Una vez confirmada la publicación, el mismo objeto permite instalar por nombre cambiando solamente `package` a `@2jmalvarez/opencode-editor@0.1.0`. No usar solo el nombre como entrada: `options.localRoot` es obligatorio. OpenCode instala el paquete; no se necesita un `postinstall` ni compilar desde el checkout para usar el paquete publicado.
+Una vez confirmada la publicación, el mismo objeto permite instalar por nombre cambiando solamente `package` a `@2jmalvarez/opencode-editor@0.1.1`. No usar solo el nombre como entrada: `options.localRoot` es obligatorio. OpenCode instala el paquete; no se necesita un `postinstall` ni compilar desde el checkout para usar el paquete publicado.
 
 `localRoot` es obligatorio: autoriza acceso **al filesystem local de la terminal**, no al del servidor. El MVP admite una raíz por configuración; únicamente integra sesiones cuya `location.directory` coincide con esa raíz. No utilizarlo para editar un proyecto remoto, aunque su ruta textual coincida con una carpeta local. El acceso remoto requiere un backend RPC y no forma parte de este MVP.
 
@@ -126,17 +126,17 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.1.0
+bun run plugin:preflight opencode-editor-v0.1.1
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.0.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.1.tgz
 ```
 
-Usa el tarball real extraído fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.1.0` en lugar del tarball.
+El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.1.1` en lugar del tarball.
 
 ## Publicaciones
 
