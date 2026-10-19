@@ -1,10 +1,15 @@
-import { expect, test } from "bun:test"
+import { afterEach, beforeEach, expect, test } from "bun:test"
 import { mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createTextFile, ExternalFileChangedError, readTextFile } from "../src/documents/files"
 import type { GitDiff } from "../src/documents/types"
 import { useDocuments } from "../src/documents/useDocuments"
+import { configureLanguage, language } from "../src/localization"
+
+let previousLanguage = language()
+beforeEach(() => { previousLanguage = language(); configureLanguage("es") })
+afterEach(() => configureLanguage(previousLanguage))
 
 function deferred<T>() {
   let resolve!: (value: T) => void

@@ -1,10 +1,15 @@
-import { afterAll, expect, test } from "bun:test"
+import { afterAll, afterEach, beforeEach, expect, test } from "bun:test"
 import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createRoot } from "solid-js"
 import { readGitBranches, readGitCommitFiles, readGitHistoricalDiff, readGitHistory } from "../src/git/history"
 import { useGit } from "../src/git/useGit"
+import { configureLanguage, language } from "../src/localization"
+
+let previousLanguage = language()
+beforeEach(() => { previousLanguage = language(); configureLanguage("es") })
+afterEach(() => configureLanguage(previousLanguage))
 
 const roots: string[] = []
 afterAll(async () => { await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))) })
