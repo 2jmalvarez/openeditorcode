@@ -3,7 +3,7 @@
 - Este paquete es una integración opcional. No importar su código desde `src/` ni modificar OpenCode.
 - Usar únicamente APIs públicas V2 y tipos reales de `@opencode/plugin/tui/context`.
 - Nunca crear/destruir el renderer anfitrión ni llamar `process.exit` desde el plugin.
-- `localRoot` requiere opt-in explícito. No inferir acceso local a partir de una ubicación remota.
+- Por defecto resolver la carpeta de la sesión activa (en inicio, location/default) y confirmar acceso al disco local una vez por carpeta/TUI antes de leerla. `localRoot` es un override opcional con opt-in explícito. No inferir acceso local a partir de una ubicación remota; workspaces remotos requieren override explícito. Mantener un controller independiente por raíz, sin mezclar documentos ni borradores.
 - Los documentos viven fuera de las rutas JSX. Desmontar una vista no equivale a cerrar archivos.
 - Usar los helpers de `src/documents/files.ts` para archivos del proyecto. Guardar borradores mediante storage del anfitrión, sin escribirlos en el proyecto.
 - El enrutamiento de teclas del editor vive en `workbench/useKeyboardShortcuts.ts`; las teclas del árbol se limitan al renderable enfocado. No añadir listeners globales con `useKeyboard`.
