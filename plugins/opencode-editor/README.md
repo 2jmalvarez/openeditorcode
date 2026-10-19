@@ -2,8 +2,8 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: `@2jmalvarez/opencode-editor`, versión correctiva preparada `0.1.1`.
-**`0.1.0` se publicó, pero no superó la instalación por nombre debido a un conflicto de peers. Usar `0.1.1` solo después de confirmar su publicación e instalación.** No confundir un build o workflow con un release verificado.
+Paquete público independiente: [`@2jmalvarez/opencode-editor@0.1.1`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.1).
+**Publicación e instalación verificadas:** [GitHub Actions/OIDC](https://github.com/2jmalvarez/openeditorcode/actions/runs/39194432774), integridad/provenance y carga por nombre en OpenCode 2.0.26/2.0.27. `0.1.0` se publicó, pero falló la instalación por un conflicto de peers: usar `0.1.1`.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -17,7 +17,9 @@ Paquete independiente: `@2jmalvarez/opencode-editor`, versión correctiva prepar
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
 
-## Construcción
+## Construcción opcional desde código
+
+No es necesaria para instalar el paquete público desde OpenCode. Solo para la alternativa de carga por carpeta local.
 
 Desde la raíz de `openeditorcode`:
 
@@ -39,7 +41,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "C:/ruta/openeditorcode/plugins/opencode-editor",
+      "package": "@2jmalvarez/opencode-editor@0.1.1",
       "options": {
         "localRoot": "C:/ruta/mi-proyecto",
          "toggleBinding": "f6",
@@ -51,13 +53,13 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 }
 ```
 
-En Linux usar rutas absolutas como `/home/usuario/openeditorcode/plugins/opencode-editor` y `/home/usuario/mi-proyecto`.
+En Linux usar una `localRoot` absoluta como `/home/usuario/mi-proyecto`.
 
-Una vez confirmada la publicación, el mismo objeto permite instalar por nombre cambiando solamente `package` a `@2jmalvarez/opencode-editor@0.1.1`. No usar solo el nombre como entrada: `options.localRoot` es obligatorio. OpenCode instala el paquete; no se necesita un `postinstall` ni compilar desde el checkout para usar el paquete publicado.
+No usar solo el nombre como entrada: `options.localRoot` es obligatorio. OpenCode instala el paquete; no se necesita un `postinstall` ni compilar desde el checkout. Para la alternativa local, compilar y reemplazar únicamente `package` por la ruta absoluta de `plugins/opencode-editor` dentro del checkout. No cargar simultáneamente las entradas npm y local del mismo plugin.
 
 `localRoot` es obligatorio: autoriza acceso **al filesystem local de la terminal**, no al del servidor. El MVP admite una raíz por configuración; únicamente integra sesiones cuya `location.directory` coincide con esa raíz. No utilizarlo para editar un proyecto remoto, aunque su ruta textual coincida con una carpeta local. El acceso remoto requiere un backend RPC y no forma parte de este MVP.
 
-Volver a cargar el plugin o reiniciar la TUI tras cambiar la configuración. El build debe existir antes de cargarlo.
+Volver a cargar el plugin o reiniciar la TUI tras cambiar la configuración. El build debe existir antes de cargar la alternativa por carpeta local.
 
 ## Uso
 

@@ -4,7 +4,7 @@ Este procedimiento publica únicamente `@2jmalvarez/opencode-editor`. No cambiar
 
 ## Bootstrap inicial (intervención humana)
 
-Estado: `0.1.0` fue publicada por OIDC, pero la prueba por nombre falló por resolución de peers; no es un release verificado. La corrección `0.1.1` fue autorizada por el titular. No anunciar instalación pública de la corrección hasta comprobar Actions, registro y smoke por nombre. No modificar la versión ni el tag publicados de `0.1.0`.
+Estado confirmado el 2026-10-19: **`0.1.1` publicada por OIDC y verificada**, commit `a12887948ddcb4582341a95dd7326a4483ac0a4c`, tag `opencode-editor-v0.1.1`, [run exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39194432774). Integridad/provenance y smoke por nombre pasaron en Linux y en Windows con OpenCode 2.0.26/2.0.27. `0.1.0` fue publicada pero falló resolución de peers; no modificar sus contenidos ni su tag. La corrección `0.1.1` fue autorizada por el titular. Para futuras versiones, no anunciar éxito antes de completar las mismas verificaciones.
 
 Regresión obligatoria desde `0.1.1`: `plugin:pack:check` instala el artefacto con npm y Arborist, sin `--legacy-peer-deps`, y exige que el árbol solo contenga el plugin. La API `@opencode/plugin` permanece externa y como dependencia de desarrollo de la raíz, no como peer publicado: el peer opcional de `0.1.0` hacía que Arborist seleccionase transitivamente OpenTUI nuevo e incompatible. OpenTUI/Solid conservan sus peers opcionales; la compatibilidad de OpenCode se documenta en `engines.opencode`. El smoke de tarball carga el paquete instalado real. El verificador de registro espera hasta tres minutos por versión/provenance con revalidación de caché.
 
