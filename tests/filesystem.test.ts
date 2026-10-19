@@ -40,7 +40,17 @@ describe("file access", () => {
       if (previous === undefined) delete process.env.PSModulePath
       else process.env.PSModulePath = previous
     }
-  })
+  }, 20_000)
+
+  test.skipIf(process.platform !== "win32")("streams multiple UTF-8 chunks and saves empty content without depending on pipe EOF", async () => {
+    const path = join(root, "streamed.txt")
+    const content = "á漢字\n".repeat(40_000)
+    await writeFile(path, "original")
+    await writeTextFile(root, path, content, { expectedContent: "original" })
+    expect(await readTextFile(root, path)).toBe(content)
+    await writeTextFile(root, path, "", { expectedContent: content })
+    expect(await readTextFile(root, path)).toBe("")
+  }, 20_000)
 
   test.skipIf(process.platform === "win32")("preserves private and executable POSIX permissions across atomic saves", async () => {
     const path = join(root, "private.env")

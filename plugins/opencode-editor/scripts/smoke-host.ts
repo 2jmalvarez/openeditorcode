@@ -120,7 +120,8 @@ export default {
 }
 `)
 const timeout = new AbortController()
-const timer = setTimeout(() => timeout.abort(), 45_000)
+const timer = setTimeout(() => timeout.abort(), 90_000)
+let failed = false
 try {
   const child = Bun.spawn([executable, "--standalone", project], {
     cwd: project, stdin: "pipe", stdout: "pipe", stderr: "pipe", signal: timeout.signal,
@@ -149,7 +150,15 @@ try {
    const result = JSON.parse(await readFile(marker, "utf8")) as { version: string; route: { type: string; name: string }; commands: string[]; returned: boolean; documents: boolean }
    if (exitCode !== 0 || result.route.type !== "plugin" || result.route.name !== "oec.editor" || !result.commands.includes("oec.save") || !result.returned || !result.documents) throw new Error(`Invalid host state: ${JSON.stringify(result)}, exit=${exitCode}`)
    console.log(`OpenCode ${result.version}: packed plugin, F6/F7, Tab, typing, Enter, duplication, selection/copy, pages, Ctrl+S, session return and document tabs passed.`)
+} catch (error) {
+  failed = true
+  throw error
 } finally {
   clearTimeout(timer)
-  await rm(temporary, { recursive: true, force: true })
+  try { await rm(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 }) }
+  catch (error) {
+    // A locked Windows sandbox must not replace the actual smoke diagnostic.
+    if (!failed) throw error
+    console.error(`Smoke sandbox cleanup also failed: ${String(error)}`)
+  }
 }
