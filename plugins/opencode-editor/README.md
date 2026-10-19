@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: `@2jmalvarez/opencode-editor`, versión `0.1.2` preparada para publicación por GitHub Actions/OIDC. Confirmar workflow, registro e instalación antes de anunciar el release. La última publicación verificada es [0.1.1](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.1); `0.1.0` tuvo un conflicto de peers.
+Paquete público independiente: [`@2jmalvarez/opencode-editor@0.1.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.2). [Publicación por GitHub Actions/OIDC verificada](https://github.com/2jmalvarez/openeditorcode/actions/runs/39198286708), con integridad/provenance e instalación por nombre en Linux y Windows; carpeta automática confirmada en OpenCode 2.0.26/2.0.27. `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -38,7 +38,7 @@ Probado con OpenCode **2.0.26 y 2.0.27**. Runtime Bun **1.3.14+**; compatibilida
 
 El plugin toma automáticamente la carpeta de la sesión activa de OpenCode; desde inicio usa `context.location` o la ubicación predeterminada del anfitrión. No usa la carpeta de instalación del plugin ni el directorio del servicio. Al cambiar de proyecto conserva documentos y borradores separados por raíz; volver al mismo proyecto recupera sus pestañas.
 
-Una vez confirmada la publicación, añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, preservando sus demás valores. No existe `cli.json` de proyecto. No se necesita clonar OEC ni compilar:
+Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, preservando sus demás valores. No existe `cli.json` de proyecto. No se necesita clonar OEC ni compilar:
 
 ```jsonc
 {

@@ -59,7 +59,7 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
-Candidata 0.1.2: carpeta automática por sesión con confirmación de acceso local y controllers independientes por raíz; `localRoot` pasa a ser override opcional. `Ctrl+A` tiene comando de paleta y pruebas de scope. Antes de publicar ejecutar ambos smokes, con override y con `--auto-root`; este último omite `localRoot` y confirma mediante teclado. No anunciar éxito hasta verificar la instalación por nombre de la nueva versión.
+Release 0.1.2 confirmada el 2026-10-19, commit `4ec990107c3c405bee4e8f1d38080fc171fd5495`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39198286708): carpeta automática por sesión con confirmación de acceso local y controllers independientes por raíz; `localRoot` es override opcional. `Ctrl+A` tiene comando de paleta y pruebas de scope. Pasaron registro/provenance, instalación por nombre y ambos smokes (override y `--auto-root`), también en Linux. Para futuras versiones ejecutar ambos antes y después de publicar; `--auto-root` omite `localRoot` y confirma mediante teclado.
 
 1. Cambiar **solo** `plugins/opencode-editor/package.json:version`. Actualizar README/notas relacionadas; lockfile solo si cambian dependencias (este plugin no es un workspace instalado en el lock raíz).
 2. Desde la raíz ejecutar, reemplazando `<VERSION>` y la ruta del host:
