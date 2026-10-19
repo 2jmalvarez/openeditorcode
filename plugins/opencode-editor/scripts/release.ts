@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { mkdir, mkdtemp } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { builtinModules } from "node:module"
-import { join, resolve } from "node:path"
+import { join, resolve, win32 } from "node:path"
 import ts from "typescript"
 
 export const directory = resolve(import.meta.dir, "..")
@@ -19,8 +19,14 @@ export async function temporary(prefix: string) {
   return mkdtemp(join(base, prefix))
 }
 
+export function releaseCommand(args: string[], platform: NodeJS.Platform = process.platform, systemRoot = process.env.SystemRoot ?? "C:\\Windows") {
+  // Git Bash puts GNU tar ahead of Windows tar. GNU tar treats D:\\... as a
+  // remote archive (host D), so never resolve this executable through PATH.
+  return platform === "win32" && args[0] === "tar" ? [win32.join(systemRoot, "System32", "tar.exe"), ...args.slice(1)] : args
+}
+
 export async function command(args: string[], cwd = root) {
-  const child = Bun.spawn(args, { cwd, stdout: "pipe", stderr: "pipe" })
+  const child = Bun.spawn(releaseCommand(args), { cwd, stdout: "pipe", stderr: "pipe" })
   const [stdout, stderr, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
   if (code !== 0) throw new Error(`${args[0]} failed (${code}): ${stderr}\n${stdout}`)
   return stdout.trim()

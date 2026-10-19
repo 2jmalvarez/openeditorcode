@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test"
-import { validateBundle, validateManifest, validateTag } from "../scripts/release"
+import { releaseCommand, validateBundle, validateManifest, validateTag } from "../scripts/release"
 import manifest from "../package.json"
 
 describe("plugin release boundaries", () => {
+  test("Windows extraction cannot select Git Bash tar through PATH", () => {
+    const args = ["tar", "-xzf", "D:\\a\\host.tgz", "-C", "D:\\a\\host"]
+    expect(releaseCommand(args, "win32", "C:\\Windows")).toEqual(["C:\\Windows\\System32\\tar.exe", ...args.slice(1)])
+    expect(releaseCommand(args, "win32", "D:\\Windows")[0]).toBe("D:\\Windows\\System32\\tar.exe")
+    expect(releaseCommand(args, "linux")).toEqual(args)
+    expect(releaseCommand(["git", "status"], "win32")).toEqual(["git", "status"])
+  })
   test("independent tags and prereleases", () => {
     expect(validateTag("opencode-editor-v0.1.0", "0.1.0")).toBe("latest")
     expect(validateTag("opencode-editor-v0.1.1-beta.1", "0.1.1-beta.1")).toBe("next")

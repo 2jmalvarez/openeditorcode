@@ -93,7 +93,7 @@ bun run plugin:smoke /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSIO
 
 - Tags anotados `opencode-editor-v0.1.1-beta.1` publican con dist-tag **next**, nunca latest. SemVer estable publica con latest. No se soporta metadata `+build` en tags de release.
 - No hay `workflow_dispatch`: se reintenta el mismo run con `gh run rerun <RUN_ID> --failed`, sin permitir publicar una revisión arbitraria.
-- Concurrencia por tag, sin cancelar un publish activo. No sobrescribir tags existentes.
+- Concurrencia por tag, sin cancelar un publish activo. No sobrescribir tags de versiones publicadas. Si el primer intento falla antes del job publish y hay que corregir infraestructura, solo reubicar el tag fallido dentro de la autorización de release después de confirmar HTTP 404 de esa versión, ausencia de GitHub Release, finalización de todos los runs previos y valor exacto del tag remoto. Conservar el commit anterior y el run como evidencia; usar un tag anotado y push con `--force-with-lease=refs/tags/<TAG>:<OBJETO_ANTERIOR>`, nunca force incondicional. Si alguna comprobación no coincide, detenerse.
 - El registro solo se considera ausente con HTTP 404; fallos de red/auth/5xx bloquean. Una versión existente no equivale a éxito: debe coincidir versión, commit, SRI y provenance. Si todo coincide, un retry verifica sin republicar y repite la instalación por nombre.
 - Las versiones npm son inmutables. Si `0.1.0` salió defectuosa, informar y obtener autorización para incrementar; nunca republicar ni borrar a ciegas.
 - Si falla bootstrap, OIDC o permisos, detenerse y pedir al titular la acción precisa. Un workflow creado o un paquete stageado **no** son un release exitoso.
