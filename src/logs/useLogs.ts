@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js"
 import { formatNumber, t } from "../localization"
+import { redactSecrets } from "./redact"
 
 export type LogEntry = {
   id: number
@@ -16,7 +17,7 @@ const MAX_ENTRIES = 200
 const MAX_DETAILS = 12_000
 
 function sanitize(text: string): string {
-  return text.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").slice(0, MAX_DETAILS)
+  return redactSecrets(text.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")).slice(0, MAX_DETAILS)
 }
 
 export function useLogs() {
@@ -25,7 +26,7 @@ export function useLogs() {
   let nextId = 1
 
   function report(failure: LogFailure) {
-    const entry = { ...failure, id: nextId++, timestamp: new Date(), details: sanitize(failure.details) }
+    const entry = { source: sanitize(failure.source), operation: sanitize(failure.operation), summary: sanitize(failure.summary), id: nextId++, timestamp: new Date(), details: sanitize(failure.details) }
     setEntries((current) => [...current, entry].slice(-MAX_ENTRIES))
     setUnreadCount((count) => count + 1)
   }

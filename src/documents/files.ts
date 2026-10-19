@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto"
-import { lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises"
+import { chmod, lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
 import { t } from "../localization"
+import { writeAndReplaceWindowsFile } from "./windows-save"
 
 export const MAX_FILE_BYTES = 2 * 1024 * 1024
 export const MAX_IMAGE_BYTES = 16 * 1024 * 1024
@@ -114,18 +115,26 @@ export async function writeTextFile(root: string, filePath: string, content: str
   await mkdir(dirname(safePath), { recursive: true })
   await ensureParentPhysicallyInsideRoot(root, safePath)
 
+  let mode = 0o600
+  try { mode = (await stat(safePath)).mode & 0o777 } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+  }
   let temporaryPath = ""
   try {
     while (true) {
       temporaryPath = `${safePath}.oec-${randomBytes(12).toString("hex")}.tmp`
       try {
-        await writeFile(temporaryPath, content, { encoding: "utf8", flag: "wx" })
+        await writeFile(temporaryPath, process.platform === "win32" ? "" : content, { encoding: "utf8", flag: "wx", mode: 0o600 })
         break
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error
       }
     }
-    await rename(temporaryPath, safePath)
+    if (process.platform === "win32") await writeAndReplaceWindowsFile(temporaryPath, safePath, content)
+    else {
+      await chmod(temporaryPath, mode)
+      await rename(temporaryPath, safePath)
+    }
   } finally {
     if (temporaryPath !== "") await rm(temporaryPath, { force: true }).catch(() => undefined)
   }
@@ -136,7 +145,7 @@ export async function createTextFile(root: string, filePath: string): Promise<vo
   await mkdir(dirname(safePath), { recursive: true })
   await ensureParentPhysicallyInsideRoot(root, safePath)
   try {
-    await writeFile(safePath, "", { encoding: "utf8", flag: "wx" })
+    await writeFile(safePath, "", { encoding: "utf8", flag: "wx", mode: 0o600 })
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       throw new FileAccessError(t("files.exists"))

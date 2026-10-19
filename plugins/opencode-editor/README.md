@@ -8,6 +8,8 @@ Paquete público independiente: [`@2jmalvarez/opencode-editor@0.1.2`](https://ww
 ## Funciones
 
 - Explorador de archivos en el panel derecho de la conversación, junto a las contribuciones existentes.
+- Buscador rápido encima de Files, por nombre o ruta y sin distinguir mayúsculas; incluye archivos de carpetas cerradas y respeta `.gitignore` y la exclusión de `.git`.
+- Sección **CHANGES** debajo de Files: archivos añadidos, modificados y eliminados según OpenCode, con conteo de líneas y actualización automática.
 - Editor en una ruta propia, con explorador derecho y pestañas de archivos independientes de las pestañas de sesiones.
 - Alternancia entre editor y conversación sin enviar prompts ni interrumpir al agente.
 - Navegación con teclado y ratón; árbol virtualizado que mantiene visible la selección.
@@ -62,11 +64,21 @@ Volver a cargar el plugin o reiniciar la TUI tras cambiar la configuración. El 
 
 1. Abrir una sesión en el proyecto deseado. Desde 0.1.2 se detecta automáticamente; confirmar acceso al disco local cuando se solicite.
 2. `F7` (con la configuración del ejemplo) o **OEC: show/hide session files** muestra el explorador en la conversación.
-3. Flechas navegan el árbol; `Enter` expande una carpeta o abre un archivo en el editor. Un clic también lo abre.
+3. Con foco en el árbol, las flechas navegan; `Enter` expande una carpeta o abre un archivo en el editor. Un clic también lo abre. El listado puede permanecer abierto mientras se escribe en el chat: no recupera el foco automáticamente.
 4. `F6` (con la configuración del ejemplo) o **OEC: toggle conversation/editor** alterna entre ambas vistas.
 5. `Ctrl+S` guarda; `Ctrl+W` cierra el archivo activo, con confirmación si está modificado.
 
 Si OpenCode oculta su sidebar por falta de ancho, usar el comando de paleta **OEC: toggle conversation/editor**: el editor tiene su propio explorador. El plugin no fuerza el tamaño o la visibilidad del sidebar del anfitrión.
+
+### Búsqueda rápida y cambios en la conversación
+
+- Clic en **Search files…**, o `/` con foco en el árbol, para buscar. `↑`/`↓` eligen un resultado y `Enter` o clic lo abren en el editor. Se muestran hasta 80 resultados, con rutas relativas; el índice tiene un límite de 50.000 entradas.
+- `Esc` limpia la búsqueda y vuelve al árbol; con el input vacío, devuelve el foco a la conversación. `F5` actualiza el índice. Los eventos de archivos invalidan la caché mientras el panel está visible.
+- `Tab` desde el árbol enfoca **CHANGES**; `Shift+Tab` desde cambios vuelve al árbol. `Esc` devuelve el foco a la conversación.
+- **CHANGES** muestra el estado del proyecto, no solamente los archivos tocados por la sesión. Se actualiza con eventos del anfitrión y, como respaldo, cada tres segundos mientras Files está visible. `F5` fuerza una actualización. Ocultar el panel elimina sus suscripciones y temporizadores.
+- Clic o `Enter` en un archivo cambiado abre el visor nativo de OpenCode mediante `diff.open`. **Se abre la vista general**: la API pública no documenta un parámetro para seleccionar directamente ese archivo. El alcance y la rama base del visor siguen siendo los elegidos en OpenCode.
+- La API pública actual informa añadido/modificado/eliminado y líneas añadidas/eliminadas; no expone separación staged/unstaged ni un estado específico de renombrado. El plugin no ejecuta mutaciones Git. Los mappings de workspaces remotos no consultan cambios del servidor como si fueran del disco local.
+- La confirmación inicial de acceso local permanece abierta al soltar el mouse; solo una respuesta explícita permite leer el proyecto.
 
 | Acción | Atajo en el editor |
 | --- | --- |
@@ -105,12 +117,14 @@ Se recomiendan **F6** (conversación/editor) y **F7** (archivos), configurados e
 - **OEC: reload file from disk** permite recargar tras confirmar el descarte de ediciones locales.
 - Los archivos eliminados no se recrean automáticamente al guardar.
 - Los borradores guardan contenido y versión base en el storage durable del anfitrión, **fuera del proyecto**. Pueden contener código sensible: no son un almacén cifrado propio.
+- En el código actual, `options.drafts.enabled: false` desactiva nuevas copias; `options.drafts.exclude` admite exclusiones adicionales tipo gitignore. `.env`, claves/certificados, credenciales y configuraciones de autenticación habituales se excluyen por defecto. Esto no detecta secretos dentro de archivos con otros nombres.
+- Para borrar copias anteriores, usar **OEC: delete stored drafts for this project** y confirmar. No borra archivos ni ediciones abiertas; cambiar exclusiones/desactivar persistencia no elimina trabajo antiguo silenciosamente. Ver [seguridad y límites del almacenamiento](https://github.com/2jmalvarez/openeditorcode/blob/main/docs/security.md). Requiere una versión que incluya estos cambios; no modifica paquetes ya publicados.
 - Cada instancia/generación tiene una entrada separada para no sobrescribir borradores de otra terminal. Al abrir el editor se pueden recuperar entradas anteriores; cancelar conserva esas entradas.
 - La persistencia es diferida (300 ms, con un máximo de dos segundos durante edición continua), y se solicita también al cambiar de vista. Una terminación abrupta puede perder los últimos cambios aún no persistidos.
 
 ## Límites del MVP
 
-- Solo proyectos locales; sin creación/renombrado/eliminación, búsqueda global, Git, formateo ni previews. Markdown se abre como texto editable.
+- Solo proyectos locales; sin creación/renombrado/eliminación, búsqueda global de contenido, mutaciones Git, formateo ni previews. Markdown se abre como texto editable. La sección de cambios usa la API VCS y el visor nativo de OpenCode.
 - Pestañas de documentos propias, no mezcladas con las pestañas nativas de sesiones.
 - Hasta 64 archivos abiertos; límites y validación segura de OEC: 2 MiB al leer/guardar, rechazo de binarios/UTF-8 inválido y protección de rutas y symlinks.
 - Borradores limitados a 16 MiB por snapshot. Si se excede o falla el storage, se muestra un error; guardar archivos antes de salir.
@@ -135,9 +149,13 @@ Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el 
 bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.2.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
 bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.1.2.tgz --auto-root
+# Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
 ```
 
 El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.1.1` en lugar del tarball.
+
+`smoke-sidebar.ts` valida consentimiento con mouse down/up, escritura en el chat con Files abierto, F7/Esc, búsqueda en carpetas cerradas, apertura del diff nativo y actualización de cambios. Usa el bundle del checkout en una instancia privada con un repositorio/sesión/configuración temporales; no envía el texto de prueba como prompt ni modifica la instalación o configuración del usuario.
 
 ## Publicaciones
 

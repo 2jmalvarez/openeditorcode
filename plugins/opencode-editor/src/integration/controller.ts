@@ -3,14 +3,18 @@ import { randomUUID } from "node:crypto"
 import { resolve } from "node:path"
 import { ensurePhysicallyInsideRoot } from "../../../../src/documents/files"
 import { Workspace, isDirty, validateSnapshot, type DraftSnapshot } from "../documents/workspace"
-import { DraftWriter, draftKey } from "../documents/drafts"
+import { DraftWriter, draftFilter, draftKey } from "../documents/drafts"
 import { TreeState } from "../explorer/tree-state"
+import { FileSearch } from "../explorer/file-search"
+import { ChangesState } from "../changes/state"
 import type { EditorOptions } from "./options"
 
 export const EDITOR_ROUTE = "oec.editor"
 export class EditorController {
   readonly workspace: Workspace
   readonly tree: TreeState
+  readonly fileSearch: FileSearch
+  readonly changes: ChangesState
   readonly drafts: DraftWriter
   private origin: string | undefined
   private disposed = false
@@ -19,6 +23,7 @@ export class EditorController {
   private navigation = 0
   private modalCount = 0
   private listeners = new Set<() => void>()
+  private clearArchive: () => Promise<void>
   status = "OEC · Local files"
   filesVisible = false
   filesFocused = false
@@ -28,39 +33,59 @@ export class EditorController {
   constructor(readonly context: Context, readonly options: EditorOptions) {
     this.workspace = new Workspace(options.localRoot)
     this.tree = new TreeState(this.workspace.root)
+    this.fileSearch = new FileSearch(this.workspace.root)
+    this.changes = new ChangesState(context, this.workspace.root)
     // A new generation gets a new archive slot. Declining recovery must never overwrite an old draft.
     const instanceID = randomUUID()
     const key = draftKey(this.workspace.root, "recovery")
     const [archive, updateArchive] = context.storage.store(key, { initial: { instances: {} as Record<string, DraftSnapshot> } })
+    const include = draftFilter(this.workspace.root, options.drafts.enabled, options.drafts.exclude)
+    const filtered = (snapshot: DraftSnapshot): DraftSnapshot => ({ ...snapshot, activePath: snapshot.activePath && include(snapshot.activePath) ? snapshot.activePath : undefined, documents: snapshot.documents.filter((document) => include(document.path)) })
+    this.clearArchive = async () => { await updateArchive((draft) => { draft.instances = {} }) }
     this.recover = async () => {
-      const candidates = Object.entries(archive.instances).filter(([, snapshot]) => validateSnapshot(this.workspace.root, snapshot)?.documents.length)
+      if (!options.drafts.enabled) return
+      // A policy change must not silently discard older user work. Excluded
+      // legacy copies remain until the explicit, confirmed delete command.
+      const candidates = Object.entries(archive.instances).flatMap(([id, value]) => {
+        const valid = validateSnapshot(this.workspace.root, value)
+        const safe = valid && filtered(valid)
+        return safe?.documents.length ? [[id, safe] as const] : []
+      })
       if (!candidates.length) return
       const selected = await this.dialog(() => context.ui.dialog.select({
         title: "OEC · Recover unsaved files",
         options: candidates.map(([id, snapshot]) => ({ title: `${snapshot.documents.length} unsaved file(s) · ${id.slice(0, 8)}`, value: id })),
       }))
       if (!selected || this.disposed) return
-      const snapshot = archive.instances[selected]
+      const snapshot = validateSnapshot(this.workspace.root, archive.instances[selected])
       if (!snapshot) return
-      const count = this.workspace.restore(snapshot)
+      const count = this.workspace.restore(filtered(snapshot))
       if (count) this.setStatus(`Recovered ${count} file(s). Review and save explicitly.`)
       // Do not delete the source recovery entry until this instance has durably copied it.
-      const current = this.workspace.snapshot()
+      const current = this.workspace.snapshot(include)
       await updateArchive((draft) => {
         draft.instances[instanceID] = current
-        delete draft.instances[selected]
+        const excluded = snapshot.documents.filter((document) => !include(document.path))
+        if (excluded.length) draft.instances[selected] = { ...snapshot, documents: excluded }
+        else delete draft.instances[selected]
       })
     }
     this.drafts = new DraftWriter(this.workspace, async (snapshot) => {
-      if (!this.recovered) return
+      if (!this.recovered || !options.drafts.enabled) return
       await updateArchive((draft) => {
         if (snapshot.documents.length) draft.instances[instanceID] = snapshot
         else delete draft.instances[instanceID]
       })
-    }, (error) => this.report(error))
+    }, (error) => this.report(error), include)
   }
 
   private recover: () => Promise<void>
+  async clearStoredDrafts() {
+    if (!await this.dialog(() => this.context.ui.dialog.confirm({ title: "OEC · Delete stored drafts?", message: "Delete recovery copies for this project, including other terminal generations? Open documents and project files are not changed. Unsaved open documents may generate new drafts." }))) return
+    await this.drafts.flush()
+    await this.clearArchive()
+    this.setStatus("Stored drafts deleted. Open documents were not changed.")
+  }
   get modal() { return this.modalCount > 0 }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
@@ -179,6 +204,6 @@ export class EditorController {
     this.capture?.()
     this.disposed = true
     await this.drafts.dispose()
-    this.workspace.dispose(); this.tree.dispose(); this.listeners.clear()
+    this.workspace.dispose(); this.tree.dispose(); this.fileSearch.dispose(); this.changes.dispose(); this.listeners.clear()
   }
 }

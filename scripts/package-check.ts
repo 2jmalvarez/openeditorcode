@@ -1,16 +1,10 @@
 import { join } from "node:path"
+import { packagePolicies, validatePackageFiles, type PackFile } from "./package-policy"
 
-type PackFile = { path: string; size: number }
 type PackResult = { name: string; version: string; files: PackFile[] }
 
-const packages = [
-  { directory: ".", required: ["bin/oec.js", "bin/launcher.js", "bin/postinstall.js", "docs/manual.md", "docs/oec-config.schema.json", "man/oec.1", "man/openeditorcode.1", "LICENSE", "README.md", "README.es.md", "package.json"] },
-  { directory: "packages/oec-win32-x64", required: ["bin/oec.exe", "LICENSE", "README.md", "package.json"] },
-  { directory: "packages/oec-linux-x64", required: ["bin/oec", "LICENSE", "README.md", "package.json"] },
-]
-
-for (const packageToCheck of packages) {
-  const result = Bun.spawnSync(["npm", "pack", "--dry-run", "--json"], {
+for (const packageToCheck of packagePolicies) {
+  const result = Bun.spawnSync(["npm", "pack", "--dry-run", "--json", "--ignore-scripts"], {
     cwd: join(import.meta.dir, "..", packageToCheck.directory),
     stdout: "pipe",
     stderr: "inherit",
@@ -31,13 +25,7 @@ for (const packageToCheck of packages) {
     process.exit(1)
   }
 
-  const files = new Map(packed.files.map((file) => [file.path, file.size]))
-  for (const required of packageToCheck.required) {
-    if (!files.get(required)) {
-      console.error(`Package check failed: ${packed.name} is missing non-empty ${required}.`)
-      process.exit(1)
-    }
-  }
+  validatePackageFiles(packed.files, packageToCheck.required)
 
   console.log(`Package check passed: ${packed.name}@${packed.version} (${packed.files.length} files).`)
 }

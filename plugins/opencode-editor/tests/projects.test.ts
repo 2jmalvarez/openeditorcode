@@ -111,3 +111,20 @@ test("home uses the host location, never the plugin or service working directory
     expect(f.projects.current()?.workspace.root).toBe(f.first)
   } finally { await f.cleanup() }
 })
+
+test("new Files mounts only after the host's post-confirmation focus handoff", async () => {
+  const f = await fixture()
+  let restored = false
+  const mountedAfterRestore: boolean[] = []
+  f.context.ui.dialog.confirm = async () => {
+    // The host resolves first and restores prompt focus at the end of dispatch.
+    setTimeout(() => { restored = true }, 0)
+    return true
+  }
+  const stop = f.projects.subscribe(() => { if (f.projects.forSession("session-1")) mountedAfterRestore.push(restored) })
+  try {
+    await f.projects.toggleFiles()
+    expect(mountedAfterRestore.length).toBeGreaterThan(0)
+    expect(mountedAfterRestore.every(Boolean)).toBe(true)
+  } finally { stop(); await f.cleanup() }
+})

@@ -147,9 +147,9 @@ export class Workspace {
     return true
   }
 
-  snapshot(): DraftSnapshot {
-    const documents = this.documents.filter(isDirty).map(({ path, content, savedContent, position }) => ({ path, content, savedContent, position: { ...position } }))
-    const snapshot: DraftSnapshot = { version: 1, root: this.root, activePath: this.activePath, documents }
+  snapshot(include: (path: string) => boolean = () => true): DraftSnapshot {
+    const documents = this.documents.filter((document) => isDirty(document) && include(document.path)).map(({ path, content, savedContent, position }) => ({ path, content, savedContent, position: { ...position } }))
+    const snapshot: DraftSnapshot = { version: 1, root: this.root, activePath: this.activePath && include(this.activePath) ? this.activePath : undefined, documents }
     if (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > MAX_DRAFT_BYTES) throw new Error("Draft limit (16 MiB) exceeded. Save files to protect your work.")
     return snapshot
   }

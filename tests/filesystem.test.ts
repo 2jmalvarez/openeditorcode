@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises"
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { createTextFile, ensureInsideRoot, ExternalFileChangedError, FileAccessError, MAX_FILE_BYTES, readTextFile, removeProjectEntry, renameProjectEntry, writeTextFile } from "../src/documents/files"
@@ -21,6 +21,37 @@ afterEach(async () => {
 })
 
 describe("file access", () => {
+  test.skipIf(process.platform === "win32")("preserves private and executable POSIX permissions across atomic saves", async () => {
+    const path = join(root, "private.env")
+    await writeFile(path, "old", { mode: 0o600 })
+    for (const mode of [0o600, 0o640, 0o755]) {
+      await chmod(path, mode)
+      await writeTextFile(root, path, "updated")
+      expect((await stat(path)).mode & 0o777).toBe(mode)
+    }
+    const created = join(root, "created.txt")
+    await writeTextFile(root, created, "new")
+    expect((await stat(created)).mode & 0o077).toBe(0)
+    await createTextFile(root, join(root, "empty.txt"))
+    expect((await stat(join(root, "empty.txt"))).mode & 0o077).toBe(0)
+  })
+
+  test.skipIf(process.platform !== "win32")("preserves protected Windows ACLs and treats special characters as literal paths", async () => {
+    const path = join(root, "private '& file.env")
+    await writeFile(path, "old")
+    const acl = async (protect = false) => {
+      const script = `$ErrorActionPreference='Stop'; $p=$env:OEC_ACL_TEST; ${protect ? "$a=[Security.AccessControl.FileSecurity]::new(); $a.SetAccessRuleProtection($true,$false); $a.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().User,'FullControl','Allow')); Set-Acl -LiteralPath $p -AclObject $a;" : ""} (Get-Acl -LiteralPath $p).Sddl`
+      const child = Bun.spawn(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], { env: { ...process.env, OEC_ACL_TEST: path }, stdout: "pipe", stderr: "pipe" })
+      const [code, output, error] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()])
+      if (code) throw new Error(error)
+      return output.trim()
+    }
+    const original = await acl(true)
+    await writeTextFile(root, path, "updated\nUTF-8: á漢字", { expectedContent: "old" })
+    expect(await readTextFile(root, path)).toBe("updated\nUTF-8: á漢字")
+    expect(await acl()).toBe(original)
+  }, 15_000)
+
   test("identifies files affected by an exact entry or directory deletion", () => {
     expect(pathIsAffected(join(root, "notes.txt"), join(root, "notes.txt"), false)).toBe(true)
     expect(pathIsAffected(join(root, "folder"), join(root, "folder", "notes.txt"), true)).toBe(true)

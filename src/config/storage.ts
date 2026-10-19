@@ -22,7 +22,7 @@ export async function atomicWrite(file: string, content: string): Promise<void> 
   await mkdir(dirname(file), { recursive: true })
   const temporary = `${file}.oec-${randomBytes(12).toString("hex")}.tmp`
   try {
-    await writeFile(temporary, content, { encoding: "utf8", flag: "wx" })
+    await writeFile(temporary, content, { encoding: "utf8", flag: "wx", mode: 0o600 })
     await rename(temporary, file)
   } finally { await rm(temporary, { force: true }).catch(() => undefined) }
 }

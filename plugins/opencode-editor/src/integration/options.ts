@@ -1,6 +1,7 @@
 import { isAbsolute, resolve } from "node:path"
 
-export type EditorPreferences = { toggleBinding: string; filesBinding: string; explorerWidth: number }
+export type DraftPreferences = { enabled: boolean; exclude: string[] }
+export type EditorPreferences = { toggleBinding: string; filesBinding: string; explorerWidth: number; drafts: DraftPreferences }
 export type EditorOptions = EditorPreferences & { localRoot: string }
 export function parseOptions(value: Readonly<Record<string, unknown>>, directory?: string): EditorOptions {
   const root = value.localRoot === undefined ? directory : value.localRoot
@@ -16,5 +17,9 @@ export function parsePreferences(value: Readonly<Record<string, unknown>>): Edit
   }
   const width = value.explorerWidth ?? 30
   if (typeof width !== "number" || !Number.isInteger(width) || width < 18 || width > 60) throw new Error("OEC: explorerWidth must be between 18 and 60")
-  return { toggleBinding: value.toggleBinding as string ?? "ctrl+alt+o", filesBinding: value.filesBinding as string ?? "ctrl+alt+j", explorerWidth: width }
+  const drafts = value.drafts ?? {}
+  if (!drafts || typeof drafts !== "object" || Array.isArray(drafts)) throw new Error("OEC: invalid drafts options")
+  const { enabled = true, exclude = [] } = drafts as Record<string, unknown>
+  if (typeof enabled !== "boolean" || !Array.isArray(exclude) || !exclude.every((pattern) => typeof pattern === "string" && pattern.trim().length > 0 && !pattern.trimStart().startsWith("!") && !/[\r\n\0]/.test(pattern))) throw new Error("OEC: invalid drafts options (exclude must contain non-negated gitignore patterns)")
+  return { toggleBinding: value.toggleBinding as string ?? "ctrl+alt+o", filesBinding: value.filesBinding as string ?? "ctrl+alt+j", explorerWidth: width, drafts: { enabled, exclude } }
 }

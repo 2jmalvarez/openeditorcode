@@ -5,7 +5,7 @@ import { virtualRange, scrollTopForSelected } from "../../../../src/explorer/vir
 import type { EditorController } from "../integration/controller"
 import { useRevision } from "../workbench/reactive"
 
-export function FilesPane(props: { controller: EditorController; focused: () => boolean; onFocus: () => void; sessionID?: string; width?: number; height?: number; keyboardMode?: string }) {
+export function FilesPane(props: { controller: EditorController; focused: () => boolean; onFocus: () => void; onBlur?: () => void; onSearch?: () => void; onNext?: () => void; onExit?: () => void; sessionID?: string; width?: number; height?: number; keyboardMode?: string }) {
   const { controller } = props
   const treeRevision = useRevision(controller.tree)
   const controllerRevision = useRevision(controller)
@@ -28,16 +28,18 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
       { bind: "return", run: () => controller.run(() => activate()) },
       { bind: "right", run: () => controller.run(() => activate()) },
       { bind: "left", run: () => controller.run(() => tree().collapse()) },
-      { bind: "f5", run: () => controller.run(() => tree().refresh()) },
-      { bind: "escape", run: () => controller.focusFiles(false) },
+      { bind: "f5", run: () => controller.run(async () => { await tree().refresh(); if (controller.fileSearch.query) await controller.fileSearch.refresh(); await controller.changes.refresh() }) },
+      { bind: "escape", run: () => { controller.focusFiles(false); props.onExit?.() } },
+      ...(props.onSearch ? [{ bind: "/", run: props.onSearch }] : []),
+      ...(props.onNext ? [{ bind: "tab", run: props.onNext }] : []),
     ] }
   })
   const measure = () => {
     if (!scroll) return
-    // Host confirmation restores the prompt after resolving its promise. Recover
-    // desired tree focus only in the input mode that requested it, not in modals.
+    // Only the editor route owns persistent focus. A sidebar must never reclaim
+    // input from the host prompt after the user focuses the conversation.
     const mode = props.keyboardMode ?? controller.filesInputMode
-    if (mode !== undefined && props.focused() && !controller.modal && controller.context.keymap.mode.current() === mode && panel && !panel.isDestroyed && !panel.focused) panel.focus()
+    if (!props.sessionID && mode !== undefined && props.focused() && !controller.modal && controller.context.keymap.mode.current() === mode && panel && !panel.isDestroyed && !panel.focused) panel.focus()
     tree().scrollTop = scroll.scrollTop
     const next = virtualRange(tree().items.length, scroll.scrollTop, scroll.viewport.height || props.height || 20)
     const current = range()
@@ -56,6 +58,7 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
   onMount(() => { controller.context.renderer.on("frame", measure); void controller.run(() => tree().refresh()) })
   onCleanup(() => { measure(); controller.context.renderer.off("frame", measure) })
   return <box id="oec-files-pane" ref={(value) => { panel = value }} focusable focused={props.focused() && !controller.modal}
+    on:blurred={props.onBlur}
     width={props.width ?? "100%"} height={props.height ?? "100%"} minHeight={0} flexShrink={0} flexDirection="column"
     border={["left"]} borderColor={controller.context.theme.text.muted} onMouseDown={props.onFocus}>
     <text fg={controller.context.theme.text.base}> FILES · ↑↓ Enter</text>

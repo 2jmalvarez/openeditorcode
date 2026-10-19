@@ -48,6 +48,10 @@ export class EditorProjects {
       try {
         if (!await this.context.ui.dialog.confirm({ title: "OEC · Open local project files?", message: `Allow access to ${options.localRoot} on THIS computer? OEC does not read the remote server's filesystem. This confirmation is remembered for this directory until the TUI exits.` })) return
       } finally { this.confirming = false; this.changed() }
+      // Let the host finish restoring its prompt after resolving the dialog.
+      // Mounting/focusing Files before that handoff loses keyboard focus; fixing
+      // it with a per-frame focus loop would instead steal input from the chat.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
     }
     if (this.disposed) return
     const controller = new EditorController(this.context, options)

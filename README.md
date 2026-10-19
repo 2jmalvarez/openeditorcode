@@ -4,6 +4,8 @@ English | [Español](README.es.md)
 
 Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
+Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
+
 Documentation for release **0.2.38**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.

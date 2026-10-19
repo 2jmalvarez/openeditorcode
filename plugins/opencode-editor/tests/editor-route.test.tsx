@@ -139,24 +139,32 @@ test("Ctrl+A selects the entire file, only in editor focus and outside find/moda
   expect(host.layers.size).toBe(0)
 })
 
-test("sidebar tree restores focus after host confirmation, but never over a modal", async () => {
+test("sidebar never reclaims focus from the chat, including after modal and state updates", async () => {
   const host = mockHost(root)
   const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
   await controller.toggleFiles()
   const setup = await testRender(() => {
     Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
-    return <SessionFiles controller={controller} sessionID="session-1" />
-  }, { width: 40, height: 20 })
+    return <box flexDirection="column"><SessionFiles controller={controller} sessionID="session-1" /><textarea id="host-chat" height={3} /></box>
+  }, { width: 70, height: 30 })
   try {
     await setup.renderOnce()
     const target = setup.renderer.root.findDescendantById("oec-files-pane")
+    const chat = setup.renderer.root.findDescendantById("host-chat") as TextareaRenderable
     expect(target).toBeDefined()
     const pop = host.context.keymap.mode.push("modal")
-    target!.blur()
+    chat.focus()
     await setup.renderOnce()
     expect(target!.focused).toBe(false)
     pop()
+    controller.setStatus("A background update must not focus Files")
     await setup.renderOnce()
-    expect(target!.focused).toBe(true)
+    expect(target!.focused).toBe(false)
+    expect(setup.renderer.currentFocusedRenderable).toBe(chat)
+    await setup.mockInput.typeText("chat with Files open")
+    await setup.renderOnce()
+    expect(chat.plainText).toBe("chat with Files open")
+    expect(controller.filesVisible).toBe(true)
+    expect(controller.filesFocused).toBe(false)
   } finally { setup.renderer.destroy(); await controller.dispose() }
 })

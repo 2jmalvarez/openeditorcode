@@ -1,5 +1,7 @@
 # openeditorcode (OEC)
 
+Seguridad y privacidad: [protecciones, borradores y limitaciones](docs/security.md).
+
 Integración opcional: [`@2jmalvarez/opencode-editor@0.1.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.2) ofrece el editor local para **OpenCode 2**, con explorador derecho y pestañas propias. No modifica OpenCode y conserva OEC autónomo. Sigue la carpeta activa del proyecto tras confirmar acceso local; `localRoot` es opcional. Consultar la [guía del plugin](plugins/opencode-editor/README.md). La instalación de `openeditorcode` no instala este plugin. Ambos editores admiten `Ctrl+A` para seleccionar todo el archivo activo.
 
 [English](README.md) | Español
