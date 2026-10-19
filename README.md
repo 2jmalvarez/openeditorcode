@@ -10,7 +10,7 @@ Documentation for release **0.2.38**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
-An optional local editor plugin for **OpenCode 2** is available as [`@2jmalvarez/opencode-editor@0.1.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.1.2). It adds a right-side explorer and document tabs without modifying OpenCode; the standalone application remains independent. The plugin now follows the active project directory after local access confirmation; `localRoot` is optional. See the [plugin configuration guide](plugins/opencode-editor/README.md). Installing `openeditorcode` does not install this plugin. Both editors support `Ctrl+A` to select the entire active file.
+An optional local editor plugin for **OpenCode 2** is available as [`@2jmalvarez/opencode-editor@0.2.1`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.1). It adds a right-side explorer and document tabs without modifying OpenCode; the standalone application remains independent. It follows the active project directory after local access confirmation; `localRoot` is optional. Version 0.2.1 adds native WSL saving from Windows, hierarchical file search in both views, scrolling selected names and `Ctrl+L` line wrapping. See the [plugin configuration guide](plugins/opencode-editor/README.md). Installing `openeditorcode` does not install this plugin. Both editors support `Ctrl+A` to select the entire active file.
 
 The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open settings** and **Open OEC manual**.
 
