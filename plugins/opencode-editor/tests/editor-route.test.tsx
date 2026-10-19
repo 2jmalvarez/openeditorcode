@@ -180,7 +180,7 @@ test("F6 has a searchable hierarchical tree, input priority, and restores the no
     return <EditorRoute controller={controller} />
   }, { width: 110, height: 20 })
   try {
-    await Bun.sleep(30); await setup.renderOnce()
+    await controller.tree.refresh(); await setup.renderOnce()
     controller.tree.select(controller.tree.items.findIndex((row) => row.name === "nested"))
     const normalSelection = controller.tree.selected
     const normalRows = controller.tree.items.map((row) => row.path)

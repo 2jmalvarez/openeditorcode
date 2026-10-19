@@ -59,6 +59,8 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
+Release **`0.2.1` en preparación**: guardado nativo WSL desde Windows, búsqueda jerárquica compartida en F6/sidebar, nombres largos con desplazamiento y `Ctrl+L` para ajuste visual. Cambios funcionales en `24cc7bc`; versión raíz y paquetes de plataforma sin cambios. Confirmar workflow, registro/provenance e instalación por nombre antes de anunciar la publicación.
+
 Release **`0.2.0` confirmada** el 2026-10-19, commit `388aa11bf00f0905a7796e3d550c0923dc2a9421`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39262390491): búsqueda rápida y cambios automáticos en el sidebar, visor nativo, foco de chat/confirmación corregidos y protección de borradores/guardado. Registro, SRI y provenance coinciden con el artefacto CI; instalación por nombre comprobada en Linux y Windows. CI cubrió OpenCode 2.0.26/2.0.27 y Windows verificó también 2.0.32. El paso de instalación por nombre necesitó reintentos por propagación/descarga de npm; esos reintentos verificaron la versión existente, sin republicarla. El tag y el paquete publicados son ahora inmutables.
 
 Intentos previos del run `39260152869` sobre `b54f34a395ed8d8df58f082fd3d633e701aff5a4`: Linux pasó, Windows detectó un bloqueo del guardado en el anfitrión aislado. La recuperación usa APIs .NET Framework sin autoload de módulos y lectura por cantidad exacta de bytes UTF-8 en vez de esperar EOF; conserva ACL y reemplazo seguro. El tag fallido solo puede reubicarse tras las comprobaciones de ausencia y lease descritas más abajo; no hubo publicación npm de ese artefacto.
@@ -121,7 +123,7 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "@2jmalvarez/opencode-editor@0.2.0",
+      "package": "@2jmalvarez/opencode-editor@0.2.1",
       "options": {
         "toggleBinding": "f6",
         "filesBinding": "f7",
