@@ -38,16 +38,36 @@ export default {
     context.renderer.copyToClipboardOSC52 = text => { copied = text; return true }
     writeFileSync(${JSON.stringify(join(temporary, "loaded.json"))}, JSON.stringify({ stage: "setup", options: context.options }))
     let sessionID
+    const waitFor = async (predicate, label) => {
+      for (let attempt = 0; attempt < 240; attempt++) {
+        if (predicate()) return
+        await new Promise(resolve => setTimeout(resolve, 250))
+      }
+      throw new Error(label)
+    }
     const start = setTimeout(async () => {
-      const session = await context.client.session.create({ location: { directory: ${JSON.stringify(project)} } })
-      sessionID = session.id
-      await context.data.session.sync(sessionID)
-      context.renderer.resize(160, 30)
-      context.ui.router.navigate({ type: "session", sessionID })
-        setTimeout(() => {
-          key("f7")
-          if (${automaticRoot}) setTimeout(() => key("return"), 500)
-        }, 500)
+      try {
+        // A slow/failed npm install must never type F7 + Enter into the chat.
+        await waitFor(() => context.keymap.commands().some(command => command.id === "oec.files"), "OEC did not load; no keys sent")
+        const session = await context.client.session.create({ location: { directory: ${JSON.stringify(project)} } })
+        sessionID = session.id
+        await context.data.session.sync(sessionID)
+        context.renderer.resize(160, 30)
+        context.ui.router.navigate({ type: "session", sessionID })
+        await waitFor(() => context.ui.router.current().type === "session" && context.keymap.commands().some(command => command.id === "oec.files"), "Session/OEC files command unavailable")
+        await new Promise(resolve => setTimeout(resolve, 250))
+        if (!context.keymap.commands().some(command => command.id === "oec.files")) throw new Error("OEC unloaded; no keys sent")
+        const mode = context.keymap.mode.current()
+        key("f7")
+        if (${automaticRoot}) {
+          await waitFor(() => context.keymap.mode.current() !== mode, "Local access confirmation did not open; Enter not sent")
+          key("return")
+        }
+      } catch (error) {
+        writeFileSync(${JSON.stringify(join(temporary, "loaded.json"))}, JSON.stringify({ stage: "startup failed", error: String(error) }))
+        clearInterval(timer)
+        context.renderer.destroy()
+      }
     }, 1500)
     let stage = 0
     let result

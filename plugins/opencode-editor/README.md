@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente, versión preparada: **`@2jmalvarez/opencode-editor@0.2.0`**. La publicación se realiza por GitHub Actions/OIDC; confirmar la disponibilidad en npm antes de instalar. La [publicación anterior `0.1.2`](https://github.com/2jmalvarez/openeditorcode/actions/runs/39198286708) tiene integridad/provenance e instalación por nombre verificadas en Linux y Windows. `0.1.0` tuvo un conflicto de peers.
+Paquete público independiente: **[`@2jmalvarez/opencode-editor@0.2.0`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.0)**. [Publicación por GitHub Actions/OIDC verificada](https://github.com/2jmalvarez/openeditorcode/actions/runs/39262390491), commit `388aa11bf00f0905a7796e3d550c0923dc2a9421`, con integridad/provenance e instalación real por nombre en Linux y Windows. Los smokes cubren editor, carpeta automática y sidebar con búsqueda/cambios. `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -39,7 +39,7 @@ bun run plugin:build
 
 El resultado es `plugins/opencode-editor/dist/tui.js`. Incluye los módulos OEC compartidos y sus dependencias de búsqueda de archivos; OpenTUI, Solid y la API de plugins se resuelven en el anfitrión.
 
-Probado con OpenCode **2.0.26 y 2.0.27**. Runtime Bun **1.3.14+**; compatibilidad de anfitrión declarada en `engines.opencode` (`>=2.0.26 <3`, metadata informativa, no certificación de todas las versiones posteriores). OpenTUI `>=0.5.17 <0.6.0` y Solid `>=1.9.0 <2.0.0` son peers opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. La API `@opencode/plugin` se declara solo como dependencia de desarrollo en la raíz de OEC: agregarla como peer del paquete publicado hace que Arborist atraviese sus peers opcionales y puede producir conflictos con versiones nuevas de OpenTUI. El loader provee esa API y el build la mantiene externa. No instalar copias privadas de OpenTUI/Solid. El OEC autónomo conserva sus dependencias actuales.
+Probado con OpenCode **2.0.26 y 2.0.27** en CI Windows/Linux, y **2.0.32** en Windows con instalación por nombre. Runtime Bun **1.3.14+**; compatibilidad de anfitrión declarada en `engines.opencode` (`>=2.0.26 <3`, metadata informativa, no certificación de todas las versiones posteriores). OpenTUI `>=0.5.17 <0.6.0` y Solid `>=1.9.0 <2.0.0` son peers opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. La API `@opencode/plugin` se declara solo como dependencia de desarrollo en la raíz de OEC: agregarla como peer del paquete publicado hace que Arborist atraviese sus peers opcionales y puede producir conflictos con versiones nuevas de OpenTUI. El loader provee esa API y el build la mantiene externa. No instalar copias privadas de OpenTUI/Solid. El OEC autónomo conserva sus dependencias actuales.
 
 ## Cargar el plugin
 
