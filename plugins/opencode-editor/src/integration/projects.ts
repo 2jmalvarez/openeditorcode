@@ -75,17 +75,23 @@ export class EditorProjects {
       this.active = controller
       if (view === "files") { controller.filesInputMode = mode; await controller.toggleFiles() }
       else if (view === "diff") { controller.filesInputMode = mode; controller.toggleDiff() }
-      else { controller.showFilesOnly(); await controller.enter(id) }
+      else await controller.enter(id)
       this.changed()
     } finally { this.pending = undefined }
   }
 
   async toggle() {
     const route = this.context.ui.router.current()
-    if (route.type === "plugin" && route.name === EDITOR_ROUTE && this.active) { this.active.showFilesOnly(); await this.active.back() }
+    if (this.modal) return
+    if (route.type === "plugin" && route.name === EDITOR_ROUTE && this.active) await this.active.back()
     else await this.activate("editor")
   }
-  async toggleFiles() { await this.activate("files") }
+  async toggleFiles() {
+    if (this.modal) return
+    const controller = this.current()
+    if (controller && this.context.ui.router.current().type === "plugin") await controller.toggleEditorFiles()
+    else await this.activate("files")
+  }
   async toggleDiff() {
     if (this.modal) return
     const controller = this.current()

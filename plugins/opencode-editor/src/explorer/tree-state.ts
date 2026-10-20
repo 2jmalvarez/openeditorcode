@@ -1,4 +1,4 @@
-import { dirname } from "node:path"
+import { dirname, relative, resolve, sep } from "node:path"
 import { createTree, type TreeItem } from "../../../../src/explorer/tree"
 import { ensurePhysicallyInsideRoot } from "../../../../src/documents/files"
 
@@ -6,6 +6,7 @@ export class TreeState {
   items: TreeItem[] = []
   selected = 0
   scrollTop = 0
+  navigation = 0
   private expanded = new Set<string>()
   private generation = 0
   private disposed = false
@@ -25,8 +26,14 @@ export class TreeState {
     this.selected = index >= 0 ? index : Math.max(0, Math.min(this.selected, items.length - 1))
     this.changed()
   }
-  select(index: number) { this.selected = Math.max(0, Math.min(index, this.items.length - 1)); this.changed() }
+  select(index: number) { this.selected = Math.max(0, Math.min(index, this.items.length - 1)); this.navigation++; this.changed() }
   move(direction: number) { this.select(this.selected + direction) }
+  remap(previous: string, next: string) {
+    this.expanded = new Set([...this.expanded].map((path) => {
+      const rest = relative(previous, path)
+      return rest === "" || (rest !== ".." && !rest.startsWith(`..${sep}`)) ? resolve(next, rest) : path
+    }))
+  }
   async toggle(index = this.selected) {
     const item = this.items[index]
     if (!item?.directory) return
@@ -34,6 +41,7 @@ export class TreeState {
     if (this.expanded.has(item.path)) this.expanded.delete(item.path)
     else this.expanded.add(item.path)
     await this.refresh()
+    this.navigation++; this.changed()
   }
   async collapse() {
     const item = this.items[this.selected]

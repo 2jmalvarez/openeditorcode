@@ -1,7 +1,7 @@
 export type PackFile = { path: string; size: number }
 
 export const packagePolicies = [
-  { directory: ".", required: ["bin/oec.js", "bin/launcher.js", "bin/postinstall.js", "docs/manual.md", "docs/security.md", "docs/oec-config.schema.json", "docs/images/welcome-screen.png", "man/oec.1", "man/openeditorcode.1", "LICENSE", "README.md", "README.es.md", "package.json"] },
+  { directory: ".", required: ["bin/oec.js", "bin/launcher.js", "bin/postinstall.js", "docs/manual.md", "docs/security.md", "docs/oec-config.schema.json", "docs/images/welcome-screen.png", "docs/images/plugin-screen-1.png", "docs/images/plugin-screen-2.png", "man/oec.1", "man/openeditorcode.1", "LICENSE", "README.md", "README.es.md", "package.json"] },
   { directory: "packages/oec-win32-x64", required: ["bin/oec.exe", "LICENSE", "README.md", "package.json"] },
   { directory: "packages/oec-linux-x64", required: ["bin/oec", "LICENSE", "README.md", "package.json"] },
 ]

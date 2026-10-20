@@ -27,11 +27,19 @@ jobs:
       - run: bun run preflight
       - run: bun run typecheck
       - run: bun run test:coverage
+      - name: Test PowerShell installer (Windows PowerShell 5.1, offline)
+        shell: powershell
+        run: ./tests/scripts/install.test.ps1
+      - name: Test PowerShell installer (PowerShell 7, offline)
+        shell: pwsh
+        run: ./tests/scripts/install.test.ps1
       - run: bun run build:windows
       - name: Verify global npm installation
         run: bun run scripts/npm-install-smoke.ts "${{ runner.temp }}"
       - run: bun run smoke:check win32-x64
       - run: bun run smoke:tui
+      - name: Verify compiled image preview at usable size
+        run: bun run scripts/image-smoke.ts
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: oec-win32-x64
@@ -63,6 +71,8 @@ jobs:
           fi
       - run: bun run smoke:check linux-x64
       - run: bun run smoke:tui
+      - name: Verify compiled image preview at usable size
+        run: bun run scripts/image-smoke.ts
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: oec-linux-x64

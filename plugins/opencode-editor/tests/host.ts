@@ -32,7 +32,7 @@ export function mockHost(root: string) {
     } },
     ui: {
       router: { current: () => route, navigate: (destination: Destination) => { destinations.push(destination); route = destination.type === "plugin" ? { ...destination, id: "oec.editor" } : destination } },
-      dialog: { select: async () => selections.shift(), confirm: async () => selections.shift() },
+      dialog: { select: async () => selections.shift(), confirm: async () => selections.shift(), prompt: async () => selections.shift(), alert: async () => {} },
       toast: { show: (options: { message: string }) => toasts.push(options.message) },
     },
     storage: {

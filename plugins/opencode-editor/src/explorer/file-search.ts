@@ -2,6 +2,7 @@ import { ensurePhysicallyInsideRoot } from "../../../../src/documents/files"
 import { buildFileIndex, filterItems, type IndexedItem } from "../../../../src/search/file-index"
 import { basename, dirname, join, relative, sep } from "node:path"
 import type { TreeItem } from "../../../../src/explorer/tree"
+import type { SearchMode } from "../integration/options"
 
 /** Ancestors are context, not extra search hits; siblings keep normal tree order. */
 export function resultTree(root: string, matches: IndexedItem[], collapsed: ReadonlySet<string> = new Set()): TreeItem[] {
@@ -34,6 +35,7 @@ export class FileSearch {
   rows: TreeItem[] = []
   selected = 0
   scrollTop = 0
+  navigation = 0
   loading = false
   truncated = false
   error = ""
@@ -42,17 +44,21 @@ export class FileSearch {
   private disposed = false
   private listeners = new Set<() => void>()
   private collapsed = new Set<string>()
-  constructor(readonly root: string) {}
+  constructor(readonly root: string, public mode: SearchMode = "fuzzy") {}
+  setMode(mode: SearchMode) { this.mode = mode; this.filter(); this.changed() }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
   private filter(reset = true) {
     const selectedPath = reset ? undefined : this.rows[this.selected]?.path
-    this.items = this.query.trim() ? filterItems(this.root, this.index ?? [], this.query.trim().replace(/[\\/]/g, sep), 80) : []
+    const query = this.query.trim().replace(/[\\/]/g, sep)
+    this.items = !query ? [] : this.mode === "fuzzy" ? filterItems(this.root, this.index ?? [], query, 80)
+      : (this.index ?? []).filter((item) => (query.includes(sep) ? relative(this.root, item.path) : item.name).toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, 80)
     if (reset) this.collapsed.clear()
     this.rows = resultTree(this.root, this.items, this.collapsed)
     const retained = this.rows.findIndex((row) => row.path === selectedPath)
     this.selected = retained >= 0 ? retained : Math.max(0, this.rows.findIndex((row) => row.path === this.items[0]?.path))
-    if (reset) this.scrollTop = 0
+    if (reset) { this.scrollTop = 0; this.navigation++ }
+    else if (!selectedPath && this.rows.length) this.navigation++
   }
   invalidate() { this.index = undefined }
   async search(query: string) {
@@ -82,7 +88,7 @@ export class FileSearch {
     })()
     return this.pending
   }
-  select(index: number) { this.selected = Math.max(0, Math.min(index, this.rows.length - 1)); this.changed() }
+  select(index: number) { this.selected = Math.max(0, Math.min(index, this.rows.length - 1)); this.navigation++; this.changed() }
   move(direction: number) { this.select(this.selected + direction) }
   toggle(index = this.selected) {
     const item = this.rows[index]

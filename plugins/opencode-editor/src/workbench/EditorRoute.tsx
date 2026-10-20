@@ -1,11 +1,11 @@
 /** @jsxImportSource @opentui/solid */
-import { createEffect, createMemo, createSignal, on, onCleanup, Show } from "solid-js"
-import { DocumentTabs } from "../../../../src/documents/DocumentTabs"
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from "solid-js"
+import { DocumentTabs } from "../documents/DocumentTabs"
 import { FindPanel } from "../../../../src/editor/FindPanel"
 import { findMatches } from "../../../../src/editor/find"
-import type { OpenTab } from "../../../../src/documents/types"
 import type { EditorController } from "../integration/controller"
-import { isDirty } from "../documents/workspace"
+import { isEditable } from "../documents/workspace"
+import { ReadOnlyPane } from "../documents/ReadOnlyPane"
 import { ProjectPanels } from "../explorer/ProjectPanels"
 import { EditorBuffer, type BufferHandle } from "./EditorBuffer"
 import { useRevision } from "./reactive"
@@ -23,23 +23,39 @@ export function EditorRoute(props: { controller: EditorController }) {
   const [findIndex, setFindIndex] = createSignal(0)
   const results = createMemo(() => findMatches(active()?.content ?? "", query()))
   const modal = () => { statusRevision(); return controller.modal }
-  const tabs = createMemo<OpenTab[]>(() => { revision(); return controller.workspace.documents.map((document) => ({ kind: "file", source: "project", path: document.path, content: document.content, savedContent: document.savedContent, view: "source" })) })
+  const source = () => { revision(); return isEditable(active()) && active()?.view !== "preview" }
   const editor = () => handle()?.editor()
   const focusEditor = () => { setFindOpen(false); setFocus("editor") }
   const focusExplorer = () => {
-    setFindOpen(false); setFocus("explorer")
-    if (!controller.editorFilesVisible) controller.context.renderer.root.findDescendantById("oec-files-toggle")?.focus()
+    setFindOpen(false)
+    if (!controller.editorFilesVisible) {
+      if (controller.diffVisible) {
+        setFocus("panels")
+        controller.context.renderer.root.findDescendantById(controller.diffExpanded ? "oec-changes-pane" : "oec-diff-toggle")?.focus()
+      } else focusEditor()
+    } else {
+      setFocus(controller.filesExpanded ? "explorer" : "panels")
+      if (!controller.filesExpanded) controller.context.renderer.root.findDescendantById("oec-files-toggle")?.focus()
+    }
   }
-  createEffect(on(() => active()?.path, (path) => { setFindOpen(false); setFocus(path ? "editor" : "explorer") }))
+  // Cursor/content revisions must not refocus the editor while search owns input.
+  const activePath = createMemo(() => active()?.path)
+  createEffect(on(activePath, (path) => { setFindOpen(false); setFocus(path ? "editor" : "explorer") }))
   const popMode = controller.context.keymap.mode.push("oec-editor")
   onCleanup(popMode)
+  const editorAction = (action: "find" | "focus") => {
+    focusEditor()
+    if (action === "find" && source()) { setFindOpen(true); setFindIndex(0) }
+  }
+  onMount(() => { controller.editorAction = editorAction })
+  onCleanup(() => { if (controller.editorAction === editorAction) controller.editorAction = undefined })
   controller.context.keymap.layer(() => ({
     mode: "oec-editor", priority: 40, enabled: !modal(),
     commands: editorCommands({ controller, focused: focus, editor, findOpen,
       openFind: () => { setFindOpen(true); setFindIndex(0) }, closeFind: () => setFindOpen(false),
       moveFind: (direction) => setFindIndex((index) => Math.max(0, Math.min(index + direction, results().length - 1))),
       acceptFind: () => { const result = results()[findIndex()]; if (result) editor()?.setCursor(result.line - 1, result.column - 1); setFindOpen(false) },
-      cycleFocus: () => { if (focus() === "editor") focusExplorer(); else focusEditor() }, focusEditor, focusExplorer,
+      cycleFocus: () => { if (focus() === "editor" || focus() === "search") focusExplorer(); else focusEditor() }, focusEditor, focusExplorer,
     }),
   }))
   const poll = setInterval(() => { if (!controller.modal) void controller.run(() => controller.workspace.checkExternal()) }, 3000)
@@ -51,15 +67,14 @@ export function EditorRoute(props: { controller: EditorController }) {
     </box>
     <box flexGrow={1} minHeight={0} flexDirection="row">
       <box flexGrow={1} minWidth={0} minHeight={0} flexDirection="column">
-        <DocumentTabs tabs={tabs} activeTab={() => { revision(); return controller.workspace.documents.findIndex((document) => document.path === controller.workspace.activePath) }}
-          isTabDirty={(index) => { revision(); const document = controller.workspace.documents[index]; return Boolean(document && isDirty(document)) }}
-          onActivate={(index) => { const document = controller.workspace.documents[index]; if (document) { setFindOpen(false); controller.activate(document.path); focusEditor() } }}
-          onClose={(index) => { const document = controller.workspace.documents[index]; if (document) void controller.run(() => controller.close(document.path)) }} />
+         <DocumentTabs controller={controller} onFocus={focusEditor} />
         <Show when={active()?.conflict}><text fg="#f2c66d"> File changed or deleted on disk. Local edits retained. Use OEC: reload file from disk.</text></Show>
         <box flexGrow={1} minHeight={0} position="relative">
           <Show when={active()?.path} keyed fallback={<box flexGrow={1} justifyContent="center" alignItems="center"><text fg={controller.context.theme.text.muted}>OEC · Select a file on the right</text></box>}>
-            {(path) => <EditorBuffer controller={controller} document={controller.workspace.documents.find((document) => document.path === path)!}
-              focused={() => focus() === "editor" && !findOpen() && !modal()} onFocus={focusEditor} onHandle={(value) => setHandle(() => value)} />}
+             {(path) => <Show when={source()} fallback={<ReadOnlyPane controller={controller} document={controller.workspace.documents.find((document) => document.path === path)!} focused={() => focus() === "editor" && !modal()} onFocus={focusEditor} />}>
+               <EditorBuffer controller={controller} document={controller.workspace.documents.find((document) => document.path === path)!}
+                 focused={() => focus() === "editor" && !findOpen() && !modal()} onFocus={focusEditor} onHandle={(value) => setHandle(() => value)} />
+             </Show>}
           </Show>
           <FindPanel open={() => findOpen() && !modal()} query={query} results={results} index={findIndex}
             onQuery={(value) => { setQuery(value); setFindIndex(0) }} maxWidth={() => 70} />

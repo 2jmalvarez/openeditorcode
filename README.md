@@ -6,11 +6,19 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for release **0.2.38**.
+Documentation for release **0.2.39**.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
-An optional local editor plugin for **OpenCode 2** is available as [`@2jmalvarez/opencode-editor@0.2.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.2.2). It adds a right-side explorer and document tabs without modifying OpenCode; the standalone application remains independent. It follows the active project directory after local access confirmation; `localRoot` is optional. It supports native WSL saving from Windows, hierarchical file search, scrolling selected names and `Ctrl+L` line wrapping. Version 0.2.2 separates Files/Diff into independent accordions: `F6` switches conversation/editor with Files only; `F7` toggles Diff without hiding Files. See the [plugin configuration guide](plugins/opencode-editor/README.md). Installing `openeditorcode` does not install this plugin. Both editors support `Ctrl+A` to select the entire active file.
+The optional local editor plugin for **OpenCode 2**, [`@2jmalvarez/opencode-editor@0.3.0`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.0), adds Files/Diff trees and document tabs without modifying OpenCode. `F6` switches conversation/editor, `F7` hides/shows the entire Files section, and `F8` toggles Diff (visible by default after local access confirmation). It reads local Git, including WSL, and opens read-only diff tabs; `F4` opens the current editable file or toggles Markdown preview. It also supports images, `F2` rename, fuzzy/literal file search, stable mouse scrolling and a complete **OEC: opencode-editor** command group. See the [plugin configuration guide](plugins/opencode-editor/README.md). Installing `openeditorcode` does not install this plugin. The standalone application remains independent; both editors support `Ctrl+A` to select the entire active file.
+
+<details>
+<summary>OpenCode plugin screenshots</summary>
+
+![Files and Diff in the OpenCode conversation](docs/images/plugin-screen-1.png)
+![OEC editor inside OpenCode](docs/images/plugin-screen-2.png)
+
+</details>
 
 The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open settings** and **Open OEC manual**.
 
@@ -78,6 +86,26 @@ curl -fsSL https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/inst
 Replace `<VERSION>` with a release version starting at `0.2.24`; do not type the angle brackets. Without `--version`, the installer selects the latest stable GitHub release. Both command aliases, `oec` and `openeditorcode`, are installed in `~/.local/bin`. Restart your shell after PATH setup, or run `export PATH="$HOME/.local/bin:$PATH"` in Bash/Zsh for the current session. With `--no-modify-path`, add that directory to PATH yourself if needed.
 
 Close OEC and repeat the installer command to update the same direct installation; it does not run npm or create a second npm installation. Choose one installation method to avoid competing commands on PATH. To remove the direct installation and its ownership marker, run `rm -f "$HOME/.local/bin/oec" "$HOME/.local/bin/openeditorcode" "$HOME/.local/bin/.oec-install-sh.sha256"`; remove any installer-added PATH entry from your shell startup file only if it is no longer needed. User configuration is preserved. For an npm installation, use `npm uninstall -g openeditorcode` instead.
+
+### Direct installation (Windows x64 / PowerShell)
+
+No Node.js, npm, Bun or administrator privileges required. In PowerShell 5.1 or later:
+
+```powershell
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content))
+oec .
+```
+
+The installer downloads the latest stable release, verifies SHA-256 and the reported version, and places `oec.exe` in `%LOCALAPPDATA%\Programs\OpenEditorCode\bin`. It adds that directory to the user PATH without duplicates and updates the current session. It does not change the system PATH or require changing execution policy. You can download and inspect the script before running it.
+
+To select a version or leave PATH unchanged:
+
+```powershell
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.39 -NoModifyPath
+& "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
+```
+
+Close OEC and repeat the installer to update. It refuses to overwrite unrelated or modified executables; download or validation failures preserve the previous installation. Choose npm or direct installation to avoid competing commands on PATH. This method installs `oec` (not the `openeditorcode` alias). To uninstall, delete `oec.exe` and `.oec-install-ps1.sha256` from that directory and remove only its user PATH entry through Environment Variables. Configuration and projects are preserved.
 
 ### Launch and version
 

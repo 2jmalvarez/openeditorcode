@@ -1,0 +1,68 @@
+/** @jsxImportSource @opentui/solid */
+import { SyntaxStyle, type BoxRenderable, type ScrollBoxRenderable } from "@opentui/core"
+import { createEffect, createSignal, onCleanup, Show } from "solid-js"
+import { extname } from "node:path"
+import type { EditorController } from "../integration/controller"
+import { useRevision } from "../workbench/reactive"
+import type { Document } from "./workspace"
+
+// Highlight jobs may outlive a disposed pane. Share the host-theme style instead
+// of destroying native style memory while an asynchronous parser still uses it.
+const styles = new WeakMap<object, SyntaxStyle>()
+function themeStyle(controller: EditorController) {
+  const theme = controller.context.theme
+  let style = styles.get(theme)
+  if (!style) {
+    style = SyntaxStyle.fromStyles({
+      default: { fg: theme.text.base }, "markup.heading": { fg: theme.text.base, bold: true },
+      "markup.strong": { fg: theme.text.base, bold: true }, "markup.italic": { fg: theme.text.base, italic: true },
+      comment: { fg: theme.text.muted, italic: true },
+    })
+    styles.set(theme, style)
+  }
+  return style
+}
+
+export function ReadOnlyPane(props: { controller: EditorController; document: Document; focused: () => boolean; onFocus: () => void }) {
+  const { controller, document } = props
+  const revision = useRevision(controller.workspace)
+  const status = useRevision(controller)
+  const content = () => { revision(); return document.content }
+  const options = () => { status(); return controller.options }
+  const [imageError, setImageError] = createSignal("")
+  let panel: BoxRenderable | undefined
+  let scroll: ScrollBoxRenderable | undefined
+  const style = themeStyle(controller)
+  const remember = () => {
+    if (scroll && !scroll.isDestroyed) controller.workspace.remember(document.path, { ...document.position, scrollY: scroll.scrollTop, scrollX: scroll.scrollLeft })
+  }
+  onCleanup(remember)
+  createEffect(() => { if (props.focused()) panel?.focus(); else panel?.blur() })
+  controller.context.keymap.layer(() => ({ mode: "oec-editor", target: () => panel, priority: 45,
+    enabled: props.focused() && !controller.modal, commands: [
+      ...[["up", -1], ["down", 1], ["pageup", -10], ["pagedown", 10]] .map(([bind, delta]) => ({ bind: String(bind), run: () => { scroll?.scrollBy(Number(delta)); remember() } })),
+      { bind: "home,ctrl+home", run: () => { if (scroll) scroll.scrollTop = 0; remember() } },
+      { bind: "end,ctrl+end", run: () => { if (scroll) scroll.scrollTop = scroll.scrollHeight; remember() } },
+      { bind: "left", run: () => { if (scroll) scroll.scrollLeft -= 4; remember() } },
+      { bind: "right", run: () => { if (scroll) scroll.scrollLeft += 4; remember() } },
+    ],
+  }))
+  const filetype = () => ({ ".ts": "typescript", ".tsx": "tsx", ".js": "javascript", ".json": "json", ".md": "markdown", ".py": "python" })[extname(document.targetPath ?? document.path)]
+  return <box id="oec-readonly-pane" ref={(value) => { panel = value }} focusable flexGrow={1} minHeight={0} minWidth={0} overflow="hidden" flexDirection="column"
+    onMouseDown={props.onFocus}>
+    <text height={1} flexShrink={0} fg={controller.context.theme.text.muted}>{document.kind === "diff" ? " Git diff · F4 edit current file · read-only" : document.kind === "image" ? " Image · read-only · OEC settings: image protocol" : document.kind === "help" ? " OEC · reference · read-only" : " Markdown preview · F4 edit"}</text>
+    <Show when={document.kind === "image"} fallback={
+      <scrollbox ref={(value) => { scroll = value; value.scrollTop = document.position.scrollY; value.scrollLeft = document.position.scrollX }} flexGrow={1} minHeight={0} minWidth={0} scrollY scrollX viewportOptions={{ overflow: "hidden" }}>
+        <Show when={document.kind === "diff"} fallback={<markdown id="oec-markdown-preview" content={content()} syntaxStyle={style} conceal streaming={false} />}>
+          <Show when={/^@@ /m.test(content())} fallback={<text fg={controller.context.theme.text.muted}>{content().trim() || "No textual changes (empty file or change already resolved)."}</text>}>
+            <diff id="oec-diff-view" diff={content()} view={options().diffView} syncScroll showLineNumbers filetype={filetype()} syntaxStyle={style} wrapMode="word" />
+          </Show>
+        </Show>
+      </scrollbox>
+    }>
+      <Show when={!imageError()} fallback={<text fg={controller.context.theme.text.muted}> Cannot display image: {imageError()}. Supported: PNG, JPEG, GIF, WebP.</text>}>
+        <image id="oec-image-preview" source={document.bytes} fit="fit" protocol={options().imageProtocol} flexGrow={1} minWidth={0} minHeight={0} onError={(error) => setImageError(error instanceof Error ? error.message : String(error))} />
+      </Show>
+    </Show>
+  </box>
+}

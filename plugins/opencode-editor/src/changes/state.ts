@@ -1,13 +1,13 @@
 import type { Context } from "@opencode/plugin/tui/context"
-import type { VcsFileStatus } from "@opencode/client"
 import { resolve } from "node:path"
+import { readLocalChanges, type Change, type ChangesReader } from "./git"
 
 export const CHANGES_POLL_MS = 3000
 export const CHANGES_DEBOUNCE_MS = 150
 
-/** Server-owned VCS state, scoped to one consented local session directory. */
+/** Local, read-only Git state scoped to the consented project directory. */
 export class ChangesState {
-  files: VcsFileStatus[] = []
+  files: Change[] = []
   loading = false
   repository: boolean | undefined
   error = ""
@@ -20,16 +20,11 @@ export class ChangesState {
   private timer: ReturnType<typeof setInterval> | undefined
   private debounce: ReturnType<typeof setTimeout> | undefined
   private stops: (() => void)[] = []
-  constructor(readonly context: Context, readonly root: string) {}
+  constructor(readonly context: Context, readonly root: string, private read: ChangesReader = readLocalChanges) {}
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { for (const listener of this.listeners) listener() }
   start(sessionID?: string) {
     if (this.running) return
-    const location = sessionID ? this.context.data.session.get(sessionID)?.location : this.context.location
-    if ((location && "workspaceID" in location && location.workspaceID) || this.context.location?.workspaceID) {
-      this.error = "Live changes are unavailable for remote workspace mappings"
-      this.files = []; this.changed(); return
-    }
     this.running = true
     const schedule = (event: { location?: { directory: string; workspaceID?: string } }) => {
       if (!event.location || event.location.workspaceID || resolve(event.location.directory) !== this.root || this.debounce) return
@@ -46,21 +41,15 @@ export class ChangesState {
     const request = this.request = new AbortController()
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(10_000)])
     this.loading = true; this.changed()
-    const location = { directory: this.root }
     this.pending = (async () => {
       try {
-        const info = await this.context.client.vcs.get({ location }, { signal })
+        const result = await this.read(this.root, signal)
         if (!this.running || generation !== this.generation) return
-        if (resolve(info.location.directory) !== this.root) throw new Error("OpenCode returned VCS data for a different project")
-        const repository = Boolean(info.data.provider)
-        const status = repository ? await this.context.client.vcs.status({ location }, { signal }) : undefined
-        if (!this.running || generation !== this.generation) return
-        if (status && resolve(status.location.directory) !== this.root) throw new Error("OpenCode returned changes for a different project")
-        this.repository = repository
-        this.files = (status?.data ?? []).toSorted((a, b) => a.file.localeCompare(b.file))
+        this.repository = result.repository
+        this.files = result.files
         this.error = ""
       } catch (error) {
-        if (this.running && generation === this.generation) this.error = error instanceof Error ? error.message : String(error)
+        if (this.running && generation === this.generation) { this.files = []; this.error = error instanceof Error ? error.message : String(error) }
       } finally {
         if (generation === this.generation) {
           this.loading = false; this.pending = undefined; this.request = undefined; this.changed()

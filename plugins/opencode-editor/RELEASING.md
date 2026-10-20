@@ -59,6 +59,8 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
+Release **`0.3.0` en preparación**, autorizada junto con OEC 0.2.39: Git local Windows/WSL, diffs en pestañas/F4, árboles Files/Diff con scroll estable, imágenes, Markdown preview, rename F2, búsqueda difusa/literal y paleta completa. F6 conserva paneles; F7 oculta Files entero, F8 alterna Diff (visible por defecto tras consentimiento). `filesBinding` y `diffBinding` son independientes. Esta publicación conjunta sí incrementa OEC/plataformas y actualiza el workflow OEC para el instalador PowerShell; no es el flujo plugin-only del encabezado.
+
 Release **`0.2.2` confirmada** el 2026-10-19, commit `2a236c5087e009f9f38984582ddc22693f0fffa5`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39310541283): acordeones Files/Diff independientes y sin superposición; F6 muestra Files solo, F7 alterna Diff en conversación/editor. Defaults F6/F7 y nueva opción `diffBinding` (`filesBinding` es alias de compatibilidad). El smoke del sidebar comprobó colapso independiente, búsqueda de 80 resultados acotada y visor nativo desde el editor sin perder documentos. CI cubrió OpenCode 2.0.26/2.0.27 en Windows/Linux; instalación por nombre, SRI, contenido y provenance verificados también desde Windows. Tag y paquete publicados son inmutables. Versiones raíz/plataformas y configuración personal sin cambios.
 
 Release **`0.2.1` confirmada** el 2026-10-19, commit `d8fe0842a4d064c594836d8a0342cf17a9eda150`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39304161290): guardado nativo WSL desde Windows, búsqueda jerárquica compartida en F6/sidebar, nombres largos con desplazamiento y `Ctrl+L` para ajuste visual. Registro, SRI y provenance coinciden con el artefacto CI; instalación por nombre comprobada en Linux y Windows, con editor, carpeta automática y sidebar. CI cubrió OpenCode 2.0.26/2.0.27 en ambos sistemas. La última etapa Linux por nombre requirió un reintento tras `NpmInstallFailedError`; el reintento verificó el artefacto existente sin republicarlo. Tag y paquete publicados son inmutables; versión raíz y paquetes de plataforma sin cambios.
@@ -127,10 +129,11 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "@2jmalvarez/opencode-editor@0.2.2",
+      "package": "@2jmalvarez/opencode-editor@0.3.0",
       "options": {
         "toggleBinding": "f6",
-        "diffBinding": "f7",
+        "filesBinding": "f7",
+        "diffBinding": "f8",
         "explorerWidth": 30
       }
     }
@@ -138,4 +141,4 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
 }
 ```
 
-Desde 0.1.2 se detecta automáticamente la carpeta de la sesión activa y se confirma acceso al disco local una vez por carpeta/TUI. Quitar `localRoot` de configuraciones anteriores para seguir cada proyecto. Conservarla como override absoluto sigue permitido. No inferir filesystem local desde servidor remoto. La carga por carpeta compilada sigue siendo alternativa. Desde 0.2.2 los defaults son F6/F7; `filesBinding` previo se acepta como alias de `diffBinding`. `npm install -g openeditorcode` instala únicamente el editor autónomo.
+Desde 0.1.2 se detecta automáticamente la carpeta de la sesión activa y se confirma acceso al disco local una vez por carpeta/TUI. Quitar `localRoot` de configuraciones anteriores para seguir cada proyecto. Conservarla como override absoluto sigue permitido. No inferir filesystem local desde servidor remoto. La carga por carpeta compilada sigue siendo alternativa. Desde 0.3.0 los defaults son F6/F7/F8; `filesBinding` controla Files y `diffBinding` controla Diff, ya no son alias. `npm install -g openeditorcode` instala únicamente el editor autónomo.

@@ -73,6 +73,8 @@ export default {
     let result
     const key = (name, modifiers = {}) => context.renderer.keyInput.processParsedKey({ name, ctrl: false, meta: false, shift: false, option: false, number: false, eventType: "press", source: "raw", sequence: name === "return" ? "\\r" : name, raw: name === "return" ? "\\r" : name, ...modifiers })
     const timer = setInterval(() => {
+      try {
+      writeFileSync(${JSON.stringify(join(temporary, "loaded.json"))}, JSON.stringify({ stage, route: context.ui.router.current(), text: context.renderer.root.findDescendantById("oec-editor-buffer")?.plainText, disk: readFileSync(${JSON.stringify(join(project, "hello.txt"))}, "utf8") }))
       if (stage === 0 && context.renderer.root.findDescendantById("oec-tree-0")) {
         stage = 1
         context.renderer.keyInput.processParsedKey({ name: "return", ctrl: false, meta: false, shift: false, option: false, number: false, eventType: "press", source: "raw", sequence: "\\r", raw: "\\r" })
@@ -85,9 +87,17 @@ export default {
       } else if (stage === 4) {
         const buffer = context.renderer.root.findDescendantById("oec-editor-buffer")
         if (!buffer) return
-        stage = 2
-         if (buffer.focused) throw new Error("Tab did not change to the files panel")
+         stage = 8
+          if (buffer.focused) throw new Error("Tab did not change to the files panel")
+          key("tab")
+      } else if (stage === 8) {
+         stage = 9
+         if (context.renderer.root.findDescendantById("oec-editor-buffer")?.focused) throw new Error("Tab skipped the visible Diff panel")
          key("tab")
+      } else if (stage === 9) {
+         const buffer = context.renderer.root.findDescendantById("oec-editor-buffer")
+         if (!buffer) return
+         stage = 2
          if (!buffer.focused) throw new Error("Tab did not return to the editor")
         context.renderer.keyInput.processParsedKey({ name: "home", ctrl: true, meta: false, shift: false, option: false, number: false, eventType: "press", source: "raw", sequence: "home", raw: "home" })
         for (const character of "edited ") context.renderer.keyInput.processParsedKey({ name: character === " " ? "space" : character, ctrl: false, meta: false, shift: false, option: false, number: false, eventType: "press", source: "raw", sequence: character, raw: character })
@@ -134,6 +144,11 @@ export default {
         clearInterval(timer)
         context.renderer.destroy()
       }
+      } catch (error) {
+        writeFileSync(${JSON.stringify(join(temporary, "loaded.json"))}, JSON.stringify({ stage, error: String(error) }))
+        clearInterval(timer)
+        context.renderer.destroy()
+      }
     }, 250)
     return () => { clearTimeout(start); clearInterval(timer) }
   }
@@ -150,7 +165,7 @@ try {
        TERM: "xterm-256color", TEMP: temporary, TMP: temporary, LOCALAPPDATA: temporary, APPDATA: temporary,
       HOME: temporary, USERPROFILE: temporary,
       XDG_CONFIG_HOME: join(temporary, "config"), XDG_DATA_HOME: join(temporary, "data"), XDG_CACHE_HOME: join(temporary, "cache"), XDG_STATE_HOME: join(temporary, "state"),
-        OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { ...(automaticRoot ? {} : { localRoot: project }), toggleBinding: "f6", diffBinding: "f7", explorerWidth: 30 } }, wrapper] }),
+        OPENCODE_CLI_CONFIG_CONTENT: JSON.stringify({ terminal: { copy: "manual" }, plugins: [{ package: pluginSource, options: { ...(automaticRoot ? {} : { localRoot: project }), toggleBinding: "f6", filesBinding: "f7", diffBinding: "f8", explorerWidth: 30 } }, wrapper] }),
     },
   })
   const [stdout, stderr, exitCode] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
@@ -169,7 +184,7 @@ try {
   }
    const result = JSON.parse(await readFile(marker, "utf8")) as { version: string; route: { type: string; name: string }; commands: string[]; returned: boolean; documents: boolean }
    if (exitCode !== 0 || result.route.type !== "plugin" || result.route.name !== "oec.editor" || !result.commands.includes("oec.save") || !result.returned || !result.documents) throw new Error(`Invalid host state: ${JSON.stringify(result)}, exit=${exitCode}`)
-   console.log(`OpenCode ${result.version}: packed plugin, F6/F7, Tab, typing, Enter, duplication, selection/copy, pages, Ctrl+S, session return and document tabs passed.`)
+   console.log(`OpenCode ${result.version}: packed plugin, editor shortcuts, Tab, typing, Enter, duplication, selection/copy, pages, Ctrl+S, session return and document tabs passed.`)
 } catch (error) {
   failed = true
   throw error

@@ -46,28 +46,38 @@ test("the initial mouse press/release does not dismiss the local access confirma
   } finally { setup.renderer.destroy(); await projects.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
-test("sidebar input searches closed folders, opens results, and changed files dispatch the native viewer", async () => {
+test("sidebar search opens closed-folder results and local changes open a diff tab, not the native viewer", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-sidebar-search-"))
   await mkdir(join(root, "nested"))
   await writeFile(join(root, "nested", "hello.ts"), "hello")
+  const git = async (...args: string[]) => {
+    const child = Bun.spawn(["git", "-C", root, ...args], { stdout: "ignore", stderr: "pipe" })
+    if (await child.exited) throw new Error(await new Response(child.stderr).text())
+  }
+  await git("init", "-q")
+  await git("add", ".")
+  await git("-c", "user.name=OEC Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial")
+  await writeFile(join(root, "nested", "hello.ts"), "changed")
   const host = mockHost(root)
   host.vcs.provider = "git"
   host.vcs.files = [{ file: "nested/hello.ts", status: "modified", additions: 2, deletions: 1 }]
   const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
   await controller.toggleFiles()
-  controller.toggleDiff()
   const setup = await testRender(() => {
     Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
     return <SessionFiles controller={controller} sessionID="session-1" />
   }, { width: 70, height: 30 })
   try {
-    await Bun.sleep(30); await setup.renderOnce()
+    await controller.changes.refresh(); await setup.renderOnce()
     let frame = setup.captureCharFrame().split("\n")
-    const changed = frame.findIndex((line) => line.includes("M nested/hello.ts"))
+    const changed = frame.findIndex((line) => line.includes("M hello.ts"))
     expect(changed).toBeGreaterThan(0)
     await setup.mockMouse.click(7, changed)
-    expect(host.dispatches).toEqual(["diff.open"])
-    expect(host.destinations).toHaveLength(0)
+    for (let i = 0; i < 60 && host.destinations.at(-1)?.type !== "plugin"; i++) await Bun.sleep(20)
+    expect(host.dispatches).toEqual([])
+    expect(controller.workspace.active?.kind).toBe("diff")
+    expect(controller.workspace.active?.content).toContain("-hello")
+    expect(host.destinations.at(-1)?.type).toBe("plugin")
     const input = setup.renderer.root.findDescendantById("oec-files-search") as InputRenderable
     input.focus()
     await setup.mockInput.typeText("HELLO")
@@ -76,8 +86,8 @@ test("sidebar input searches closed folders, opens results, and changed files di
     expect(controller.filesFocused).toBe(false)
     frame = setup.captureCharFrame().split("\n")
     expect(frame.some((line) => line.includes("▾ nested"))).toBe(true)
-    expect(frame.some((line) => line.includes("nested/hello.ts") && !line.includes("M nested"))).toBe(false)
-    const result = frame.findIndex((line) => line.includes("hello.ts") && !line.includes("M nested"))
+    expect(frame.some((line) => line.includes("nested/hello.ts"))).toBe(false)
+    const result = frame.findIndex((line) => line.includes("hello.ts") && !line.includes("M hello"))
     expect(result).toBeGreaterThan(0)
     await setup.mockInput.pressEnter()
     await Bun.sleep(30)

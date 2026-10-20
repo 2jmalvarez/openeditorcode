@@ -1,10 +1,10 @@
 /** @jsxImportSource @opentui/solid */
 import { afterEach, beforeEach, expect, test } from "bun:test"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { KeyCodes } from "@opentui/core/testing"
-import type { TextareaRenderable } from "@opentui/core"
+import type { ImageRenderable, TextareaRenderable } from "@opentui/core"
 import { testRender } from "@opentui/solid"
 import { App } from "../src/workbench/App"
 import { DiffPane } from "../src/git/DiffPane"
@@ -249,6 +249,79 @@ test("toggles a Markdown file between preview and source with F4", async () => {
   } finally {
     setup.renderer.destroy()
   }
+})
+
+test("opens real images in a visible read-only preview with nonzero height", async () => {
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==", "base64")
+  await writeFile(join(root, "pixel.png"), png)
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await waitForText(setup, "pixel.png")
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("pixel.png")
+    await Bun.sleep(80)
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "IMAGEN · SOLO LECTURA")
+    const findImage = (node: import("@opentui/core").Renderable): ImageRenderable | undefined => node.constructor.name === "ImageRenderable" ? node as ImageRenderable : node.getChildren().map(findImage).find(Boolean)
+    const image = findImage(setup.renderer.root)!
+    expect(image).toBeDefined()
+    await image.loadPromise
+    await setup.renderOnce()
+    expect(image.loadError).toBeNull()
+    expect(image.image?.width).toBe(1)
+    expect(image.height).toBeGreaterThan(2)
+    expect(image.width).toBeGreaterThan(2)
+    setup.mockInput.pressKey("s", { ctrl: true })
+    setup.mockInput.pressKey(KeyCodes.F4)
+    await setup.renderOnce()
+    expect(await readFile(join(root, "pixel.png"))).toEqual(png)
+    expect(findImage(setup.renderer.root)).toBeDefined()
+  } finally { setup.renderer.destroy() }
+})
+
+test("fits a full-size screenshot to the image pane rather than a thumbnail, also after resizing", async () => {
+  await writeFile(join(root, "preview.png"), await readFile(join(import.meta.dir, "..", "docs", "images", "plugin-screen-2.png")))
+  const config = factoryConfig()
+  config.preview.imageProtocol = "blocks"
+  const setup = await testRender(() => <App root={root} config={config} />, { width: 160, height: 55 })
+  try {
+    await waitForText(setup, "preview.png")
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("preview.png")
+    await Bun.sleep(80)
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "IMAGEN · SOLO LECTURA")
+    const image = setup.renderer.root.findDescendantById("oec-standalone-image") as ImageRenderable
+    await image.loadPromise
+    await setup.renderOnce(); await setup.renderOnce()
+    expect(image.image!.width).toBeGreaterThan(1000)
+    expect(image.width).toBeGreaterThan(40)
+    expect(image.height).toBeGreaterThan(30)
+    const fitted = image.getFittedSize(image.width, image.height)
+    expect(fitted.width).toBeGreaterThan(40)
+    expect(fitted.height).toBeGreaterThan(10)
+    const left = image.screenX + Math.floor((image.width - fitted.width) / 2)
+    const top = image.screenY + Math.floor((image.height - fitted.height) / 2)
+    let painted = 0
+    for (const line of setup.captureSpans().lines.slice(top, top + fitted.height)) {
+      let column = 0
+      for (const span of line.spans) {
+        const overlap = Math.max(0, Math.min(column + span.width, left + fitted.width) - Math.max(column, left))
+        const [r, g, b] = span.bg.toInts()
+        if (r !== 16 || g !== 20 || b !== 25) painted += overlap
+        column += span.width
+      }
+    }
+    expect(painted).toBeGreaterThan(fitted.width * fitted.height / 2)
+    expect(setup.captureCharFrame()).not.toContain("F4 editar")
+    setup.renderer.resize(100, 30)
+    await setup.renderOnce(); await setup.renderOnce()
+    const smaller = image.getFittedSize(image.width, image.height)
+    expect(smaller.width).toBeGreaterThan(25)
+    expect(smaller.height).toBeGreaterThan(5)
+    expect(smaller.width).toBeLessThanOrEqual(image.width)
+    expect(smaller.height).toBeLessThanOrEqual(image.height)
+  } finally { setup.renderer.destroy() }
 })
 
 test("renders Mermaid fenced blocks as Unicode diagrams in Markdown preview", async () => {

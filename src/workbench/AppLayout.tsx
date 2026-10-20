@@ -55,7 +55,7 @@ export function AppLayout(props: Props) {
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
       <box style={{ flexDirection: "row" }}>
-         <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.logs.notice() || props.status()}<Show when={props.documents.activePreview() && !props.documents.activeManual()}>{t("app.f4Edit")}</Show><Show when={props.documents.activeDiff()}>{t("app.f4Open")}</Show></text>
+         <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.logs.notice() || props.status()}<Show when={props.documents.activePreview() && props.documents.canTogglePreview()}>{t("app.f4Edit")}</Show><Show when={props.documents.activeDiff()}>{t("app.f4Open")}</Show></text>
         <text style={{ marginLeft: "auto" }} fg="#8ca0ae"><Show when={props.config().keyboard.profile === "vim" && props.documents.activeProjectFile()}>{props.editor.vimMode().toUpperCase()}  |  </Show><Show when={props.documents.filePath() && !props.documents.activePreview()}>{t("app.line")} {props.editor.cursor().line}:{props.editor.cursor().column}  |  </Show>v{props.appVersion}<Show when={props.updates.latestVersion()}> ↑ {props.updates.latestVersion()}</Show></text>
       </box>
     </box>

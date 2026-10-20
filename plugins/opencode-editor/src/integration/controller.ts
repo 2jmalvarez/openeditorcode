@@ -1,13 +1,14 @@
 import type { Context } from "@opencode/plugin/tui/context"
 import { randomUUID } from "node:crypto"
-import { resolve } from "node:path"
-import { ensurePhysicallyInsideRoot } from "../../../../src/documents/files"
+import { basename, resolve } from "node:path"
+import { ensurePhysicallyInsideRoot, readTextFile } from "../../../../src/documents/files"
 import { Workspace, isDirty, validateSnapshot, type DraftSnapshot } from "../documents/workspace"
 import { DraftWriter, draftFilter, draftKey } from "../documents/drafts"
 import { TreeState } from "../explorer/tree-state"
 import { FileSearch } from "../explorer/file-search"
 import { ChangesState } from "../changes/state"
 import type { EditorOptions } from "./options"
+import { changePath, readLocalPatch, type Change, type ChangesReader } from "../changes/git"
 
 export const EDITOR_ROUTE = "oec.editor"
 export class EditorController {
@@ -28,17 +29,26 @@ export class EditorController {
   wrapMode: "none" | "word" = "none"
   filesVisible = false
   editorFilesVisible = true
-  diffVisible = false
+  filesExpanded = true
+  diffVisible = true
   diffExpanded = true
   filesFocused = false
   filesInputMode: string | undefined
   capture: (() => void) | undefined
+  editorAction: ((action: "find" | "focus") => void) | undefined
+  onFilesHidden: (() => void) | undefined
 
-  constructor(readonly context: Context, readonly options: EditorOptions) {
-    this.workspace = new Workspace(options.localRoot)
+  async inEditor(action: () => void | Promise<void>) {
+    const route = this.context.ui.router.current()
+    if (route.type !== "plugin" || route.name !== EDITOR_ROUTE) await this.enter()
+    if (!this.disposed) await action()
+  }
+
+  constructor(readonly context: Context, readonly options: EditorOptions, changesReader?: ChangesReader) {
+    this.workspace = new Workspace(options.localRoot, undefined, options.markdownPreview)
     this.tree = new TreeState(this.workspace.root)
-    this.fileSearch = new FileSearch(this.workspace.root)
-    this.changes = new ChangesState(context, this.workspace.root)
+    this.fileSearch = new FileSearch(this.workspace.root, options.searchMode)
+    this.changes = new ChangesState(context, this.workspace.root, changesReader)
     // A new generation gets a new archive slot. Declining recovery must never overwrite an old draft.
     const instanceID = randomUUID()
     const key = draftKey(this.workspace.root, "recovery")
@@ -96,6 +106,47 @@ export class EditorController {
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
   setStatus(message: string) { this.status = message; this.changed() }
   toggleWrap() { this.capture?.(); this.wrapMode = this.wrapMode === "none" ? "word" : "none"; this.setStatus(this.wrapMode === "word" ? "Line wrap on" : "Line wrap off") }
+  toggleSearchMode() { this.fileSearch.setMode(this.fileSearch.mode === "fuzzy" ? "literal" : "fuzzy"); this.setStatus(`Search: ${this.fileSearch.mode}`) }
+  toggleDiffView() { this.options.diffView = this.options.diffView === "split" ? "unified" : "split"; this.setStatus(`Diff: ${this.options.diffView}`) }
+  toggleMarkdownDefault() { this.options.markdownPreview = !this.options.markdownPreview; this.workspace.setMarkdownDefault(this.options.markdownPreview); this.setStatus(`Markdown default: ${this.options.markdownPreview ? "preview" : "source"}`) }
+  toggleImageProtocol() { this.options.imageProtocol = this.options.imageProtocol === "auto" ? "blocks" : "auto"; this.setStatus(`Images: ${this.options.imageProtocol}`) }
+  async openDiff(file: Change, sessionID?: string) {
+    if (sessionID && !this.accepts(sessionID)) throw new Error("Diff belongs to another project")
+    const generation = ++this.navigation
+    await this.ready()
+    this.capture?.()
+    const patch = await readLocalPatch(this.workspace.root, file)
+    if (this.disposed || generation !== this.navigation) return
+    this.workspace.openView("diff", changePath(this.workspace.root, file.path), patch, file.area)
+    await this.enter(sessionID)
+    this.setStatus("Git diff · disk/index, not unsaved edits · F4 edit current file")
+  }
+  async alternateView() {
+    this.capture?.()
+    const document = this.workspace.active
+    if (!document) return
+    if (document.kind === "diff" && document.targetPath) {
+      // Read first: even an already-open buffer must not recreate a deleted file.
+      await ensurePhysicallyInsideRoot(this.workspace.root, document.targetPath)
+      await readTextFile(this.workspace.root, document.targetPath)
+      await this.open(document.targetPath)
+      this.workspace.setSource()
+    } else this.workspace.togglePreview()
+  }
+  async renameSelected() {
+    const search = this.fileSearch
+    const item = search.query.trim() ? search.rows[search.selected] : this.tree.items[this.tree.selected]
+    if (!item) return
+    const name = await this.dialog(() => this.context.ui.dialog.prompt({ title: `OEC · Rename ${basename(item.path)}`, placeholder: basename(item.path) }))
+    if (!name || this.disposed) return
+    this.capture?.()
+    const next = await this.dialog(() => this.workspace.rename(item.path, name))
+    this.tree.remap(item.path, next)
+    await this.tree.refresh(); await this.fileSearch.refresh(); await this.changes.refresh(); await this.drafts.flush()
+    const index = this.tree.items.findIndex((entry) => entry.path === next)
+    if (index >= 0) this.tree.select(index)
+    this.setStatus(`Renamed to ${basename(next)}`)
+  }
   report(error: unknown) {
     this.setStatus(error instanceof Error ? error.message : String(error))
     if (!this.disposed) this.context.ui.toast.show({ title: "OEC", message: this.status, variant: "error" })
@@ -147,32 +198,28 @@ export class EditorController {
   }
 
   async toggle() {
-    this.showFilesOnly()
     const route = this.context.ui.router.current()
     if (route.type === "plugin" && route.name === EDITOR_ROUTE && route.id === "oec.editor") await this.back()
     else await this.enter()
   }
 
-  showFilesOnly() { this.filesVisible = true; this.editorFilesVisible = true; this.diffVisible = false; this.changed() }
   toggleDiff() { this.diffVisible = !this.diffVisible; if (this.diffVisible) this.diffExpanded = true; this.changed() }
   toggleDiffExpanded() { this.diffExpanded = !this.diffExpanded; this.changed() }
-  async toggleEditorFiles() { this.editorFilesVisible = !this.editorFilesVisible; this.changed(); if (this.editorFilesVisible) await this.tree.refresh() }
-  async openNativeDiff(sessionID = this.origin) {
-    if (!sessionID || !this.accepts(sessionID)) { this.setStatus("Open a project session to use OpenCode's diff viewer."); return }
-    if (this.context.ui.router.current().type === "plugin") {
-      await this.back()
-      // Let the host mount the session-owned viewer command before dispatch.
-      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  toggleFilesExpanded() { this.filesExpanded = !this.filesExpanded; this.changed() }
+  private filesOwnFocus() {
+    let node = this.context.renderer?.currentFocusedRenderable
+    while (node) {
+      if (node.id === "oec-files-section") return true
+      node = node.parent
     }
-    const route = this.context.ui.router.current()
-    if (route.type !== "session" || route.sessionID !== sessionID || this.modal || this.disposed) return
-    if (!this.context.keymap.commands().some((command) => command.id === "diff.open")) {
-      this.context.ui.toast.show({ title: "OEC", message: "OpenCode's diff viewer is not available in this context.", variant: "warning" }); return
-    }
-    this.focusFiles(false)
-    this.context.keymap.dispatch("diff.open")
+    return false
   }
-
+  async toggleEditorFiles() {
+    const focused = this.filesOwnFocus()
+    this.editorFilesVisible = !this.editorFilesVisible; this.changed()
+    if (this.editorFilesVisible) await this.tree.refresh()
+    else if (focused) this.onFilesHidden?.()
+  }
   async open(path: string, sessionID?: string) {
     const generation = ++this.navigation
     if (sessionID && !this.accepts(sessionID)) throw new Error("OEC: this session is not in the configured localRoot")
@@ -219,11 +266,13 @@ export class EditorController {
   async toggleFiles() {
     const route = this.context.ui.router.current()
     if (route.type !== "session" || !this.accepts(route.sessionID)) throw new Error("OEC: open a session in localRoot first")
+    const focused = this.filesOwnFocus()
     this.filesVisible = !this.filesVisible
     this.filesInputMode ??= this.context.keymap.mode.current()
     this.filesFocused = this.filesVisible
     this.changed()
     if (this.filesVisible) await this.tree.refresh()
+    else if (focused) this.onFilesHidden?.()
   }
   focusFiles(focused: boolean) { this.filesFocused = focused; this.changed() }
   async dispose() {
