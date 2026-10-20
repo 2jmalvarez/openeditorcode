@@ -211,9 +211,16 @@ test("preview styles are isolated by renderer even when hosts share their theme"
   } finally {
     for (const setup of setups) setup.renderer.destroy()
     for (const controller of controllers) await controller.dispose()
-    // Aborted Git readers/watchers can release directory handles just after
-    // disposal on Windows. Retry cleanup, not the assertions under test.
-    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+    // Aborted Git readers/watchers release Windows handles asynchronously.
+    // Bun 1.3.14 can return EBUSY immediately despite fs.rm's maxRetries.
+    // Bound retries explicitly, only for cleanup; never repeat assertions.
+    for (let attempt = 0; ; attempt++) {
+      try { await rm(root, { recursive: true, force: true }); break }
+      catch (error) {
+        if (attempt >= 19 || !["EBUSY", "EPERM", "ENOTEMPTY"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error
+        await Bun.sleep(100)
+      }
+    }
   }
 })
 
