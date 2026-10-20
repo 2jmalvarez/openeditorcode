@@ -12,7 +12,7 @@ export const registry = "https://registry.npmjs.org"
 export const name = "@2jmalvarez/opencode-editor"
 export const allowedFiles = ["LICENSE", "README.md", "dist/tui.js", "package.json", "tui.ts"]
 export const hostPackages = ["@opencode/plugin", "@opentui/core", "@opentui/solid", "solid-js"]
-export const testedHostVersions = ["2.0.26", "2.0.27", "2.1.0"]
+export const testedHostVersions = ["2.0.26", "2.0.27", "2.1.0", "2.1.1"]
 
 export async function temporary(prefix: string) {
   const base = process.env.OEC_SMOKE_TEMP ?? (process.platform === "win32" ? join(process.env.LOCALAPPDATA!, "Temp", "opencode") : tmpdir())

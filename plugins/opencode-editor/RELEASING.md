@@ -59,6 +59,8 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
+Release **`0.3.2` en preparación**, autorizada el 2026-10-20: consentimiento local persistente opt-in por carpeta exacta/equipo/usuario, opción de permitir solo por TUI o denegar, y comando para olvidar permisos guardados sin perder documentos abiertos. Se mantienen las restricciones de workspaces remotos y el override explícito `localRoot`. El smoke de acceso reinicia cuatro TUIs aisladas para comprobar recordar, reutilizar, olvidar y volver a preguntar. La matriz Windows/Linux incluye OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1. Versiones raíz/plataformas sin cambios.
+
 Release **`0.3.1` confirmada** el 2026-10-20, commit `e8c192717ac4c5638e1395ebe34941b5dbb055fc`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39430329534): corrige el fallo de importación `SyntaxStyle requires an explicit resource owner` en OpenCode 2.1.0, usa estilos ligados al renderer y mantiene compatibilidad con OpenCode 2.0.26/2.0.27. SDK de desarrollo 2.1.0 y OpenTUI 0.6.6; las instancias del anfitrión permanecen externas. Incluye selección de palabras compatible con los endpoints de selección de OpenTUI 0.6, regresiones de importación y aislamiento entre renderers, y CI ampliada a 2.1.0. Las seis combinaciones Windows/Linux pasaron. Registro, `gitHead`, contenido, SRI y provenance coinciden con el artefacto CI; instalación por nombre, carpeta automática y sidebar verificados también desde Windows/OpenCode 2.1.0. SRI: `sha512-/cyYIm0+JvCEbv1zGnORk58kSujx/N2jiVfAy/YGJ49dCQBTbu3UmnYuDmK4kFTKpFOgsoZFxg1lqsq4spY/9w==`. El primer intento del job publish publicó correctamente pero falló la instalación Linux inmediata con `NpmInstallFailedError`; el reintento verificó el paquete existente sin republicarlo y terminó correctamente. Tag y paquete publicados son inmutables. Versiones raíz/plataformas sin incremento; no publica OEC autónomo.
 
 Primer intento `0.3.1`: commit `76eef2f19fb8d0b4eb72bf7158a4ad542dee57e6`, [run 39429263667](https://github.com/2jmalvarez/openeditorcode/actions/runs/39429263667). Las cuatro combinaciones OpenCode 2.0.26/2.0.27 Windows/Linux pasaron; los dos jobs 2.1.0 fallaron antes de ejecutar el anfitrión porque el descargador conservaba una allowlist antigua. El job publish no se ejecutó. La recuperación centraliza las versiones admitidas y prueba su igualdad con la matriz CI, sin quitar ninguna verificación. Aplicar las comprobaciones de ausencia, finalización y lease antes de reubicar el tag fallido.
@@ -94,6 +96,7 @@ bun run plugin:pack:check
 bun run plugin:smoke /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz
 bun run plugin:smoke /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz --auto-root
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz
+bun run plugins/opencode-editor/scripts/smoke-access.ts /absolute/path/opencode plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-<VERSION>.tgz
 ```
 
 3. Inspeccionar `git diff`, agregar únicamente archivos/hunks pertinentes y comprobar `git diff --cached`. No usar `git add .`; excluir trabajo ajeno, particularmente `packageManager` preexistente del manifiesto raíz.
@@ -110,6 +113,7 @@ npm view @2jmalvarez/opencode-editor@<VERSION> version dist.integrity gitHead --
 bun run plugin:smoke /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION>
 bun run plugin:smoke /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION> --auto-root
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION>
+bun run plugins/opencode-editor/scripts/smoke-access.ts /absolute/path/opencode @2jmalvarez/opencode-editor@<VERSION>
 ```
 
 5. Verificar que el `gitHead` es el commit del tag y que el paquete tiene provenance. Actions compara SRI del artefacto con el registro, descarga y verifica su contenido y prueba instalación por nombre. Conservar `pack.json`, tarball y `SHA256SUMS` del artefacto del run.
@@ -133,7 +137,7 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [
     {
-      "package": "@2jmalvarez/opencode-editor@0.3.1",
+      "package": "@2jmalvarez/opencode-editor@0.3.2",
       "options": {
         "toggleBinding": "f6",
         "filesBinding": "f7",
@@ -145,4 +149,4 @@ Integrar este objeto en el array `plugins` del `cli.json` **global**, conservand
 }
 ```
 
-Desde 0.1.2 se detecta automáticamente la carpeta de la sesión activa y se confirma acceso al disco local una vez por carpeta/TUI. Quitar `localRoot` de configuraciones anteriores para seguir cada proyecto. Conservarla como override absoluto sigue permitido. No inferir filesystem local desde servidor remoto. La carga por carpeta compilada sigue siendo alternativa. Desde 0.3.0 los defaults son F6/F7/F8; `filesBinding` controla Files y `diffBinding` controla Diff, ya no son alias. `npm install -g openeditorcode` instala únicamente el editor autónomo.
+Desde 0.1.2 se detecta automáticamente la carpeta de la sesión activa y se confirma acceso al disco local una vez por carpeta/TUI. Desde 0.3.2 se puede recordar explícitamente esa carpeta exacta para el equipo/usuario y olvidar el permiso desde la paleta (la autorización de la TUI actual sigue vigente hasta salir). Quitar `localRoot` de configuraciones anteriores para seguir cada proyecto. Conservarla como override absoluto sigue permitido. No inferir filesystem local desde servidor remoto. La carga por carpeta compilada sigue siendo alternativa. Desde 0.3.0 los defaults son F6/F7/F8; `filesBinding` controla Files y `diffBinding` controla Diff, ya no son alias. `npm install -g openeditorcode` instala únicamente el editor autónomo.

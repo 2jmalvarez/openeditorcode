@@ -17,10 +17,10 @@ test("the initial mouse press/release does not dismiss the local access confirma
   const root = await mkdtemp(join(tmpdir(), "oec-consent-click-"))
   const host = mockHost(root)
   const [confirming, setConfirming] = createSignal(false)
-  let answer!: (value: boolean) => void
+  let answer!: (value: string) => void
   let confirmations = 0
   const context = { ...host.context, options: {}, ui: { ...host.context.ui, dialog: { ...host.context.ui.dialog,
-    confirm: async () => { confirmations++; setConfirming(true); return new Promise<boolean>((resolve) => { answer = resolve }) },
+    select: async () => { confirmations++; setConfirming(true); return new Promise<never>((resolve) => { answer = (value) => resolve(value as never) }) },
   } } }
   const projects = new EditorProjects(context)
   const setup = await testRender(() => <box flexDirection="column"
@@ -39,8 +39,8 @@ test("the initial mouse press/release does not dismiss the local access confirma
     expect(confirming()).toBe(true)
     expect(setup.captureCharFrame()).toContain("Allow local access?")
     expect(projects.forSession("session-1")).toBeUndefined()
-    expect(host.archives.size).toBe(0)
-    answer(true)
+    expect([...host.archives.keys()].every((key) => key.startsWith("local-access.v1."))).toBe(true)
+    answer("once")
     await Bun.sleep(30)
     expect(projects.forSession("session-1")?.filesVisible).toBe(true)
   } finally { setup.renderer.destroy(); await projects.dispose(); await rm(root, { recursive: true, force: true }) }

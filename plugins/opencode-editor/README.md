@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.1`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.1)**. Publicación mediante GitHub Actions/OIDC con verificación de integridad/provenance e instalación real por nombre. Los smokes cubren editor, carpeta automática y sidebar con acordeones, búsqueda, Git, imágenes, foco y scroll. El historial de publicaciones verificadas está en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
+Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.2`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.2)**. Publicación mediante GitHub Actions/OIDC con verificación de integridad/provenance e instalación real por nombre. Los smokes cubren editor, carpeta automática y sidebar con acordeones, búsqueda, Git, imágenes, foco y scroll. El historial de publicaciones verificadas está en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -27,6 +27,13 @@ En 0.3.0: **F6** alterna conversación/editor sin reiniciar paneles; **F7** mues
 - `Ctrl+A` selecciona todo el contenido del archivo activo; también está en la paleta como **select all file contents**. Solo actúa con foco en el editor, sin búsqueda ni modal; no captura `Ctrl+A` del chat.
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
+
+### Novedades de 0.3.2
+
+- **Allow and remember this folder** conserva el permiso de una carpeta entre reinicios, limitado al equipo/usuario y a esa raíz exacta.
+- Se mantienen las opciones de permitir solo por TUI o denegar, y las restricciones para workspaces remotos.
+- **Forget remembered folder access** elimina permisos guardados sin cerrar documentos ni perder borradores; se vuelve a preguntar tras reiniciar.
+- Pruebas reales de recordar, reiniciar, olvidar y volver a preguntar; matriz CI ampliada a OpenCode 2.1.1.
 
 ### Correcciones de 0.3.1
 
@@ -75,7 +82,7 @@ bun run plugin:build
 
 El resultado es `plugins/opencode-editor/dist/tui.js`. Incluye los módulos OEC compartidos y sus dependencias de búsqueda de archivos; OpenTUI, Solid y la API de plugins se resuelven en el anfitrión.
 
-La matriz CI Windows/Linux cubre OpenCode **2.0.26, 2.0.27 y 2.1.0**. También se verificó **2.0.32** en Windows con instalación por nombre. Runtime Bun **1.3.14+**; compatibilidad de anfitrión declarada en `engines.opencode` (`>=2.0.26 <3`, metadata informativa, no certificación de todas las versiones posteriores). OpenTUI `>=0.5.17 <0.7.0` y Solid `>=1.9.0 <2.0.0` son peers opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. La API `@opencode/plugin` se declara solo como dependencia de desarrollo en la raíz de OEC: agregarla como peer del paquete publicado hace que Arborist atraviese sus peers opcionales y puede producir conflictos con versiones nuevas de OpenTUI. El loader provee esa API y el build la mantiene externa. No instalar copias privadas de OpenTUI/Solid. El desarrollo y el OEC autónomo usan OpenTUI **0.6.6** y los tipos de plugins **2.1.0**, alineados con OpenCode 2.1.0.
+La matriz CI Windows/Linux cubre OpenCode **2.0.26, 2.0.27, 2.1.0 y 2.1.1**. También se verificó **2.0.32** en Windows con instalación por nombre. Runtime Bun **1.3.14+**; compatibilidad de anfitrión declarada en `engines.opencode` (`>=2.0.26 <3`, metadata informativa, no certificación de todas las versiones posteriores). OpenTUI `>=0.5.17 <0.7.0` y Solid `>=1.9.0 <2.0.0` son peers opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. La API `@opencode/plugin` se declara solo como dependencia de desarrollo en la raíz de OEC: agregarla como peer del paquete publicado hace que Arborist atraviese sus peers opcionales y puede producir conflictos con versiones nuevas de OpenTUI. El loader provee esa API y el build la mantiene externa. No instalar copias privadas de OpenTUI/Solid. El desarrollo y el OEC autónomo usan OpenTUI **0.6.6** y los tipos de plugins **2.1.0**, alineados con OpenCode 2.1.0.
 
 Los estilos nativos se crean después de disponer del renderer, con `renderer.nativeScene` como propietario explícito. No se asignan recursos nativos al importar módulos ni se comparten estilos entre renderers. Los anfitriones 2.0.x mantienen su implementación anterior, que ignora el argumento adicional.
 
@@ -91,13 +98,23 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 {
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
-    "package": "@2jmalvarez/opencode-editor@0.3.1",
+    "package": "@2jmalvarez/opencode-editor@0.3.2",
     "options": { "toggleBinding": "f6", "filesBinding": "f7", "diffBinding": "f8", "explorerWidth": 30 }
   }]
 }
 ```
 
-Al abrir los archivos por primera vez, confirmar acceso a la carpeta **en esta computadora**, una vez por carpeta hasta salir de la TUI. La ubicación del servidor no prueba que exista un filesystem compartido: cancelar no lee archivos ni crea un workspace. Workspaces remotos requieren una `localRoot` explícita; no se implementa lectura remota. Una ubicación ausente o relativa produce un aviso, sin recurrir silenciosamente a otra carpeta. `localRoot` sigue disponible como override absoluto, conservando el comportamiento anterior.
+El permiso recordado está disponible desde **0.3.2**; versiones anteriores vuelven a preguntar al reiniciar.
+
+Al abrir los archivos de una carpeta desconocida, elegir el alcance del permiso **en esta computadora**:
+
+- **Allow for this TUI only**: autoriza hasta cerrar OpenCode.
+- **Allow and remember this folder**: recuerda esa carpeta entre reinicios, para este equipo/usuario. No autoriza otras carpetas ni subcarpetas abiertas como proyectos separados.
+- **Deny access** o `Esc`: no abre archivos del proyecto.
+
+La paleta **OEC: forget remembered folder access** permite elegir una carpeta y olvidar su permiso guardado. No cierra documentos ni descarta borradores: la autorización de la TUI actual sigue vigente y se vuelve a preguntar después de reiniciar. Un override `localRoot` explícito continúa autorizando esa ruta hasta quitarlo de `cli.json`.
+
+Los permisos se guardan en el storage durable del anfitrión, fuera del proyecto, con alcance de equipo/usuario; no se escribe configuración personal automáticamente. La ubicación del servidor no prueba que exista un filesystem compartido: cancelar no lee archivos ni crea un workspace. Workspaces remotos requieren una `localRoot` explícita incluso si existe un permiso recordado; no se implementa lectura remota. Una ubicación ausente o relativa produce un aviso, sin recurrir silenciosamente a otra carpeta.
 
 `localRoot` ya no es obligatoria desde 0.1.2. Si una configuración anterior conserva esa opción, quitarla para seguir automáticamente cada proyecto. Opcionalmente fijar `"localRoot": "C:/ruta/mi-proyecto"` (Linux: `/home/usuario/mi-proyecto`) para mantener el opt-in explícito de una sola raíz; solo integra sesiones cuya ubicación coincide con ella. No utilizarlo para editar proyectos remotos aunque sus rutas textuales coincidan con carpetas locales.
 
@@ -225,23 +242,26 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.3.1
+bun run plugin:preflight opencode-editor-v0.3.2
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.1.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.2.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.1.tgz --auto-root
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.2.tgz --auto-root
+
+# Cuatro TUIs aisladas: recordar, reiniciar sin preguntar, olvidar y volver a preguntar.
+bun run plugins/opencode-editor/scripts/smoke-access.ts "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.2.tgz
 # Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
 # En un release, probar también el sidebar del tarball o paquete instalado:
-bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.1"
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.2"
 ```
 
-El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7/F8. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.1` en lugar del tarball.
+El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7/F8. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.2` en lugar del tarball.
 
 `smoke-sidebar.ts` valida consentimiento con mouse down/up, chat con Files abierto, acordeones independientes, F6 conservando paneles, F7 para Files, F8 para Diff en árbol, búsqueda masiva acotada, diffs en pestañas con F4, rename F2, preview Markdown e imágenes, paleta/atajos y actualización Git local. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía prompts ni modifica la instalación o configuración del usuario.
 

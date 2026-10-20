@@ -43,6 +43,8 @@ export function configurationText(options: EditorPreferences): string {
 Current defaults:
 ${JSON.stringify(options, null, 2)}
 localRoot: optional absolute local directory override; otherwise confirm active session directory.
+Local access: allow for this TUI only, or remember this exact folder on this computer across restarts.
+Palette: "Forget remembered folder access" removes saved permission; current documents remain open until the TUI exits.
 toggleBinding: conversation/editor (default f6)
 filesBinding: Files (default f7)
 diffBinding: Diff (default f8), independent of filesBinding

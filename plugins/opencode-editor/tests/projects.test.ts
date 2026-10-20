@@ -24,7 +24,7 @@ test("automatically follows session directories without mixing documents, reuses
   const f = await fixture()
   try {
     expect(f.projects.forSession("session-1")).toBeUndefined()
-    f.selections.push(true)
+    f.selections.push("once")
     await f.projects.toggleFiles()
     const first = f.projects.forSession("session-1")!
     expect(first.workspace.root).toBe(f.first)
@@ -32,7 +32,7 @@ test("automatically follows session directories without mixing documents, reuses
     await first.open(join(f.first, "same.txt"), "session-1")
     await first.back()
     f.context.ui.router.navigate({ type: "session", sessionID: "second" })
-    f.selections.push(true)
+    f.selections.push("once")
     await f.projects.toggleFiles()
     const second = f.projects.forSession("second")!
     expect(second.workspace.root).toBe(f.second)
@@ -53,10 +53,10 @@ test("automatically follows session directories without mixing documents, reuses
 test("declining local access does not construct a workspace or store drafts", async () => {
   const f = await fixture()
   try {
-    f.selections.push(false)
+    f.selections.push("deny")
     await f.projects.toggleFiles()
     expect(f.projects.forSession("session-1")).toBeUndefined()
-    expect(f.archives.size).toBe(0)
+    expect([...f.archives.keys()].every((key) => key.startsWith("local-access.v1."))).toBe(true)
   } finally { await f.cleanup() }
 })
 
@@ -82,8 +82,8 @@ test("remote workspace references never automatically map onto a local path", as
 
 test("switching sessions during consent does not navigate or open the old directory", async () => {
   const f = await fixture()
-  const projects = new EditorProjects({ ...f.context, ui: { ...f.context.ui, dialog: { ...f.context.ui.dialog, confirm: async () => {
-    f.context.ui.router.navigate({ type: "session", sessionID: "second" }); return true
+  const projects = new EditorProjects({ ...f.context, ui: { ...f.context.ui, dialog: { ...f.context.ui.dialog, select: async () => {
+    f.context.ui.router.navigate({ type: "session", sessionID: "second" }); return "once" as never
   } } } })
   try {
     await projects.toggle()
@@ -106,7 +106,7 @@ test("home uses the host location, never the plugin or service working directory
   const f = await fixture()
   try {
     f.context.ui.router.navigate({ type: "home" })
-    f.selections.push(true)
+    f.selections.push("once")
     await f.projects.toggle()
     expect(f.projects.current()?.workspace.root).toBe(f.first)
   } finally { await f.cleanup() }
@@ -116,10 +116,10 @@ test("new Files mounts only after the host's post-confirmation focus handoff", a
   const f = await fixture()
   let restored = false
   const mountedAfterRestore: boolean[] = []
-  f.context.ui.dialog.confirm = async () => {
+  f.context.ui.dialog.select = async () => {
     // The host resolves first and restores prompt focus at the end of dispatch.
     setTimeout(() => { restored = true }, 0)
-    return true
+    return "once" as never
   }
   const stop = f.projects.subscribe(() => { if (f.projects.forSession("session-1")) mountedAfterRestore.push(restored) })
   try {
@@ -127,4 +127,72 @@ test("new Files mounts only after the host's post-confirmation focus handoff", a
     expect(mountedAfterRestore.length).toBeGreaterThan(0)
     expect(mountedAfterRestore.every(Boolean)).toBe(true)
   } finally { stop(); await f.cleanup() }
+})
+
+test("remembered consent survives a new TUI, but does not authorize a different project", async () => {
+  const f = await fixture()
+  const restarted = new EditorProjects(f.context)
+  try {
+    f.selections.push("remember")
+    await f.projects.toggleFiles()
+    await f.projects.dispose()
+    f.selections.push("deny")
+    await restarted.toggleFiles()
+    expect(restarted.forSession("session-1")?.workspace.root).toBe(f.first)
+    expect(f.selections).toEqual(["deny"])
+    f.context.ui.router.navigate({ type: "session", sessionID: "second" })
+    await restarted.toggleFiles()
+    expect(restarted.forSession("second")).toBeUndefined()
+    expect(f.selections).toHaveLength(0)
+  } finally { await restarted.dispose(); await f.cleanup() }
+})
+
+test("one-TUI consent is not persisted; deny, escape and unknown choices fail closed", async () => {
+  const f = await fixture()
+  try {
+    f.selections.push("once")
+    await f.projects.toggleFiles()
+    await f.projects.dispose()
+    for (const choice of ["deny", undefined, "unexpected"]) {
+      const restarted = new EditorProjects(f.context)
+      try {
+        f.selections.push(choice)
+        await restarted.toggleFiles()
+        expect(restarted.forSession("session-1")).toBeUndefined()
+        expect(f.selections).toHaveLength(0)
+      } finally { await restarted.dispose() }
+    }
+  } finally { await f.cleanup() }
+})
+
+test("forgetting saved consent preserves open drafts and asks again on the next TUI", async () => {
+  const f = await fixture()
+  const restarted = new EditorProjects(f.context)
+  try {
+    f.selections.push("remember")
+    await f.projects.toggleFiles()
+    const controller = f.projects.forSession("session-1")!
+    await controller.open(join(f.first, "same.txt"), "session-1")
+    controller.workspace.edit(join(f.first, "same.txt"), "unsaved")
+    f.selections.push(f.first, true)
+    await f.projects.forgetLocalAccess()
+    expect(controller.workspace.active?.content).toBe("unsaved")
+    expect(f.toasts.at(-1)).toContain("ask again")
+    await controller.back()
+    f.selections.push("deny")
+    await restarted.toggleFiles()
+    expect(restarted.forSession("session-1")).toBeUndefined()
+  } finally { await restarted.dispose(); await f.cleanup() }
+})
+
+test("saved local trust never bypasses the explicit mapping required for a remote workspace", async () => {
+  const f = await fixture()
+  const remote = new EditorProjects({ ...f.context, location: { directory: f.first, workspaceID: "remote" } })
+  try {
+    f.selections.push("remember")
+    await f.projects.toggleFiles()
+    f.context.ui.router.navigate({ type: "home" })
+    await expect(remote.toggle()).rejects.toThrow("remote")
+    expect(remote.current()).toBeUndefined()
+  } finally { await remote.dispose(); await f.cleanup() }
 })

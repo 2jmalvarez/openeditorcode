@@ -20,6 +20,22 @@ filters and credential helpers; external formatters run with your permissions.
   file through the explorer inherits the parent directory ACL until first save.
 - Do not keep secrets in a directory readable/writable by untrusted users.
 
+## Plugin local access
+
+Unknown local project directories require explicit consent. Access may last only
+until the TUI exits, or the user may explicitly remember the exact directory
+across restarts. Saved grants live in the host's durable storage, scoped by a hash
+of the local platform, hostname and home directory. This is separation for ordinary
+multi-machine use, not a hardware identity or security boundary against modified
+host storage. Protect that storage and its backups. Renaming the computer or
+changing the user home can require consent again.
+
+Remembering a directory does not grant other project roots. Remote workspaces
+still require an explicit `localRoot` mapping. **OEC: forget remembered folder
+access** removes a saved grant after confirmation; already open documents remain
+available under the current TUI's authorization to avoid losing edits. OEC asks
+again after restarting, unless `localRoot` still explicitly grants access.
+
 ## Plugin recovery drafts
 
 The plugin keeps unsaved document text **and its original baseline** in the
