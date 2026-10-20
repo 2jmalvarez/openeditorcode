@@ -67,10 +67,11 @@ export function validateManifest(manifest: Record<string, any>) {
   assert.deepEqual(Object.keys(manifest.peerDependencies).sort(), [...peers].sort())
   assert.deepEqual(Object.keys(manifest.peerDependenciesMeta).sort(), [...peers].sort())
   for (const host of peers) assert.equal(manifest.peerDependenciesMeta?.[host]?.optional, true, "Host peers must not be auto-installed as private copies")
-  for (const version of ["2.0.26", "2.0.27"]) assert.ok(Bun.semver.satisfies(version, manifest.engines.opencode))
+  for (const version of ["2.0.26", "2.0.27", "2.1.0"]) assert.ok(Bun.semver.satisfies(version, manifest.engines.opencode))
   for (const host of ["@opentui/core", "@opentui/solid"]) {
     assert.ok(Bun.semver.satisfies("0.5.17", manifest.peerDependencies[host]))
-    assert.ok(!Bun.semver.satisfies("0.6.0", manifest.peerDependencies[host]))
+    assert.ok(Bun.semver.satisfies("0.6.6", manifest.peerDependencies[host]))
+    assert.ok(!Bun.semver.satisfies("0.7.0", manifest.peerDependencies[host]))
   }
 }
 

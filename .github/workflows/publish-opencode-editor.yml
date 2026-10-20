@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        opencode: ["2.0.26", "2.0.27"]
+        opencode: ["2.0.26", "2.0.27", "2.1.0"]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:

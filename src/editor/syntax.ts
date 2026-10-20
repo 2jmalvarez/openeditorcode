@@ -5,15 +5,10 @@ import type { SyntaxTokenStyle } from "../config/types"
 type HighlightToken = "keyword" | "string" | "comment" | "number" | "tag" | "property"
 export type SyntaxTheme = { style: SyntaxStyle; ids: Record<HighlightToken, number> }
 
-export function createSyntaxTheme(styles: Record<string, SyntaxTokenStyle>): SyntaxTheme {
-  const style = SyntaxStyle.fromStyles(Object.fromEntries(Object.entries(styles).map(([name, value]) => [name, { fg: value.foreground, bold: value.bold, italic: value.italic, dim: value.dim }])))
+export function createSyntaxTheme(styles: Record<string, SyntaxTokenStyle>, owner: Parameters<typeof SyntaxStyle.fromStyles>[1]): SyntaxTheme {
+  const style = SyntaxStyle.fromStyles(Object.fromEntries(Object.entries(styles).map(([name, value]) => [name, { fg: value.foreground, bold: value.bold, italic: value.italic, dim: value.dim }])), owner)
   return { style, ids: Object.fromEntries(["keyword", "string", "comment", "number", "tag", "property"].map((name) => [name, style.getStyleId(name)!])) as Record<HighlightToken, number> }
 }
-
-const fallbackTheme = createSyntaxTheme({
-  default: { foreground: "#d6e5dc" }, keyword: { foreground: "#79c0ff", bold: true }, string: { foreground: "#a5d6a7" },
-  comment: { foreground: "#7d8590", italic: true, dim: true }, number: { foreground: "#e3b341" }, tag: { foreground: "#ffab70", bold: true }, property: { foreground: "#d2a8ff" },
-})
 
 const patterns = {
   slashComment: /\/\/[^\n]*/g,
@@ -63,7 +58,7 @@ function addHexColors(editor: TextareaRenderable, text: string, theme: SyntaxThe
   }
 }
 
-export function highlightEditor(editor: TextareaRenderable | undefined, path: string | undefined, text: string, theme = fallbackTheme) {
+export function highlightEditor(editor: TextareaRenderable | undefined, path: string | undefined, text: string, theme: SyntaxTheme) {
   if (!editor) return
   editor.clearAllHighlights()
   const extension = extname(path || "").toLocaleLowerCase()

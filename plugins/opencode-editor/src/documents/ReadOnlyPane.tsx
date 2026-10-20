@@ -8,17 +8,22 @@ import type { Document } from "./workspace"
 
 // Highlight jobs may outlive a disposed pane. Share the host-theme style instead
 // of destroying native style memory while an asynchronous parser still uses it.
-const styles = new WeakMap<object, SyntaxStyle>()
+const styles = new WeakMap<object, WeakMap<object, SyntaxStyle>>()
 function themeStyle(controller: EditorController) {
-  const theme = controller.context.theme
-  let style = styles.get(theme)
+  const { theme, renderer } = controller.context
+  let themes = styles.get(renderer)
+  if (!themes) {
+    themes = new WeakMap()
+    styles.set(renderer, themes)
+  }
+  let style = themes.get(theme)
   if (!style) {
     style = SyntaxStyle.fromStyles({
       default: { fg: theme.text.base }, "markup.heading": { fg: theme.text.base, bold: true },
       "markup.strong": { fg: theme.text.base, bold: true }, "markup.italic": { fg: theme.text.base, italic: true },
       comment: { fg: theme.text.muted, italic: true },
-    })
-    styles.set(theme, style)
+    }, renderer.nativeScene)
+    themes.set(theme, style)
   }
   return style
 }

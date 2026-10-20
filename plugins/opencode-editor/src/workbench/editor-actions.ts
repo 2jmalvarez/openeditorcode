@@ -56,5 +56,9 @@ export function selectWord(editor: TextareaRenderable) {
   while (word(characters[end])) end++
   editor.clearSelection()
   editor.setCursor(row, Bun.stringWidth(characters.slice(0, start).join("")))
-  for (let offset = start; offset < end; offset++) editor.moveCursorRight({ select: true })
+  const anchor = editor.cursorOffset
+  for (let offset = start; offset < end; offset++) editor.moveCursorRight()
+  // Explicit ranges are half-open on both hosts. OpenTUI 0.6's default keyboard
+  // selection includes the endpoint cell, unlike the older boundary behavior.
+  editor.setSelection(anchor, editor.cursorOffset)
 }

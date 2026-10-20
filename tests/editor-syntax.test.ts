@@ -1,10 +1,34 @@
-import { expect, test } from "bun:test"
-import { RGBA } from "@opentui/core"
+import { afterEach, beforeEach, expect, test } from "bun:test"
+import { ResourceContext, RGBA } from "@opentui/core"
 import { createSyntaxTheme, highlightEditor } from "../src/editor/syntax"
 import { formatDocument } from "../src/editor/format"
 import { factoryConfig } from "../src/config/defaults"
+import { resolve } from "node:path"
 
 type Highlight = { line: number; start: number; end: number; styleId?: number; priority?: number | null }
+
+let owner: ResourceContext
+beforeEach(() => { owner = new ResourceContext({ objectCapacity: 128, renderCellsMax: 1024 }) })
+afterEach(() => { owner.destroy() })
+
+test("importing syntax helpers does not allocate native resources before a renderer exists", async () => {
+  const child = Bun.spawn([process.execPath, "-e", `await import(${JSON.stringify(resolve(import.meta.dir, "../src/editor/syntax.ts"))})`], { stdout: "pipe", stderr: "pipe" })
+  const [code, error] = await Promise.all([child.exited, new Response(child.stderr).text()])
+  expect(error).toBe("")
+  expect(code).toBe(0)
+})
+
+test("syntax themes belong to the supplied resource context, never a global fallback", () => {
+  const theme = createSyntaxTheme(factoryConfig().editor.syntax.styles, owner)
+  const other = new ResourceContext({ objectCapacity: 128, renderCellsMax: 1024 })
+  try {
+    const otherTheme = createSyntaxTheme(factoryConfig().editor.syntax.styles, other)
+    expect(theme.style.getStyleCount()).toBeGreaterThan(0)
+    owner.destroy()
+    expect(() => theme.style.getStyleCount()).toThrow()
+    expect(otherTheme.style.getStyleCount()).toBeGreaterThan(0)
+  } finally { other.destroy() }
+})
 
 test("gives comments and strings precedence over nested tokens", () => {
   const highlights: Highlight[] = []
@@ -13,7 +37,7 @@ test("gives comments and strings precedence over nested tokens", () => {
     addHighlight(line: number, highlight: Highlight) { highlights.push({ ...highlight, line }) },
   }
 
-  highlightEditor(editor as never, "example.ts", 'const value = "return 42" // await 7')
+  highlightEditor(editor as never, "example.ts", 'const value = "return 42" // await 7', createSyntaxTheme(factoryConfig().editor.syntax.styles, owner))
 
   expect(highlights.filter((highlight) => highlight.priority && highlight.priority > 1).map(({ line, start, end, priority }) => ({ line, start, end, priority }))).toEqual([
     { line: 0, start: 26, end: 36, priority: 3 },
@@ -28,13 +52,13 @@ test("does not treat hexadecimal colors as TSX comments", () => {
     addHighlight(line: number, highlight: Highlight) { highlights.push({ ...highlight, line }) },
   }
 
-  highlightEditor(editor as never, "example.tsx", '<text fg="#70d6a7">{props.value}</text>')
+  highlightEditor(editor as never, "example.tsx", '<text fg="#70d6a7">{props.value}</text>', createSyntaxTheme(factoryConfig().editor.syntax.styles, owner))
 
   expect(highlights.some((highlight) => highlight.priority === 3)).toBe(false)
 })
 
 test("highlights SVG tags and attributes and paints complete six-digit hex colors", () => {
-  const theme = createSyntaxTheme(factoryConfig().editor.syntax.styles)
+  const theme = createSyntaxTheme(factoryConfig().editor.syntax.styles, owner)
   const highlights: Highlight[] = []
   const editor = {
     clearAllHighlights() { highlights.length = 0 },
@@ -52,7 +76,7 @@ test("highlights SVG tags and attributes and paints complete six-digit hex color
 })
 
 test("paints hex literals in text and strings but ignores incomplete or extended values", () => {
-  const theme = createSyntaxTheme(factoryConfig().editor.syntax.styles)
+  const theme = createSyntaxTheme(factoryConfig().editor.syntax.styles, owner)
   const highlights: Highlight[] = []
   const editor = {
     clearAllHighlights() {},

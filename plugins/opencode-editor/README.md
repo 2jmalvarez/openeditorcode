@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.0`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.0)**. Publicación mediante GitHub Actions/OIDC con verificación de integridad/provenance e instalación real por nombre. Los smokes cubren editor, carpeta automática y sidebar con acordeones, búsqueda, Git, imágenes, foco y scroll. El historial de publicaciones verificadas está en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
+Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.1`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.1)**. Publicación mediante GitHub Actions/OIDC con verificación de integridad/provenance e instalación real por nombre. Los smokes cubren editor, carpeta automática y sidebar con acordeones, búsqueda, Git, imágenes, foco y scroll. El historial de publicaciones verificadas está en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 ## Funciones
@@ -27,6 +27,12 @@ En 0.3.0: **F6** alterna conversación/editor sin reiniciar paneles; **F7** mues
 - `Ctrl+A` selecciona todo el contenido del archivo activo; también está en la paleta como **select all file contents**. Solo actúa con foco en el editor, sin búsqueda ni modal; no captura `Ctrl+A` del chat.
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
+
+### Correcciones de 0.3.1
+
+- Compatibilidad con OpenCode 2.1.0 / OpenTUI 0.6.6: estilos con propietario explícito, sin asignaciones nativas durante la importación y cachés independientes por renderer.
+- Selección de palabras sin incluir espacios de más con la nueva semántica de selección de OpenTUI.
+- Pruebas de regresión y matriz CI ampliada, conservando los anfitriones OpenCode 2.0.26/2.0.27.
 
 ### Novedades de 0.3.0
 
@@ -69,7 +75,9 @@ bun run plugin:build
 
 El resultado es `plugins/opencode-editor/dist/tui.js`. Incluye los módulos OEC compartidos y sus dependencias de búsqueda de archivos; OpenTUI, Solid y la API de plugins se resuelven en el anfitrión.
 
-Probado con OpenCode **2.0.26 y 2.0.27** en CI Windows/Linux, y **2.0.32** en Windows con instalación por nombre. Runtime Bun **1.3.14+**; compatibilidad de anfitrión declarada en `engines.opencode` (`>=2.0.26 <3`, metadata informativa, no certificación de todas las versiones posteriores). OpenTUI `>=0.5.17 <0.6.0` y Solid `>=1.9.0 <2.0.0` son peers opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. La API `@opencode/plugin` se declara solo como dependencia de desarrollo en la raíz de OEC: agregarla como peer del paquete publicado hace que Arborist atraviese sus peers opcionales y puede producir conflictos con versiones nuevas de OpenTUI. El loader provee esa API y el build la mantiene externa. No instalar copias privadas de OpenTUI/Solid. El OEC autónomo conserva sus dependencias actuales.
+La matriz CI Windows/Linux cubre OpenCode **2.0.26, 2.0.27 y 2.1.0**. También se verificó **2.0.32** en Windows con instalación por nombre. Runtime Bun **1.3.14+**; compatibilidad de anfitrión declarada en `engines.opencode` (`>=2.0.26 <3`, metadata informativa, no certificación de todas las versiones posteriores). OpenTUI `>=0.5.17 <0.7.0` y Solid `>=1.9.0 <2.0.0` son peers opcionales para el instalador porque OpenCode provee las instancias en runtime; no son opcionales para ejecutar el plugin. La API `@opencode/plugin` se declara solo como dependencia de desarrollo en la raíz de OEC: agregarla como peer del paquete publicado hace que Arborist atraviese sus peers opcionales y puede producir conflictos con versiones nuevas de OpenTUI. El loader provee esa API y el build la mantiene externa. No instalar copias privadas de OpenTUI/Solid. El desarrollo y el OEC autónomo usan OpenTUI **0.6.6** y los tipos de plugins **2.1.0**, alineados con OpenCode 2.1.0.
+
+Los estilos nativos se crean después de disponer del renderer, con `renderer.nativeScene` como propietario explícito. No se asignan recursos nativos al importar módulos ni se comparten estilos entre renderers. Los anfitriones 2.0.x mantienen su implementación anterior, que ignora el argumento adicional.
 
 ## Cargar el plugin
 
@@ -83,7 +91,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 {
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
-    "package": "@2jmalvarez/opencode-editor@0.3.0",
+    "package": "@2jmalvarez/opencode-editor@0.3.1",
     "options": { "toggleBinding": "f6", "filesBinding": "f7", "diffBinding": "f8", "explorerWidth": 30 }
   }]
 }
@@ -217,23 +225,23 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.3.0
+bun run plugin:preflight opencode-editor-v0.3.1
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.0.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.1.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.0.tgz --auto-root
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.1.tgz --auto-root
 # Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
 # En un release, probar también el sidebar del tarball o paquete instalado:
-bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.0"
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.1"
 ```
 
-El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7/F8. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.0` en lugar del tarball.
+El pack-check instala el tarball con npm y con Arborist (el resolvedor del anfitrión), sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa ese tarball instalado por Arborist fuera del checkout, configuración/datos temporales y `--standalone`; crea una sesión temporal sin enviar prompts, abre archivos desde el sidebar mediante teclado, edita, comprueba Enter/Tab, duplicación y páginas, guarda con `Ctrl+S` y regresa a la misma sesión. Comprueba conservación de documentos, pestañas y opciones F6/F7/F8. El observer no importa ni sustituye la entrada del plugin. No modifica la instalación, configuración global ni portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.1` en lugar del tarball.
 
 `smoke-sidebar.ts` valida consentimiento con mouse down/up, chat con Files abierto, acordeones independientes, F6 conservando paneles, F7 para Files, F8 para Diff en árbol, búsqueda masiva acotada, diffs en pestañas con F4, rename F2, preview Markdown e imágenes, paleta/atajos y actualización Git local. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía prompts ni modifica la instalación o configuración del usuario.
 

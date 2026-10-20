@@ -18,7 +18,7 @@ export function EditorBuffer(props: { controller: EditorController; document: Do
   // Cursor notifications can precede content notifications in OpenTUI. A
   // position-only revision must not restore the old document over typed text.
   const content = createMemo(() => { revision(); return document.content })
-  const theme = createSyntaxTheme(factoryConfig().editor.syntax.styles)
+  const theme = createSyntaxTheme(factoryConfig().editor.syntax.styles, controller.context.renderer.nativeScene)
   const [renderable, setRenderable] = createSignal<TextareaRenderable>()
   let replacing = false
   let ready = false
@@ -98,7 +98,7 @@ export function EditorBuffer(props: { controller: EditorController; document: Do
     props.onHandle(undefined)
     controller.context.renderer.off("frame", restore)
     controller.context.renderer.off("frame", frame)
-    // SyntaxStyle native resources are owned by this view, not the host renderer.
+    // This view releases its style; the host's resource context owns the allocation.
     theme.style.destroy()
   })
   return <box flexGrow={1} minHeight={0} minWidth={0} flexDirection="row" onMouseDown={props.onFocus}>

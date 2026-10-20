@@ -11,7 +11,7 @@ import { FileSearch } from "../src/explorer/file-search"
 import { EditorRoute } from "../src/workbench/EditorRoute"
 import { mockHost } from "./host"
 import { editorCommands } from "../src/workbench/useKeyboardShortcuts"
-import type { ImageRenderable, InputRenderable, KeyEvent } from "@opentui/core"
+import type { ImageRenderable, InputRenderable, KeyEvent, MarkdownRenderable } from "@opentui/core"
 import { configurationText, SHORTCUTS } from "../src/integration/reference"
 
 test("literal search is opt-in, basename-based unless a path is supplied, and preserves fuzzy mode", async () => {
@@ -183,6 +183,36 @@ test("keyboard router consumes F4/search keys, keeps readonly views uneditable a
     expect(configurationText(controller.options)).toContain("searchMode")
     for (const key of ["F4", "F2", "Ctrl+E", "Ctrl+S"]) expect(SHORTCUTS).toContain(key)
   } finally { await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
+test("preview styles are isolated by renderer even when hosts share their theme", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-preview-owners-"))
+  const path = join(root, "file.md")
+  await writeFile(path, "# Shared theme\n")
+  const hosts = [mockHost(root), mockHost(root)]
+  Object.defineProperty(hosts[1]!.context, "theme", { value: hosts[0]!.context.theme })
+  const controllers = hosts.map((host) => new EditorController(host.context, parseOptions({ localRoot: root })))
+  const setups: Awaited<ReturnType<typeof testRender>>[] = []
+  try {
+    for (const [index, controller] of controllers.entries()) {
+      await controller.open(path)
+      const setup = await testRender(() => {
+        Object.defineProperty(hosts[index]!.context, "renderer", { value: useRenderer(), configurable: true })
+        return <EditorRoute controller={controller} />
+      }, { width: 90, height: 24 })
+      setups.push(setup)
+      await setup.renderOnce()
+    }
+    const previews = setups.map((setup) => setup.renderer.root.findDescendantById("oec-markdown-preview") as MarkdownRenderable)
+    expect(previews[0]!.syntaxStyle).not.toBe(previews[1]!.syntaxStyle)
+    setups[0]!.renderer.destroy()
+    expect(previews[1]!.syntaxStyle.getStyleCount()).toBeGreaterThan(0)
+    await setups[1]!.renderOnce()
+  } finally {
+    for (const setup of setups) setup.renderer.destroy()
+    for (const controller of controllers) await controller.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test("cursor-only workspace updates cannot steal file search focus", async () => {

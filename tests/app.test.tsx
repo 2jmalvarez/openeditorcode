@@ -262,7 +262,7 @@ test("opens real images in a visible read-only preview with nonzero height", asy
     await Bun.sleep(80)
     setup.mockInput.pressEnter()
     await waitForText(setup, "IMAGEN · SOLO LECTURA")
-    const findImage = (node: import("@opentui/core").Renderable): ImageRenderable | undefined => node.constructor.name === "ImageRenderable" ? node as ImageRenderable : node.getChildren().map(findImage).find(Boolean)
+    const findImage = (node: import("@opentui/core").Renderable): ImageRenderable | undefined => node.findDescendantById("oec-standalone-image") as ImageRenderable | undefined
     const image = findImage(setup.renderer.root)!
     expect(image).toBeDefined()
     await image.loadPromise

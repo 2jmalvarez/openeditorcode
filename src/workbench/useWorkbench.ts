@@ -36,7 +36,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   const [globalConfig, setGlobalConfig] = createSignal(initialGlobalConfig)
   const [projectConfig, setProjectConfig] = createSignal(initialProjectConfig)
   const config = createMemo(() => resolveConfig(globalConfig(), projectConfig()))
-  const syntaxTheme = createMemo(() => createSyntaxTheme(config().editor.syntax.styles))
+  const syntaxTheme = createMemo(() => createSyntaxTheme(config().editor.syntax.styles, renderer.nativeScene))
   const initialPanels = initialSidePanels(renderer.width, initialConfig)
   const [active, setActive] = createSignal<FocusTarget>(initialPanels.explorer ? "explorer" : "editor")
   const [explorerVisible, setExplorerVisible] = createSignal(initialPanels.explorer)
