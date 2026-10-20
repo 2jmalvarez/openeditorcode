@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"
 import { chmod, mkdir } from "node:fs/promises"
 import { join, resolve } from "node:path"
-import { command, download, metadata } from "./release"
+import { command, download, metadata, testedHostVersions } from "./release"
 
 const version = process.argv[2]
-assert.ok(version === "2.0.26" || version === "2.0.27", "Use a tested OpenCode version")
+assert.ok(version && testedHostVersions.includes(version), "Use a tested OpenCode version")
 assert.equal(process.arch, "x64")
 assert.ok(process.platform === "win32" || process.platform === "linux")
 const output = resolve(process.argv[3]!)

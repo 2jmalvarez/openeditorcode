@@ -1,9 +1,17 @@
 import { describe, expect, test } from "bun:test"
-import { releaseCommand, validateBundle, validateManifest, validateTag } from "../scripts/release"
+import { releaseCommand, testedHostVersions, validateBundle, validateManifest, validateTag } from "../scripts/release"
+import { readFileSync } from "node:fs"
 import manifest from "../package.json"
 import { validateInstalledNames } from "../scripts/install-check"
 
 describe("plugin release boundaries", () => {
+  test("CI host matrix matches the versions accepted by the host downloader", () => {
+    const workflow = readFileSync(new URL("../../../.github/workflows/publish-opencode-editor.yml", import.meta.url), "utf8")
+    const matrix = workflow.match(/opencode: (\[[^\n]+\])/)?.[1]
+    expect(matrix).toBeDefined()
+    expect(JSON.parse(matrix!)).toEqual(testedHostVersions)
+    expect(testedHostVersions).toContain("2.1.0")
+  })
   test("Windows extraction cannot select Git Bash tar through PATH", () => {
     const args = ["tar", "-xzf", "D:\\a\\host.tgz", "-C", "D:\\a\\host"]
     expect(releaseCommand(args, "win32", "C:\\Windows")).toEqual(["C:\\Windows\\System32\\tar.exe", ...args.slice(1)])
