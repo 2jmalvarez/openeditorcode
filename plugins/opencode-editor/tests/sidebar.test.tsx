@@ -5,13 +5,62 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { testRender, useRenderer } from "@opentui/solid"
 import { createSignal, Show } from "solid-js"
-import type { InputRenderable } from "@opentui/core"
+import type { InputRenderable, ScrollBoxRenderable } from "@opentui/core"
 import { FilesToggle } from "../src/explorer/FilesToggle"
 import { SessionFiles } from "../src/explorer/SessionFiles"
 import { EditorProjects } from "../src/integration/projects"
 import { EditorController } from "../src/integration/controller"
 import { parseOptions } from "../src/integration/options"
 import { mockHost } from "./host"
+import { sidebarLayout } from "../src/explorer/sidebar-layout"
+
+test("sidebar reserves six MCP rows and only exceeds its budget at minimum panel sizes", () => {
+  for (const rows of [32, 36, 40, 50, 70]) {
+    const layout = sidebarLayout(rows, true, true, true)
+    expect(layout.files).toBeLessThanOrEqual(10)
+    expect(layout.files).toBeGreaterThanOrEqual(3)
+    expect(layout.changes).toBeLessThanOrEqual(8)
+    expect(20 + 3 + layout.files + layout.changes).toBeLessThanOrEqual(rows)
+  }
+  expect(sidebarLayout(40, true, true, true)).toEqual({ files: 9, changes: 8 })
+  expect(sidebarLayout(24, true, true, true)).toEqual({ files: 3, changes: 3 })
+  expect(sidebarLayout(32, true, false, false).files).toBe(10)
+  expect(sidebarLayout(32, true, true, false).files).toBe(9)
+})
+
+test("six MCP servers fit above Files and Diff; resize retains inner scrolling and outer overflow remains available", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-sidebar-budget-"))
+  await Promise.all(Array.from({ length: 40 }, (_, i) => writeFile(join(root, `file-${i}.ts`), "file")))
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
+  await controller.toggleFiles()
+  const [extra, setExtra] = createSignal(0)
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <box flexDirection="column" height="100%">
+      <scrollbox id="host-sidebar" flexGrow={1} flexBasis={0} minHeight={0} scrollY>
+        <box height={18 + extra()} flexShrink={0}><text>Title, context and six MCP servers</text></box>
+        <SessionFiles controller={controller} sessionID="session-1" />
+      </scrollbox>
+      <box height={2} flexShrink={0}><text>Host footer</text></box>
+    </box>
+  }, { width: 50, height: 40 })
+  const outer = () => setup.renderer.root.findDescendantById("host-sidebar") as ScrollBoxRenderable
+  const tree = () => setup.renderer.root.findDescendantById("oec-files-scroll") as ScrollBoxRenderable
+  try {
+    await setup.renderOnce(); await setup.renderOnce()
+    expect(outer().scrollHeight).toBeLessThanOrEqual(outer().viewport.height)
+    expect(tree().scrollHeight).toBeGreaterThan(tree().viewport.height)
+    expect(setup.renderer.root.findDescendantById("oec-files-pane")!.height).toBe(8)
+    setup.resize(50, 32)
+    await setup.renderOnce(); await setup.renderOnce()
+    expect(outer().scrollHeight).toBeLessThanOrEqual(outer().viewport.height)
+    expect(setup.renderer.root.findDescendantById("oec-files-pane")!.height).toBe(2)
+    setExtra(10)
+    await setup.renderOnce(); await setup.renderOnce()
+    expect(outer().scrollHeight).toBeGreaterThan(outer().viewport.height)
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
 
 test("the initial mouse press/release does not dismiss the local access confirmation", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-consent-click-"))

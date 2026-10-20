@@ -1,11 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 import type { BoxRenderable } from "@opentui/core"
+import { useTerminalDimensions } from "@opentui/solid"
 import { createSignal, onCleanup, onMount, Show } from "solid-js"
 import type { EditorController } from "../integration/controller"
 import { useRevision } from "../workbench/reactive"
 import { ChangesPane } from "../changes/ChangesPane"
 import { FilesExplorer } from "./FilesExplorer"
 import { FilesToggle } from "./FilesToggle"
+import { sidebarLayout } from "./sidebar-layout"
 
 /** One bounded layout for both routes: each accordion owns its own viewport. */
 export function ProjectPanels(props: {
@@ -22,6 +24,8 @@ export function ProjectPanels(props: {
   const enabled = () => { revision(); return !controller.modal }
   const mode = () => props.editor ? "oec-editor" : undefined
   const [height, setHeight] = createSignal(20)
+  const dimensions = useTerminalDimensions()
+  const sidebar = () => sidebarLayout(dimensions().height, filesVisible(), diffVisible(), diffOpen(), filesOpen())
   let container: BoxRenderable | undefined
   const focus = (id: string) => container?.findDescendantById(id)?.focus()
   const focusTree = () => { if (!filesVisible()) { props.onExit(); return }; props.onFocus(); focus(filesOpen() ? "oec-files-pane" : "oec-files-toggle") }
@@ -46,7 +50,7 @@ export function ProjectPanels(props: {
       onNext={() => { if (filesOpen()) focusTree(); else nextFromFiles() }} onExit={props.onExit} />
     <Show when={filesOpen()}>
       <FilesExplorer controller={controller} sessionID={props.editor ? undefined : props.sessionID} keyboardMode={mode()}
-        height={props.editor ? undefined : 15} focused={props.focused} onFocus={props.onFocus} onBlur={props.onBlur}
+        height={props.editor ? undefined : sidebar().files} focused={props.focused} onFocus={props.onFocus} onBlur={props.onBlur}
         onSearchFocus={props.onSearchFocus} onNext={nextFromFiles} onExit={props.onExit} />
     </Show>
     </box></Show>
@@ -57,7 +61,7 @@ export function ProjectPanels(props: {
         onFocus={props.onOtherFocus} onNext={() => { if (diffOpen()) focusDiff(); else props.onExit() }} onExit={focusTree} />
       <Show when={diffOpen()}>
         <ChangesPane controller={controller} sessionID={props.sessionID ?? controller.sessionID} keyboardMode={mode()}
-          height={props.editor ? Math.max(2, Math.min(8, Math.floor(height() / 3))) : 8}
+          height={props.editor ? Math.max(2, Math.min(8, Math.floor(height() / 3))) : sidebar().changes}
           onFocus={props.onOtherFocus} focusTree={focusTree} releaseFocus={props.onExit} />
       </Show>
     </Show>
