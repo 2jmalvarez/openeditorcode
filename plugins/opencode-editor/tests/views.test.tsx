@@ -211,7 +211,9 @@ test("preview styles are isolated by renderer even when hosts share their theme"
   } finally {
     for (const setup of setups) setup.renderer.destroy()
     for (const controller of controllers) await controller.dispose()
-    await rm(root, { recursive: true, force: true })
+    // Aborted Git readers/watchers can release directory handles just after
+    // disposal on Windows. Retry cleanup, not the assertions under test.
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }
 })
 
