@@ -5,6 +5,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join, posix, win32 } from "node:path"
 import { fileURLToPath } from "node:url"
+import { checkReleaseAvailability } from "./update-readiness.js"
 
 const registry = "https://registry.npmjs.org/"
 
@@ -69,6 +70,7 @@ export function createLauncherDependencies() {
     readVersion: () => JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version,
     readPlatformVersion: (packageName) => JSON.parse(readFileSync(require.resolve(`${packageName}/package.json`), "utf8")).version,
     binaryVersion: (executable, env) => commandOutput(executable, ["--version"], env, 5_000),
+    ensureAvailable: (version, packageName) => checkReleaseAvailability(version, [packageName], { signal: AbortSignal.timeout(15_000) }),
     latestVersion: async (env) => {
       const npm = npmCommand(["view", "openeditorcode@latest", "version", `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`], process.platform)
       if (process.platform === "win32") npm.command = env.ComSpec || "cmd.exe"
@@ -133,8 +135,9 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
     previousVersion = dependencies.readVersion()
     requestedVersion = await dependencies.latestVersion(dependencies.env)
     if (!/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(requestedVersion) || requestedVersion === previousVersion) throw new Error("invalid version")
+    await dependencies.ensureAvailable(requestedVersion, packageName)
   } catch {
-    console.error(spanish ? "No se pudo determinar la versión de OEC a instalar desde npm público." : "Could not determine the OEC version from the public npm registry.")
+    console.error(spanish ? "La nueva versión aún no está disponible completa en npm. Se conserva la instalación actual; reintentá más tarde." : "The complete release is not available on npm yet. Keeping the current installation; try again later.")
     return dependencies.run(executable, args, appEnv)
   }
 

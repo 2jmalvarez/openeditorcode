@@ -6,7 +6,9 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for release **0.2.39**.
+Documentation for release **0.2.40**.
+
+Updates are offered only when the public npm metadata and downloads for both the launcher and your platform are available. Incomplete releases leave the current installation untouched. Publication verifies both platform packages before publishing the launcher.
 
 An open-source project editor for the terminal. It is a standalone TypeScript application built with Bun and OpenTUI; it does not require OpenCode, a server, or an external connection.
 
@@ -101,7 +103,7 @@ The installer downloads the latest stable release, verifies SHA-256 and the repo
 To select a version or leave PATH unchanged:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.39 -NoModifyPath
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.40 -NoModifyPath
 & "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
 ```
 

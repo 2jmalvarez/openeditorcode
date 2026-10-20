@@ -25,6 +25,7 @@ function dependencies(codes) {
     readVersion: () => calls.some((call) => call.command === "npm") ? "0.2.36" : "0.2.35",
     readPlatformVersion: () => "0.2.36",
     latestVersion: async () => "0.2.36",
+    ensureAvailable: async () => {},
     binaryVersion: async () => "0.2.36",
     resolve() {
       resolutions += 1
@@ -48,6 +49,17 @@ test("launcher propagates a normal application exit", async () => {
   const deps = dependencies([7])
   expect(await launch(["project"], deps)).toBe(7)
   expect(deps.calls).toHaveLength(1)
+})
+
+test("an advertised release with a missing archive never changes the installed package", async () => {
+  const deps = dependencies([42, 0])
+  deps.ensureAvailable = async (version, platform) => {
+    expect(version).toBe("0.2.36")
+    expect(platform).toBe("@2jmalvarez/oec-linux-x64")
+    throw new Error("archive HTTP 404")
+  }
+  expect(await launch([], deps)).toBe(0)
+  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "/bin/oec-1"])
 })
 
 test("launcher updates and resolves the application again after exit 42", async () => {

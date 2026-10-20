@@ -16,7 +16,9 @@ El plugin opcional [`@2jmalvarez/opencode-editor@0.3.0`](https://www.npmjs.com/p
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
-Documentacion para la release **0.2.39**.
+Documentacion para la release **0.2.40**.
+
+Las actualizaciones solo se ofrecen cuando están disponibles en npm los metadatos y las descargas del launcher y de tu plataforma. Una release incompleta conserva la instalación actual sin modificarla. La publicación verifica ambos paquetes de plataforma antes de publicar el launcher.
 
 Editor de proyectos de código abierto para terminal. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
@@ -101,7 +103,7 @@ El instalador descarga la ultima release estable, verifica SHA-256 y la version,
 Para elegir una version o no modificar PATH:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.39 -NoModifyPath
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.40 -NoModifyPath
 & "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
 ```
 

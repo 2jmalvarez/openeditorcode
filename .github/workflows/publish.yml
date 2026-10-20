@@ -150,4 +150,8 @@ jobs:
         working-directory: packages/oec-win32-x64
       - run: npm publish --access public
         working-directory: packages/oec-linux-x64
+      - name: Wait for both public platform packages before advertising the update
+        run: bun run scripts/verify-registry-release.ts --platforms-only
       - run: npm publish
+      - name: Verify complete public release availability
+        run: bun run scripts/verify-registry-release.ts
