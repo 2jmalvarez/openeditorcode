@@ -87,7 +87,11 @@ export class EditorProjects {
       if (!controller || this.disposed || current.type !== route.type || (current.type === "session" && route.type === "session" && current.sessionID !== route.sessionID)) return
       this.active = controller
       if (view === "files") { controller.filesInputMode = mode; await controller.toggleFiles() }
-      else if (view === "diff") { controller.filesInputMode = mode; controller.toggleDiff() }
+      else if (view === "diff") {
+        controller.filesInputMode = mode
+        controller.filesVisible = true; controller.filesExpanded = false
+        if (!controller.diffVisible) controller.toggleDiff()
+      }
       else await controller.enter(id)
       this.changed()
     } finally { this.pending = undefined }

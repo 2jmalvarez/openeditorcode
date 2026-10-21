@@ -3,6 +3,7 @@ import { buildFileIndex, filterItems, type IndexedItem } from "../../../../src/s
 import { basename, dirname, join, relative, sep } from "node:path"
 import type { TreeItem } from "../../../../src/explorer/tree"
 import type { SearchMode } from "../integration/options"
+import { filterFilesByContent } from "../../../../src/search/content-files"
 
 /** Ancestors are context, not extra search hits; siblings keep normal tree order. */
 export function resultTree(root: string, matches: IndexedItem[], collapsed: ReadonlySet<string> = new Set()): TreeItem[] {
@@ -31,6 +32,8 @@ export function resultTree(root: string, matches: IndexedItem[], collapsed: Read
 /** A bounded, lazy index independent of which tree folders are expanded. */
 export class FileSearch {
   query = ""
+  target: "name" | "content" = "name"
+  resultsLimited = false
   items: IndexedItem[] = []
   rows: TreeItem[] = []
   selected = 0
@@ -44,8 +47,37 @@ export class FileSearch {
   private disposed = false
   private listeners = new Set<() => void>()
   private collapsed = new Set<string>()
+  private generation = 0
   constructor(readonly root: string, public mode: SearchMode = "fuzzy") {}
-  setMode(mode: SearchMode) { this.mode = mode; this.filter(); this.changed() }
+  setMode(mode: SearchMode) { this.mode = mode; if (this.target === "name") this.filter(); this.changed() }
+  async toggleTarget() {
+    this.target = this.target === "name" ? "content" : "name"
+    await this.updateResults()
+  }
+  private async updateResults() {
+    const generation = ++this.generation
+    this.resultsLimited = false
+    if (this.target === "name" || !this.query.trim()) {
+      this.loading = Boolean(this.pending); this.filter(); this.changed(); return
+    }
+    this.items = []; this.rows = []; this.selected = 0; this.scrollTop = 0
+    this.loading = true; this.changed()
+    const query = this.query
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    const current = () => !this.disposed && generation === this.generation
+    if (!current()) return
+    try {
+      const matches = await filterFilesByContent(this.root, this.index ?? [], query, current)
+      if (!current()) return
+      this.resultsLimited = matches.length > 80
+      this.items = matches.slice(0, 80)
+      this.collapsed.clear()
+      this.rows = resultTree(this.root, this.items)
+      this.selected = Math.max(0, this.rows.findIndex((row) => !row.directory))
+      this.navigation++
+    } catch (error) { if (current()) this.error = error instanceof Error ? error.message : String(error) }
+    finally { if (current()) { this.loading = false; this.changed() } }
+  }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
   private filter(reset = true) {
@@ -66,9 +98,8 @@ export class FileSearch {
     if (query === this.query) { if (!this.index && query.trim()) await this.refresh(); return }
     this.query = query
     this.error = ""
-    if (!query.trim()) { this.filter(); this.changed(); return }
-    this.filter(); this.changed()
-    if (!this.index) await this.refresh()
+    if (!query.trim() || this.index) await this.updateResults()
+    else { this.generation++; this.items = []; this.rows = []; this.changed(); await this.refresh() }
   }
   async refresh() {
     if (this.disposed) return
@@ -81,7 +112,8 @@ export class FileSearch {
         if (this.disposed) return
         this.index = result.items.filter((item) => !item.directory)
         this.truncated = result.truncated
-        this.filter(false)
+        if (this.target === "content") await this.updateResults()
+        else this.filter(false)
       } catch (error) {
         if (!this.disposed) this.error = error instanceof Error ? error.message : String(error)
       } finally { this.loading = false; this.pending = undefined; this.changed() }
@@ -105,5 +137,5 @@ export class FileSearch {
     const index = this.rows.findIndex((row) => row.path === dirname(item.path))
     if (index >= 0) this.select(index)
   }
-  dispose() { this.disposed = true; this.listeners.clear() }
+  dispose() { this.disposed = true; this.generation++; this.listeners.clear() }
 }

@@ -79,11 +79,7 @@ type Props = {
   showGitBranches: () => Promise<void>
   goBackGit: () => boolean
   openFileSearch: () => void
-  fileSearchOpen: () => boolean
   closeFileSearch: () => void
-  moveFileSearchSelection: (direction: number) => void
-  fileSearchResultsLength: () => number
-  openFileSearchResult: () => Promise<void>
   openSearchExclusions: () => void
   closeSearchExclusions: () => void
   exclusionSuggestionsLength: () => number
@@ -185,14 +181,9 @@ export function useKeyboardShortcuts(props: Props) {
       if (isEnter) return consume(key, () => void (props.projectResultsLength() ? props.openProjectResult() : props.findInProject()))
       return
     }
-    if (props.fileSearchOpen()) {
-      if (keyName === "f5") return consume(key, () => void props.refreshActivePanel())
+    if (props.active() === "explorer") {
       if (ctrl && keyName === "e") return consume(key, props.openSearchExclusions)
       if (isEscape) return consume(key, props.closeFileSearch)
-      if (key.name === "down") return consume(key, () => props.moveFileSearchSelection(1))
-      if (key.name === "up") return consume(key, () => props.moveFileSearchSelection(-1))
-      if (isEnter && props.fileSearchResultsLength()) return consume(key, () => void props.openFileSearchResult())
-      return
     }
     if (matches("app.quit", "ctrl+q")) return consume(key, props.quit)
     if (matches("app.logs", "f12")) return consume(key, props.openLogs)

@@ -5,6 +5,38 @@ import { ExplorerPane } from "../src/explorer/ExplorerPane"
 import type { TreeItem } from "../src/explorer/tree"
 import { visibleName } from "../src/explorer/ScrollingName"
 import { createSignal } from "solid-js"
+import { configureLanguage } from "../src/localization"
+
+test("keeps the mode shortcut beside the input instead of a separate row", async () => {
+  configureLanguage("es")
+  const [mode, setMode] = createSignal<"name" | "content">("name")
+  const [width, setWidth] = createSignal(60)
+  const setup = await testRender(() => <ExplorerPane
+    root="." active={() => true} tree={() => []} selected={() => 0}
+    filePath={() => undefined} lineCounts={() => ({})} setScroll={() => {}}
+    onActivate={() => {}} fileQuery={() => ""} fileSearchMode={mode}
+    fileResults={() => []} onFileQuery={() => {}}
+    massiveFilesOpen={() => false} onToggleMassiveFiles={() => {}} width={width}
+  />, { width: 60, height: 10 })
+  try {
+    await setup.renderOnce()
+    let lines = setup.captureCharFrame().split("\n")
+    expect(lines.join("\n")).toContain("Buscar archivo...")
+    expect(lines.find((line) => line.includes("Buscar archivo..."))).toContain("| Ctrl+F: contenido")
+    expect(lines.join("\n")).not.toContain("Nombre/ruta")
+    setMode("content")
+    await setup.renderOnce()
+    lines = setup.captureCharFrame().split("\n")
+    expect(lines.join("\n")).toContain("Buscar por contenido...")
+    expect(lines.find((line) => line.includes("Buscar por contenido..."))).toContain("| Ctrl+F: nombre")
+    setWidth(28)
+    setMode("name")
+    await setup.renderOnce()
+    lines = setup.captureCharFrame().split("\n")
+    expect(lines.join("\n")).toContain("Buscar archivo...")
+    expect(lines.find((line) => line.includes("Buscar archivo..."))).toContain("Ctrl+F")
+  } finally { setup.renderer.destroy() }
+})
 
 test("scrolls a selected name across terminal columns without splitting wide characters", () => {
   expect(visibleName("prefix-界-ending", 8, 0)).toBe("prefix-")
@@ -19,8 +51,8 @@ test("keeps calculated line counts visible while a long selected file name moves
   const tree: TreeItem[] = ["very-long-filename-with-a-readable-tail.ts", "second-file.ts"].map((name) => ({ path: name, name, depth: 0, directory: false, expanded: false, ignored: false }))
   const setup = await testRender(() => <ExplorerPane root="." active={() => true} tree={() => tree} selected={selected}
     filePath={() => undefined} lineCounts={() => ({ [tree[0]!.path]: 123456, [tree[1]!.path]: 42 })} setScroll={() => {}}
-    onActivate={() => {}} fileSearchOpen={() => false} fileQuery={() => ""} fileResults={() => []}
-    fileSearchIndex={() => 0} onFileQuery={() => {}} onFileActivate={() => {}}
+    onActivate={() => {}} fileQuery={() => ""} fileResults={() => []}
+    onFileQuery={() => {}}
     massiveFilesOpen={() => false} onToggleMassiveFiles={() => {}} width={() => 28}
   />, { width: 28, height: 10 })
   try {
@@ -52,9 +84,9 @@ test("aligns explorer names across icon widths and preserves indentation and cou
   const setup = await testRender(() => <ExplorerPane
     root="." active={() => true} tree={() => tree} selected={() => 0}
     filePath={() => undefined} lineCounts={() => counts} setScroll={() => {}}
-    onActivate={() => {}} fileSearchOpen={() => false} fileQuery={() => ""}
-    fileResults={() => []} fileSearchIndex={() => 0} onFileQuery={() => {}}
-    onFileActivate={() => {}} massiveFilesOpen={() => false} onToggleMassiveFiles={() => {}} width={() => 40}
+    onActivate={() => {}} fileQuery={() => ""}
+    fileResults={() => []} onFileQuery={() => {}}
+    massiveFilesOpen={() => false} onToggleMassiveFiles={() => {}} width={() => 40}
   />, { width: 40, height: 28 })
   try {
     await setup.renderOnce()

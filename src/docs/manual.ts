@@ -12,7 +12,7 @@ Ctrl+B alterna el explorador; Ctrl+Alt+B alterna Cambios. Si el terminal no tien
 Ctrl+A selecciona todo el archivo activo con foco en el editor, sin cambiar su contenido. También está disponible en la paleta como “Seleccionar todo el archivo”. No actúa detrás de búsquedas ni diálogos. Puede reasignarse mediante keyboard.bindings["editor.selectAll"].
 
 ## Búsqueda e ignorados
-Ctrl+F busca archivos desde el explorador o texto desde el editor. Ctrl+Alt+F busca texto en el proyecto. La raíz .gitignore se respeta de forma predeterminada y .git siempre está excluido. Ctrl+E modifica exclusiones solo durante la sesión; nunca se persisten.
+El explorador tiene un filtro permanente por nombre/ruta y muestra coincidencias en árbol. Ctrl+F alterna ese campo a búsqueda simple por contenido y de vuelta a nombre/ruta. Esc limpia el filtro y restaura el árbol normal sin ocultar el buscador. Ctrl+F desde el editor busca texto en el archivo. Ctrl+Alt+F conserva la búsqueda avanzada de texto en el proyecto. La raíz .gitignore se respeta de forma predeterminada y .git siempre está excluido. Ctrl+E modifica exclusiones solo durante la sesión; nunca se persisten.
 
 ## Git
 En la vista local de Cambios, Enter alterna carpetas y abre diffs. + suma archivos o carpetas completas a STAGED; - quita cambios preparados o descarta cambios pendientes tras confirmar. Baja con la flecha hasta el mensaje de commit y pulsa Enter para confirmar. F6 ejecuta pull y F7 push. Las mutaciones Git (stage, unstage, descarte, commit, pull y push) están bloqueadas al navegar historial o ramas.
@@ -23,7 +23,7 @@ Enter sobre una rama abre sus commits sin hacer checkout; sobre un commit abre s
 
 F5 en Git ejecuta fetch y vuelve a leer el estado local incluso si falla fetch; también refresca la vista histórica si corresponde, sin reemplazarla por cambios locales.
 
-En un diff local, staged o histórico, F4 abre el archivo actual del proyecto sin cerrar el diff. No abre ni restaura la versión histórica. Si el archivo no existe, muestra un aviso y no lo recrea. Fuera de diffs, F4 mantiene la alternancia de preview y edición de Markdown; el manual permanece de solo lectura.
+En un diff local, staged o histórico, F4 abre el archivo actual del proyecto sin cerrar el diff. No abre ni restaura la versión histórica. Si el archivo no existe, muestra un aviso y no lo recrea. Fuera de diffs, F4 alterna preview y edición de Markdown / SVG; el manual permanece de solo lectura.
 
 Ctrl+P incluye los comandos adicionales “Git: ver historial de commits” (F8), “Git: ver todas las ramas” (F9) y, con un diff activo, “Abrir archivo del proyecto” (F4), además de la actualización de referencias remotas.
 
@@ -38,6 +38,8 @@ Abra “Abrir configuración” desde Ctrl+P para usar la pantalla TUI o pulse E
 Una configuración inválida o que impide iniciar OEC se copia a config.bkp.json (el mismo backup se sobrescribe en cada recuperación) y se restaura la configuración de fábrica. Las actualizaciones npm no modifican este directorio.
 
 ## Preview
+SVG abre en preview; F4 alterna con el XML editable y conserva cambios sin guardar. El render es estático, sin scripts ni imágenes externas. Un SVG inválido permite volver al código con F4. Deshabilitar preview.images deja SVG en modo código.
+
 Los archivos Markdown abren como preview de solo lectura. F4 alterna entre preview y edición; el manual nunca se puede editar. Los bloques fenced mermaid muestran diagramas Unicode de terminal para flowcharts, estados, secuencias, clases, ER y gráficos XY; los no compatibles permanecen como código. PNG, JPEG, WebP y GIF se muestran como imágenes de solo lectura y usan Kitty, Sixel o bloques de terminal según la capacidad configurada.
 
 ## Límites
@@ -53,7 +55,7 @@ Ctrl+B toggles the explorer; Ctrl+Alt+B toggles Changes. When the terminal does 
 Ctrl+A selects the entire active file while the editor has focus, without changing its contents. It is also available in the palette as “Select all file contents”. It does not act behind searches or dialogs. Remap it through keyboard.bindings["editor.selectAll"].
 
 ## Search and ignored files
-Ctrl+F searches files from the explorer or text from the editor. Ctrl+Alt+F searches text in the project. The root .gitignore is respected by default and .git is always excluded. Ctrl+E changes exclusions only for the current session; they are never persisted.
+Explorer has a permanent name/path filter with tree results. Ctrl+F toggles that field to simple content search and back to name/path. Esc clears the filter and restores the normal tree without hiding the field. Ctrl+F from Editor searches text in the file. Ctrl+Alt+F keeps the advanced project text search. The root .gitignore is respected by default and .git is always excluded. Ctrl+E changes exclusions only for the current session; they are never persisted.
 
 ## Git
 In the local Changes view, Enter toggles folders and opens diffs. + adds files or whole folders to STAGED; - removes staged changes or discards pending changes after confirmation. Move down to the commit message and press Enter to commit. F6 pulls and F7 pushes. Git mutations (stage, unstage, discard, commit, pull, and push) are blocked while browsing history or branches.
@@ -64,7 +66,7 @@ Enter on a branch opens its commits without checkout; on a commit it opens its c
 
 F5 in Git fetches and rereads local status even if fetch fails; it also refreshes the historical view when applicable, without replacing it with local changes.
 
-In a local, staged, or historical diff, F4 opens the current project file without closing the diff. It does not open or restore the historical version. If the file does not exist, a notice is shown and the file is not recreated. Outside diffs, F4 still toggles Markdown preview and editing; the manual remains read-only.
+In a local, staged, or historical diff, F4 opens the current project file without closing the diff. It does not open or restore the historical version. If the file does not exist, a notice is shown and the file is not recreated. Outside diffs, F4 toggles Markdown / SVG preview and editing; the manual remains read-only.
 
 Ctrl+P includes the additional commands “Git: view commit history” (F8), “Git: view all branches” (F9), and, with a diff active, “Open project file” (F4), alongside refreshing remote references.
 
@@ -79,6 +81,8 @@ Open “Open settings” from Ctrl+P to use the TUI screen or press E to edit JS
 An invalid configuration or one that prevents OEC from starting is copied to config.bkp.json (the same backup is overwritten on every recovery) and factory settings are restored. npm updates do not modify this directory.
 
 ## Preview
+SVG opens in preview; F4 toggles editable XML while retaining unsaved changes. Rendering is static, without scripts or external images. Invalid SVG still allows returning to source with F4. Disabling preview.images keeps SVG in source mode.
+
 Markdown files open in a read-only preview. F4 switches between preview and editing; the manual can never be edited. Fenced mermaid blocks render as Unicode terminal diagrams for flowcharts, state, sequence, class, ER, and XY charts; unsupported diagrams remain source code. PNG, JPEG, WebP, and GIF are read-only image previews that use Kitty, Sixel, or terminal blocks according to configured capability.
 
 ## Limits

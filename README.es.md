@@ -18,7 +18,9 @@ El plugin 0.3.3 está verificado con OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1 en W
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
-Documentacion para la release **0.2.40**.
+Documentacion para **0.2.41** (release en preparación; la publicación se verifica por separado).
+
+Novedades del checkout: filtro permanente jerárquico del Explorador con `Ctrl+F` para alternar nombre/ruta y contenido; preview SVG con `F4` para editar XML; presentación Markdown mejorada; guardado desde preview y operaciones concurrentes de documentos protegidas. El plugin **0.3.4** se prepara por separado con SVG, filtro por contenido, paneles expanded/compact, colores Git y acciones contextuales en `Ctrl+P`. El plugin publicado **0.3.3** no incluye estas novedades.
 
 Las actualizaciones solo se ofrecen cuando están disponibles en npm los metadatos y las descargas del launcher y de tu plataforma. Una release incompleta conserva la instalación actual sin modificarla. La publicación verifica ambos paquetes de plataforma antes de publicar el launcher.
 
@@ -43,6 +45,7 @@ Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al m
 - Duplicar la linea actual arriba con `Alt+Shift+Abajo` o abajo con `Alt+Shift+Arriba`.
 - Formateo integrado con `Alt+Shift+F`, Prettier para formatos web comunes, formateo al guardar opcional y formateadores externos configurables.
 - Preview Markdown de solo lectura por defecto, con `F4` para alternar preview y edicion; el manual interno nunca se puede editar.
+- Preview SVG con `F4` para editar el XML y previsualizar los cambios sin guardar.
 - Diagramas Unicode de terminal para bloques Mermaid compatibles en previews Markdown.
 - Preview de PNG, JPEG, WebP y GIF en Kitty/Sixel cuando estan disponibles, con fallback de bloques de terminal.
 - Copia mediante OSC 52 y pegado desde el portapapeles del sistema en Windows, Wayland y X11.
@@ -191,9 +194,11 @@ Sin argumento, abre el directorio actual. Tras compilar para Windows, el ejecuta
 
 Al cerrar una pestana modificada, el dialogo muestra **Guardar**, **Guardar y cerrar** y **Cerrar sin guardar** (opcion predeterminada). Usa flechas arriba/abajo y confirma con `Enter`. Si un archivo cambia fuera de OEC antes de guardar, puedes recargarlo, sobrescribirlo o cancelar.
 
-`Ctrl+F` es contextual: en el Explorador filtra archivos de todo el proyecto por nombre y en el Editor busca dentro del archivo abierto. `Esc` cancela y limpia cualquiera de las dos búsquedas. La búsqueda global conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
+El Explorador tiene un filtro siempre visible por nombre/ruta con resultados en árbol. `Ctrl+F` alterna ese mismo campo entre nombre/ruta y búsqueda simple por contenido; en el Editor busca dentro del archivo abierto. `Esc` limpia la consulta sin ocultar el campo y restaura el árbol normal. La búsqueda avanzada `Ctrl+Alt+F` sigue igual: conserva consulta, resultados y selección al abrir un resultado, reutiliza el índice durante la sesión y se limpia con `Esc` desde el modal.
 
 Los Markdown (`.md`, `.markdown`, `.mdown` y `.mkd`) se abren como preview renderizado por defecto. `F4` alterna entre la fuente editable y el preview, conservando los cambios sin guardar. Los bloques fenced `mermaid` se muestran como diagramas Unicode de terminal para flowcharts, estados, secuencias, clases, ER y graficos XY; los diagramas no compatibles o invalidos permanecen visibles como codigo fuente. El manual que se abre desde la paleta siempre permanece en preview y es de solo lectura. PNG, JPEG, WebP y GIF se muestran como previews de solo lectura; OEC prefiere Kitty o Sixel cuando el terminal lo soporta y usa bloques de terminal como fallback.
+
+Los SVG tambien abren en preview: `F4` alterna el XML editable y el borrador actual sin guardar. Un SVG invalido muestra un aviso y permite volver al codigo con `F4`. El render es local y estatico, con fuente embebida, sin scripts ni imagenes externas. Se aplica el limite de texto de 2 MiB y un raster de hasta 1600 pixeles por dimension. Con `preview.images: false`, SVG abre solo como codigo. Ver [licencias del renderer y de la fuente](docs/THIRD-PARTY-NOTICES.txt).
 
 Cuando una operación falla, OEC conserva la operación, la hora y el detalle técnico en el registro de sesión. El pie indica `F12` mientras haya errores sin leer; `F12` o **Abrir registro de errores** desde la paleta abren una pestaña central de solo lectura que no se persiste al cerrar OEC.
 
@@ -222,7 +227,7 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Ctrl+N` | Crear un archivo en la carpeta seleccionada |
 | `F2` | Renombrar el archivo o carpeta seleccionado en el Explorador |
 | `Shift+Enter` | Expandir o contraer recursivamente la carpeta seleccionada en Explorador; alternar en Cambios |
-| `Ctrl+F` | Buscar archivos por nombre en el Explorador o texto en el Editor |
+| `Ctrl+F` | Alternar filtro del Explorador entre nombre/ruta y contenido; buscar texto en el Editor |
 | `Ctrl+Alt+F` | Buscar texto en todos los archivos del proyecto |
 | `Ctrl+E` | Editar exclusiones temporales desde un buscador de proyecto |
 | `Ctrl+S` | Guardar archivo actual |
@@ -237,14 +242,14 @@ Los comandos Git adicionales son **Git: ver historial de commits** (`F8`), **Git
 | `Alt+Shift+Abajo` / `Alt+Shift+Arriba` | Duplicar la linea actual arriba / abajo |
 | `Alt+Shift+F` | Formatear el documento actual |
 | `Ctrl+L` | Alternar ajuste de linea |
-| `F4` | En un diff, abrir el archivo actual del proyecto sin cerrar el diff; fuera de diffs, alternar preview y edicion de Markdown |
+| `F4` | En un diff, abrir el archivo actual del proyecto sin cerrar el diff; fuera de diffs, alternar preview y edicion de Markdown / SVG |
 | `Ctrl+Q` | Salir |
 | `Tab` | Alternar Explorador, Editor y Cambios |
 | `Esc` | Cerrar una busqueda o dialogo; en historial Git, retroceder un nivel hacia cambios locales sin cerrar diffs |
 
 ## Busqueda y conteo
 
-- `Ctrl+F` en el Explorador: escribe parte del nombre o ruta para filtrar archivos de todo el proyecto, incluso dentro de carpetas cerradas. Usa flechas para elegir uno, `Enter` para abrirlo y `Esc` para volver al arbol.
+- Explorador: escribe en el filtro permanente para buscar nombres/rutas, incluso dentro de carpetas cerradas. `Ctrl+F` alterna búsqueda simple por contenido en el mismo campo (literal, sin distinguir mayúsculas). Los resultados conservan sus carpetas padre; usa flechas y `Enter` para navegar/abrir. `Esc` limpia el filtro y restaura la expansión anterior del árbol. Abrir un archivo conserva el filtro para cuando vuelvas.
 - `Ctrl+F` en el Editor: escribe el texto para ver todas las coincidencias locales. Usa flechas para elegir una y `Enter` para llevar el cursor a su inicio.
 - `Ctrl+Alt+F`: escribe el texto y pulsa `Enter` para buscar en todo el proyecto. El primer uso construye un indice en memoria; los siguientes lo reutilizan. Tras obtener resultados, usa flechas para elegir uno y `Enter` para abrir el archivo en la linea coincidente.
 - `Ctrl+E` dentro de la busqueda de archivos o la busqueda global abre las exclusiones de la sesion. Estas parten del `.gitignore` de raiz, autocompletan patrones y carpetas, y permiten incluir o excluir rutas sin modificar `.gitignore`. `.git` nunca se incluye.

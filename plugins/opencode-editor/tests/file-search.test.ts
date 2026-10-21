@@ -4,6 +4,34 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { FileSearch, resultTree } from "../src/explorer/file-search"
 
+test("content search is literal, safe, cancellable and independent of name mode", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-content-search-"))
+  const search = new FileSearch(root, "literal")
+  try {
+    await mkdir(join(root, "nested")); await mkdir(join(root, ".git")); await mkdir(join(root, "ignored"))
+    await writeFile(join(root, ".gitignore"), "ignored/\n")
+    await writeFile(join(root, "nested", "a.txt"), "Literal NEEDLE.* / text")
+    await writeFile(join(root, "binary"), "needle.*\0")
+    await writeFile(join(root, "large"), "needle.*" + "x".repeat(2 * 1024 * 1024))
+    await writeFile(join(root, ".git", "secret"), "needle.*")
+    await writeFile(join(root, "ignored", "secret"), "needle.*")
+    await search.search("needle.*")
+    expect(search.items).toEqual([])
+    await search.toggleTarget()
+    expect(search.items.map((item) => item.path)).toEqual([join(root, "nested", "a.txt")])
+    expect(search.rows[0]?.directory).toBe(true)
+    await Promise.all([search.search("no match"), search.search("NEEDLE.*")])
+    expect(search.items).toHaveLength(1)
+    await Promise.all([search.search("needle"), search.search("")])
+    expect(search.items).toEqual([])
+    expect(search.loading).toBe(false)
+    await search.toggleTarget()
+    expect(search.mode).toBe("literal")
+    await search.search("a.txt")
+    expect(search.items).toHaveLength(1)
+  } finally { search.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test("quick search finds files in closed folders by case-insensitive name/path and respects ignores", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-quick-search-"))
   const search = new FileSearch(root)

@@ -23,6 +23,8 @@ export const emptyPosition = (): ViewPosition => ({ row: 0, column: 0, scrollX: 
 export const normalize = (text: string) => text.replace(/\r\n?/g, "\n")
 export const isEditable = (document: Document | undefined) => Boolean(document && (!document.kind || document.kind === "file"))
 export const isMarkdown = (path: string) => /\.(md|markdown|mdown)$/i.test(path)
+export const isSvg = (path: string) => /\.svg$/i.test(path)
+export const hasPreview = (path: string) => isMarkdown(path) || isSvg(path)
 export const isDirty = (document: Document) => isEditable(document) && normalize(document.content) !== normalize(document.savedContent)
 
 type FileAccess = { read: typeof readTextFile; write: typeof writeTextFile }
@@ -64,7 +66,7 @@ export class Workspace {
     const bytes = image ? await readImageFile(this.root, safePath) : undefined
     const content = image ? "" : await this.files.read(this.root, safePath)
     if (this.disposed || generation !== this.generation) return false
-    this.documents.push({ kind: image ? "image" : "file", bytes, view: this.markdownPreview && isMarkdown(safePath) ? "preview" : "source", path: safePath, content: normalize(content), savedContent: content, position: emptyPosition(), conflict: false, version: 0 })
+    this.documents.push({ kind: image ? "image" : "file", bytes, view: isSvg(safePath) || this.markdownPreview && isMarkdown(safePath) ? "preview" : "source", path: safePath, content: normalize(content), savedContent: content, position: emptyPosition(), conflict: false, version: 0 })
     this.activePath = safePath
     this.changed()
     return true
@@ -83,7 +85,7 @@ export class Workspace {
 
   togglePreview() {
     const document = this.active
-    if (!isEditable(document) || !document || !isMarkdown(document.path)) return
+    if (!isEditable(document) || !document || !hasPreview(document.path)) return
     document.view = document.view === "preview" ? "source" : "preview"
     this.changed()
   }

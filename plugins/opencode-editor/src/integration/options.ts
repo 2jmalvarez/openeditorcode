@@ -2,7 +2,7 @@ import { isAbsolute, resolve } from "node:path"
 
 export type DraftPreferences = { enabled: boolean; exclude: string[] }
 export type SearchMode = "fuzzy" | "literal"
-export type EditorPreferences = { toggleBinding: string; filesBinding: string; diffBinding: string; explorerWidth: number; drafts: DraftPreferences; searchMode: SearchMode; markdownPreview: boolean; diffView: "split" | "unified"; imageProtocol: "auto" | "blocks" }
+export type EditorPreferences = { toggleBinding: string; filesBinding: string; diffBinding: string; explorerWidth: number; panelHeight: "expanded" | "compact"; drafts: DraftPreferences; searchMode: SearchMode; markdownPreview: boolean; diffView: "split" | "unified"; imageProtocol: "auto" | "blocks" }
 export type EditorOptions = EditorPreferences & { localRoot: string }
 export function parseOptions(value: Readonly<Record<string, unknown>>, directory?: string): EditorOptions {
   const root = value.localRoot === undefined ? directory : value.localRoot
@@ -17,6 +17,8 @@ export function parsePreferences(value: Readonly<Record<string, unknown>>): Edit
     if (value[key] !== undefined && (typeof value[key] !== "string" || !value[key].trim())) throw new Error(`OEC: invalid ${key}`)
   }
   const width = value.explorerWidth ?? 30
+  const panelHeight = value.panelHeight ?? "expanded"
+  if (panelHeight !== "expanded" && panelHeight !== "compact") throw new Error("OEC: invalid panelHeight")
   const searchMode = value.searchMode ?? "fuzzy"
   const markdownPreview = value.markdownPreview ?? true
   const diffView = value.diffView ?? "split"
@@ -30,5 +32,5 @@ export function parsePreferences(value: Readonly<Record<string, unknown>>): Edit
   if (!drafts || typeof drafts !== "object" || Array.isArray(drafts)) throw new Error("OEC: invalid drafts options")
   const { enabled = true, exclude = [] } = drafts as Record<string, unknown>
   if (typeof enabled !== "boolean" || !Array.isArray(exclude) || !exclude.every((pattern) => typeof pattern === "string" && pattern.trim().length > 0 && !pattern.trimStart().startsWith("!") && !/[\r\n\0]/.test(pattern))) throw new Error("OEC: invalid drafts options (exclude must contain non-negated gitignore patterns)")
-  return { toggleBinding: value.toggleBinding as string ?? "f6", filesBinding: value.filesBinding as string ?? "f7", diffBinding: value.diffBinding as string ?? "f8", explorerWidth: width, drafts: { enabled, exclude }, searchMode, markdownPreview, diffView, imageProtocol }
+  return { toggleBinding: value.toggleBinding as string ?? "f6", filesBinding: value.filesBinding as string ?? "f7", diffBinding: value.diffBinding as string ?? "f8", explorerWidth: width, panelHeight, drafts: { enabled, exclude }, searchMode, markdownPreview, diffView, imageProtocol }
 }

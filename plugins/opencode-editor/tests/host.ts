@@ -17,7 +17,7 @@ export function mockHost(root: string) {
   const context = {
     options: { localRoot: root },
     app: { version: "2.0.26", channel: "stable" },
-    theme: { text: { base: "#d6e5dc", muted: "#71808b" }, background: { base: "#101419", raised: { base: "#17202a" } } },
+    theme: { text: { base: "#d6e5dc", muted: "#71808b", feedback: { warning: { base: "#e5c07b" } } }, background: { base: "#101419", raised: { base: "#17202a" } }, diff: { text: { added: "#98c379", removed: "#e06c75" } }, hue: { blue: { 200: "#61afef" } } },
     data: {
       session: { get: (id: string) => id === "session-1" ? { id, location: { directory: root } } : undefined },
       on: (type: string, handler: (event: OpenCodeEvent) => void) => {

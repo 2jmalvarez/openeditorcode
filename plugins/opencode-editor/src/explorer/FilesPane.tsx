@@ -6,6 +6,7 @@ import { useRevision } from "../workbench/reactive"
 import { ScrollingName } from "../../../../src/explorer/ScrollingName"
 import { OEC_GROUP } from "../integration/reference"
 import { useTreeViewport } from "./useTreeViewport"
+import { paletteCommands } from "../integration/palette"
 
 export function FilesPane(props: { controller: EditorController; focused: () => boolean; onFocus: () => void; onBlur?: () => void; onSearch?: () => void; onNext?: () => void; onExit?: () => void; sessionID?: string; width?: number; height?: number; keyboardMode?: string }) {
   const { controller } = props
@@ -52,7 +53,7 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
     ].map((command) => ({ ...command, run: (_input?: string, event?: KeyEvent) => {
       event?.preventDefault(); event?.stopPropagation()
       return command.run()
-    } })) }
+    } })).map((command) => paletteCommands("files.tree", [command])[0]!) }
   })
   const measure = () => {
     // Only the editor route owns persistent focus. A sidebar must never reclaim

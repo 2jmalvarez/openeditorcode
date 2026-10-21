@@ -38,7 +38,7 @@ try {
       const packed = await Bun.file(join(extracted, "package/package.json")).json()
       validateManifest(packed)
       validateBundle(await Bun.file(join(extracted, "package/dist/tui.js")).text())
-      assert.deepEqual(await readdir(join(extracted, "package/dist")), ["tui.js"])
+      assert.deepEqual((await readdir(join(extracted, "package/dist"))).sort(), ["svg-font.ttf", "svg.wasm", "tui.js"])
       for (const installer of ["npm", "arborist"] as const) {
         await installPackedPlugin(archive, join(stage, `installed-${installer}`), installer)
       }

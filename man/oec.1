@@ -1,4 +1,4 @@
-.TH OEC 1 "" "OpenEditorCode 0.2.24"
+.TH OEC 1 "" "OpenEditorCode"
 .SH NAME
 oec \- OpenEditorCode terminal project editor
 .SH SYNOPSIS
@@ -13,6 +13,11 @@ OpenEditorCode edits UTF-8 project files in a terminal. Without PROJECT it opens
 The complete, versioned Spanish manual is installed as docs/manual.md with the npm package. It defines search, ignored paths, configuration, recovery, Git, updates, shortcuts, limits and security guarantees.
 .PP
 Markdown project files open in a read-only preview by default. Fenced mermaid blocks render as Unicode terminal diagrams for flowcharts, state, sequence, class, ER, and XY charts; unsupported or invalid diagrams remain source code. F4 switches a project Markdown file between preview and source editing. The bundled manual is always read-only. PNG, JPEG, WebP and GIF previews use Kitty or Sixel when supported and otherwise fall back to terminal blocks.
+.SH PREVIEWS AND SEARCH
+.PP
+SVG opens in a static local preview. F4 toggles editable XML and preview of unsaved changes. Invalid SVG remains editable. Scripts, DTDs, entities and external images are not loaded. SVG uses the 2 MiB text limit and a raster up to 1600 pixels per dimension. Disabling preview.images opens SVG as source.
+.PP
+Explorer has a permanent hierarchical name/path filter. Ctrl+F toggles name/path and literal case-insensitive file-content search. Esc clears the filter and restores the previous tree expansion. Ctrl+F in Editor finds text in the current buffer; Ctrl+Alt+F retains advanced project search.
 .SH OPTIONS
 .TP
 .BR \-h ", " \-\-help

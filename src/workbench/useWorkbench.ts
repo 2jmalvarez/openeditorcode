@@ -109,7 +109,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     }
   }
   const search = useSearch({ root, setStatus, runActivity: activity.run, respectGitignore: initialConfig.search.respectGitignore, reportError: logs.report })
-  const explorer = useExplorer({ root, setStatus, openFile: openDocument, massiveFiles: search.massiveFiles, reportError: logs.report })
+  const explorer = useExplorer({ root, setStatus, openFile: openDocument, massiveFiles: search.massiveFiles, filteredFiles: () => search.fileQuery().trim() ? search.fileResults() : undefined, reportError: logs.report })
   const git = useGit({ root, setStatus, runActivity: activity.run, autoRefresh: initialConfig.git.autoRefresh, fetchOnRefresh: initialConfig.git.fetchOnRefresh, reportFailure: logs.report })
   const updates = useUpdates(initialConfig.updates.checkOnStartup)
 
@@ -177,6 +177,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     await activity.run(t("activity.createFile"), async () => {
       if (await documents.createFile(overlays.newFileDirectory(), overlays.newFileName().trim(), async () => { await explorer.refreshTree() })) {
         search.invalidateIndex()
+        await search.refreshFileSearch()
         overlays.close()
       }
     })
@@ -201,6 +202,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
         documents.closeTabsAffectedBy(item.path, item.directory)
         await explorer.refreshTree()
         search.invalidateIndex()
+        await search.refreshFileSearch()
         overlays.close()
         setStatus(t(item.directory ? "status.deletedFolder" : "status.deletedFile", { name: item.name }))
       } catch (error) {
@@ -237,6 +239,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
         documents.renameTabsAffectedBy(item.path, nextPath, item.directory)
         await explorer.renameItem(item.path, nextPath, item.directory)
         search.invalidateIndex()
+        await search.refreshFileSearch()
         overlays.close()
         setStatus(t("status.renamed", { name }))
       } catch (error) {
@@ -366,7 +369,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: t("command.refresh"), shortcut: "F5", run: () => void refreshActivePanel() },
     { title: t("command.create"), shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
     ...(active() === "explorer" && explorer.selectedItem() ? [{ title: t("command.rename"), shortcut: bindingLabel(config().keyboard.bindings, "explorer.rename", "F2"), run: requestRename }] : []),
-    { title: active() === "explorer" ? t("command.searchFile") : t("command.searchText"), shortcut: "Ctrl+F", run: openContextSearch },
+    { title: active() === "explorer" ? t("command.toggleFileSearch") : t("command.searchText"), shortcut: "Ctrl+F", run: openContextSearch },
     { title: t("command.searchProject"), shortcut: "Ctrl+Alt+F", run: () => openOverlay("project-search") },
     { title: t("command.exclusions"), shortcut: "Ctrl+E", run: openSearchExclusions },
     { title: t("command.settings"), shortcut: t("command.palette"), run: openSettings },
@@ -416,10 +419,9 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   function openContextSearch() {
     if (active() === "explorer") {
       editor.closeFind()
-      search.openFileSearch()
+      search.toggleFileSearchMode()
       return
     }
-    search.closeFileSearch()
     editor.openFind()
   }
 
@@ -473,14 +475,6 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   function closeSearchExclusions() {
     if (exclusionsReturn === "project-search") overlays.open("project-search")
     else overlays.close()
-  }
-
-  async function openFileSearchResult(index = search.fileSearchIndex()) {
-    const result = search.fileResults()[index]
-    if (!result) return
-    search.setFileSearchIndex(index)
-    search.closeFileSearch()
-    await openDocument(result.path)
   }
 
   function focusExplorer() {
@@ -596,7 +590,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     paletteLength: () => search.paletteResults(commands()).length, acceptCommand, createNewFile, projectResultsLength: () => search.projectResults().length,
     openProjectResult, findInProject: search.findInProject, collapseAllFolders: explorer.collapseAllFolders, collapseSelectedFolder: explorer.collapseSelectedFolder,
     moveExplorerSelection, activateExplorerItem: explorer.activateItem, collapseExplorerItem, requestDeletion, requestRename, openProjectFolder: () => void revealProjectFolder(), moveGitSelection: git.moveSelection, activateGitItem: async () => { if (git.commitFocused()) return void commitGitChanges(); if (git.toggleSelectedFolder()) return; const diff = await git.openSelected(); if (diff) { documents.openDiff(diff); setActive("git") } }, collapseGitItem: () => { git.toggleSelectedFolder() }, collapseAllGitFolders: git.collapseAllFolders, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, gitCommitFocused: git.commitFocused,
-    openFileSearch: openContextSearch, fileSearchOpen: search.fileSearchOpen, closeFileSearch: search.closeFileSearch, moveFileSearchSelection: search.moveFileSelection, fileSearchResultsLength: () => search.fileResults().length, openFileSearchResult,
+    openFileSearch: openContextSearch, closeFileSearch: search.closeFileSearch,
     openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion, bindings: () => config().keyboard.bindings, formatDocument: formatActiveDocument, handleVimKey: editor.handleVimKey, settingsIndex: overlays.settingsIndex, setSettingsIndex: overlays.setSettingsIndex, settingsScope: overlays.settingsScope, setSettingsScope: overlays.setSettingsScope, toggleSetting, openSettingsJson: () => { const scope = overlays.settingsScope(); overlays.close(); if (scope === "global") void openOecConfig(); else void openProjectConfig() },
     activeDiff: () => Boolean(documents.activeDiff()), openDiffFile: documents.openActiveDiffFile,
     gitHistoryActive: () => git.mode() !== "repositories", gitCommitHistoryActive: () => git.mode() === "history", toggleCommitHashes: git.toggleCommitHashes, toggleCommitDates: git.toggleCommitDates, showGitHistory, showGitBranches, goBackGit: git.goBack,
@@ -610,8 +604,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     renderer.once("frame", () => scroll?.scrollChildIntoView(id))
   }
   createEffect(() => {
-    const searching = search.fileSearchOpen()
-    revealSelected(explorerScroll, searching ? search.fileResults().length : explorer.tree().length, searching ? search.fileSearchIndex() : explorer.selected(), searching ? `file-search-${search.fileSearchIndex()}` : `tree-${explorer.selected()}`)
+    revealSelected(explorerScroll, explorer.tree().length, explorer.selected(), `tree-${explorer.selected()}`)
   })
   createEffect(() => revealSelected(gitScroll, git.tree().length, git.selected(), `git-${git.selected()}`))
   function syncSidePanelsToWidth() {
@@ -620,8 +613,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
       if (active() === "git") setActive("explorer")
     }
     renderer.once("frame", () => {
-      const searching = search.fileSearchOpen()
-      revealSelected(explorerScroll, searching ? search.fileResults().length : explorer.tree().length, searching ? search.fileSearchIndex() : explorer.selected(), searching ? `file-search-${search.fileSearchIndex()}` : `tree-${explorer.selected()}`)
+      revealSelected(explorerScroll, explorer.tree().length, explorer.selected(), `tree-${explorer.selected()}`)
       revealSelected(gitScroll, git.tree().length, git.selected(), `git-${git.selected()}`)
     })
   }
@@ -630,12 +622,11 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
 
   return {
     root, recovery, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, config, syntaxTheme, activity, logs, explorer, git, documents, editor, overlays, search, updates, toggleMassiveFiles,
-    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? t("app.diffTitle", { path: documents.activeDiff()!.file.path }) : documents.activeLogs() ? t("app.logTitle") : t("app.noFile"), activateExplorerAt, activateGitAt, openFileSearchResult, requestCloseTab,
+    title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? t("app.diffTitle", { path: documents.activeDiff()!.file.path }) : documents.activeLogs() ? t("app.logTitle") : t("app.noFile"), activateExplorerAt, activateGitAt, requestCloseTab,
     paletteResults: () => search.paletteResults(commands()), settingsValues,
     setExplorerScroll: (value: ScrollBoxRenderable) => {
       explorerScroll = value
-      const searching = search.fileSearchOpen()
-      revealSelected(value, searching ? search.fileResults().length : explorer.tree().length, searching ? search.fileSearchIndex() : explorer.selected(), searching ? `file-search-${search.fileSearchIndex()}` : `tree-${explorer.selected()}`)
+      revealSelected(value, explorer.tree().length, explorer.selected(), `tree-${explorer.selected()}`)
     },
     setGitScroll: (value: ScrollBoxRenderable) => { gitScroll = value; revealSelected(value, git.tree().length, git.selected(), `git-${git.selected()}`) },
     setLogViewer: (value: TextareaRenderable | undefined) => { logViewer = value },

@@ -16,6 +16,11 @@ test("defaults to the active directory and retains an optional absolute override
   expect(parseOptions({ localRoot: resolve("."), filesBinding: "f7", diffBinding: "f9" }).diffBinding).toBe("f9")
   expect(() => parseOptions({ localRoot: resolve("."), diffBinding: "" })).toThrow("diffBinding")
   expect(() => parseOptions({ localRoot: resolve("."), explorerWidth: 0 })).toThrow("explorerWidth")
+  expect(parseOptions({ localRoot: resolve(".") }).panelHeight).toBe("expanded")
+  expect(parseOptions({ localRoot: resolve("."), panelHeight: "compact" }).panelHeight).toBe("compact")
+  for (const panelHeight of [false, 12, "fill", ""]) {
+    expect(() => parseOptions({ localRoot: resolve("."), panelHeight })).toThrow("panelHeight")
+  }
 })
 
 test("validates draft persistence controls without allowing exclusion negation", () => {

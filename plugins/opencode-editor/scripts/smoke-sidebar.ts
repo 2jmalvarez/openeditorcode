@@ -20,6 +20,7 @@ await Promise.all(Array.from({ length: 100 }, (_, index) => writeFile(join(proje
 await mkdir(observer)
 await writeFile(join(project, "nested", "hello.ts"), "const original = true\n")
 await writeFile(join(project, "README.md"), "# Preview smoke\n\n**Formatted** Markdown.\n")
+await writeFile(join(project, "icon.svg"), '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="12"><desc>svg_content_smoke</desc><rect width="24" height="12" fill="red"/></svg>')
 await writeFile(join(project, "pixel.png"), Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==", "base64"))
 await writeFile(join(sandbox, "gitconfig"), "")
 const gitEnv = { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: join(sandbox, "gitconfig"), GIT_TERMINAL_PROMPT: "0" }
@@ -38,10 +39,12 @@ try {
   await git(["add", "."])
   await git(["-c", "user.name=OEC smoke", "-c", "user.email=oec@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "Temporary fixture"])
   await writeFile(join(project, "nested", "hello.ts"), "const changed = true\n")
-  await writeFile(join(observer, "package.json"), JSON.stringify({ name: "oec-sidebar-observer", type: "module", exports: { "./tui": "./tui.ts" } }))
-  await writeFile(join(observer, "tui.ts"), `
+  await writeFile(join(observer, "package.json"), JSON.stringify({ name: "oec-sidebar-observer", type: "module", exports: { "./tui": "./tui.tsx" } }))
+  await writeFile(join(observer, "tui.tsx"), `/** @jsxImportSource @opentui/solid */
 import { writeFileSync } from "node:fs"
+import { ScrollBoxRenderable } from "@opentui/core"
 export default { id: "oec.sidebar-smoke", setup(context) {
+  const removeContext = context.ui.slot({ prepend: "sidebar.content", render: () => <box height={9} flexShrink={0}><text>{"Context: 12% used\\nMCP\\nserver 1: connected\\nserver 2: connected\\nserver 3: connected\\nserver 4: connected\\nserver 5: connected\\nserver 6: connected"}</text></box> })
   let disposed = false
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
   const all = (node = context.renderer.root) => [node, ...node.getChildren().flatMap(child => all(child))]
@@ -70,7 +73,8 @@ export default { id: "oec.sidebar-smoke", setup(context) {
       const session = await context.client.session.create({ location: { directory: ${JSON.stringify(project)} } })
       await context.data.session.sync(session.id)
       context.ui.router.navigate({ type: "session", sessionID: session.id })
-      await until(() => find("oec-files-toggle") && context.renderer.currentFocusedEditor, "Session sidebar/prompt missing")
+       await until(() => find("oec-files-toggle") && context.renderer.currentFocusedEditor, "Session sidebar/prompt missing")
+       if (!find("oec-diff-toggle") || find("oec-files-pane") || find("oec-changes-pane")) throw new Error("Initial Files and Diff headers must render before authorization, without reading disk")
       await sleep(300)
       const prompt = context.renderer.currentFocusedEditor
       const base = context.keymap.mode.current()
@@ -92,22 +96,46 @@ export default { id: "oec.sidebar-smoke", setup(context) {
       await sleep(500)
       if (!prompt.plainText.includes("chat-with-files-open") || !prompt.focused) throw new Error("Files stole chat focus")
         stage = "independent accordions"
-        await until(() => find("oec-changes-pane"), "Diff must be visible by default")
-        if (!find("oec-files-pane")) throw new Error("Default Diff hid Files")
-        key("f7")
+         await until(() => find("oec-changes-pane"), "Diff must be visible by default")
+         if (!find("oec-files-pane")) throw new Error("Default Diff hid Files")
+         stage = "expanded panel geometry"
+         const outerScroll = () => { let node = find("oec-project-panels").parent; while (node && !(node instanceof ScrollBoxRenderable)) node = node.parent; return node }
+         const balanced = () => find("oec-files-scroll").viewport.height === find("oec-diff-scroll").viewport.height && find("oec-files-scroll").verticalScrollBar.screenX === find("oec-diff-scroll").verticalScrollBar.screenX
+         const fillsSidebar = () => { const outer = outerScroll(); return outer && outer.scrollHeight <= outer.viewport.height && find("oec-project-panels").screenY + find("oec-project-panels").height === outer.viewport.screenY + outer.viewport.height }
+         await until(() => balanced() && fillsSidebar(), "Expanded panels do not share/fill the actual host viewport")
+         for (const rows of [40, 60, 50]) {
+           context.renderer.resize(160, rows)
+           await until(() => balanced() && fillsSidebar(), "Expanded panels did not track terminal resize")
+         }
+         const sharedDiffHeight = find("oec-changes-pane").height
+         key("f7")
         await until(() => !find("oec-files-pane") && !find("oec-files-toggle") && !find("oec-files-search") && find("oec-changes-pane"), "F7 must hide Files including its header, not just collapse it")
-        if (find("oec-panels-gap")) throw new Error("Hidden Files left an empty separator")
+         if (find("oec-panels-gap")) throw new Error("Hidden Files left an empty separator")
+         await until(() => find("oec-changes-pane").height > sharedDiffHeight && fillsSidebar(), "Diff did not fill space after hiding Files")
         key("f7")
         await until(() => find("oec-files-pane") && find("oec-changes-pane"), "F7 did not restore Files")
        await click(find("oec-diff-toggle"))
-       await until(() => !find("oec-changes-pane") && find("oec-diff-toggle"), "Diff accordion did not collapse")
+        await until(() => !find("oec-changes-pane") && find("oec-diff-toggle"), "Diff accordion did not collapse")
+         await until(() => find("oec-files-section").height > sharedDiffHeight && fillsSidebar(), "Files did not fill space after collapsing Diff")
         await click(find("oec-files-toggle"))
         await until(() => !find("oec-files-pane"), "Files accordion did not collapse")
-        if (!find("oec-files-toggle")) throw new Error("Collapsing must keep the Files header")
+         if (!find("oec-files-toggle")) throw new Error("Collapsing must keep the Files header")
+         await until(() => find("oec-project-panels").height === 3, "Collapsed panels reserve empty expanded space")
        await click(find("oec-diff-toggle"))
        await until(() => find("oec-changes-pane") && !find("oec-files-pane"), "Accordions are not independent")
        await click(find("oec-files-toggle"))
-       await until(() => find("oec-files-pane"), "Files accordion did not expand")
+        await until(() => find("oec-files-pane"), "Files accordion did not expand")
+         stage = "panel height setting"
+         const togglePanelHeight = async () => {
+           context.keymap.dispatch("oec.settings")
+           await until(() => text(context.renderer.root).includes("Panel height:"), "Panel height setting missing")
+           for (let i = 0; i < 4; i++) key("down")
+           key("return")
+         }
+         await togglePanelHeight()
+         await until(() => find("oec-changes-pane").height <= 8 && find("oec-files-section").height <= 11, "Compact setting did not restore bounded heights")
+         await togglePanelHeight()
+         await until(() => balanced() && fillsSidebar(), "Expanded setting did not restore full sidebar height")
        stage = "large search clipping"
        await click(find("oec-files-search"))
        type("entry")
@@ -140,9 +168,9 @@ export default { id: "oec.sidebar-smoke", setup(context) {
        await until(() => text(find("oec-files-pane")).includes("nested") && text(find("oec-files-pane")).includes("hello.ts"), "Search did not find a closed-folder file in its tree")
         if (text(find("oec-files-pane")).includes("nested/hello.ts")) throw new Error("Search returned a flat path instead of a tree")
        key("e", { ctrl: true })
-       await until(() => text(context.renderer.root).includes("Literal ^E"), "Ctrl+E did not enable literal search")
+       await until(() => text(context.renderer.root).includes("Literal ^F"), "Ctrl+E did not enable literal search")
        key("e", { ctrl: true })
-       await until(() => text(context.renderer.root).includes("Fuzzy ^E"), "Ctrl+E did not restore fuzzy search")
+       await until(() => text(context.renderer.root).includes("Fuzzy ^F"), "Ctrl+E did not restore fuzzy search")
       key("return")
       await until(() => find("oec-editor-buffer"), "Search Enter did not open editor")
         if (!find("oec-editor-buffer").plainText.includes("changed")) throw new Error("Wrong search result")
@@ -243,8 +271,24 @@ export default { id: "oec.sidebar-smoke", setup(context) {
        await until(() => find("oec-editor-buffer")?.plainText.includes("Preview smoke"), "F4 did not edit Markdown")
        key("f4")
        await until(() => find("oec-markdown-preview") && !find("oec-editor-buffer"), "F4 did not restore preview")
-       stage = "image preview"
-       await openSearch("pixel.png")
+        stage = "image preview"
+        await openSearch("icon.svg")
+        await until(() => find("oec-image-preview")?.image?.width === 24, "Packed SVG assets did not render")
+        key("f4")
+        await until(() => find("oec-editor-buffer")?.plainText.includes("svg_content_smoke"), "SVG F4 did not edit XML")
+        key("f4")
+        await until(() => find("oec-image-preview")?.image?.width === 24, "SVG F4 did not restore preview")
+        await click(find("oec-files-search"))
+        key("escape")
+        await until(() => find("oec-files-pane")?.focused, "Content reset failed")
+        key("/")
+        await until(() => find("oec-files-search")?.focused, "Content search not focused")
+        key("f", { ctrl: true })
+        type("svg_content_smoke")
+        await until(() => text(find("oec-files-pane")).includes("icon.svg"), "Content query did not match SVG text")
+        if (!context.keymap.commands().some(command => command.id === "oec.search.target" && command.palette)) throw new Error("Content palette action missing")
+        key("f", { ctrl: true })
+        await openSearch("pixel.png")
        await until(() => find("oec-image-preview"), "Image preview missing")
        await until(() => find("oec-image-preview")?.image || find("oec-image-preview")?.loadError, "Image did not load")
        if (find("oec-image-preview")?.loadError) throw new Error("Image decoding failed")
@@ -283,7 +327,7 @@ export default { id: "oec.sidebar-smoke", setup(context) {
       writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ ok: false, stage, error: String(error), text: text(context.renderer.root).slice(-12000) }))
     } finally { context.renderer.destroy() }
   }, 1500)
-  return () => { disposed = true; clearTimeout(start) }
+  return () => { disposed = true; clearTimeout(start); removeContext() }
 } }
 `)
   const child = Bun.spawn([executable, "--standalone", project], {
@@ -310,5 +354,5 @@ export default { id: "oec.sidebar-smoke", setup(context) {
     await logs(sandbox)
     throw new Error(`Sidebar smoke failed (${code}): ${JSON.stringify(result)}\n${stderr}\n${diagnostics.join("\n")}\n${stdout.slice(-3000)}`)
   }
-  console.log(`OpenCode ${result.version}: consent, chat focus, search, local diff tabs, F4, F2 rename, Markdown, image decoding, palette and live Git passed (isolated ${source ?? "checkout"} smoke).`)
+  console.log(`OpenCode ${result.version}: expanded/compact panel sizing, resize, consent, chat focus, search, local diff tabs, F4, F2 rename, Markdown, image decoding, palette and live Git passed (isolated ${source ?? "checkout"} smoke).`)
 } finally { clearTimeout(timer); await rm(sandbox, { recursive: true, force: true }) }

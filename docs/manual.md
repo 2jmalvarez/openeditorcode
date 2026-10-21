@@ -1,6 +1,6 @@
 # Manual de OpenEditorCode
 
-Referencia para la release **0.2.24**.
+Referencia para la release **0.2.41**.
 
 ## Propósito y uso
 
@@ -48,7 +48,7 @@ El editor ofrece ajuste de línea (`Ctrl+L`), formateo (`Alt+Shift+F`), deshacer
 
 ## Búsqueda y rutas ignoradas
 
-`Ctrl+F` es contextual. En Explorador hace coincidencia difusa, sin distinción de mayúsculas, contra rutas relativas y devuelve como máximo 80 archivos. En Editor busca texto literal sin distinguir mayúsculas, hasta 100 resultados. `Ctrl+Alt+F` busca texto literal por línea en todo el proyecto, hasta 100 resultados, y reutiliza un índice de hasta 50.000 entradas. `Esc` cierra las búsquedas; la búsqueda global conserva resultados al abrirlos y los limpia con `Esc`.
+El Explorador tiene un filtro permanente, con coincidencias jerárquicas dentro de sus carpetas padre incluso si estaban contraídas. `Ctrl+F` alterna nombre/ruta y contenido en ese campo; contenido es literal, sin distinguir mayúsculas, sobre archivos guardados en disco. Omite binarios, ilegibles y textos mayores de 2 MiB. `Esc` limpia sin ocultar el campo, restaurando la expansión anterior. Abrir un resultado conserva el filtro. En Editor, `Ctrl+F` busca texto literal sin distinguir mayúsculas, hasta 100 resultados. `Ctrl+Alt+F` mantiene la búsqueda avanzada por línea en el proyecto, hasta 100 resultados, con índice reutilizable de hasta 50.000 entradas; conserva resultados al abrirlos y los limpia con `Esc`.
 
 La raíz `.gitignore` se interpreta con sintaxis Git. `.git` siempre queda oculto y excluido. Los elementos ignorados se muestran atenuados en el explorador, pero se excluyen de búsquedas, conteos y el índice. OEC no carga `.gitignore` anidados, `.git/info/exclude` ni exclusiones globales de Git. `Ctrl+E` desde una búsqueda abre exclusiones **temporales**: no modifica `.gitignore` ni se guarda en la configuración.
 
@@ -91,7 +91,7 @@ Con foco en Git, `F8` abre el historial completo de la rama actual en el panel d
 
 Las mutaciones Git (stage, unstage, descarte, commit, pull y push) solo estan disponibles en cambios locales y se bloquean al navegar historial o ramas. `F5` relee el estado local incluso si falla fetch y refresca el historial o la lista de ramas cuando corresponde, sin volver a cambios locales. `git.fetchOnRefresh: false` omite fetch, no las lecturas locales.
 
-En un diff local, staged o historico, `F4` abre el archivo actual del proyecto sin cerrar el diff. No abre ni restaura la version historica. Si el archivo no existe, muestra un aviso y no lo recrea. Fuera de diffs conserva la alternancia de preview/edicion de Markdown; el manual permanece de solo lectura.
+En un diff local, staged o historico, `F4` abre el archivo actual del proyecto sin cerrar el diff. No abre ni restaura la version historica. Si el archivo no existe, muestra un aviso y no lo recrea. Fuera de diffs conserva la alternancia de preview/edicion de Markdown y SVG; el manual permanece de solo lectura.
 
 La paleta `Ctrl+P` incluye **Git: ver historial de commits** (`F8`), **Git: ver todas las ramas** (`F9`) y, con un diff activo, **Abrir archivo del proyecto** (`F4`).
 
@@ -102,6 +102,10 @@ La paleta ofrece **Abrir configuración**: una pantalla TUI para las preferencia
 El formato exacto se define en `docs/oec-config.schema.json`. Claves desconocidas, JSON inválido, versiones de esquema no compatibles o valores fuera de rango son incompatibles. El archivo de fábrica es:
 
 `preview.markdownDefault` controla si Markdown abre en preview (valor de fábrica) o fuente; `preview.images` habilita previews de PNG, JPEG, WebP y GIF; `preview.imageProtocol` permite `auto`, `kitty`, `sixel` o `blocks`. Los bloques fenced `mermaid` se muestran como diagramas Unicode de terminal para flowcharts, estados, secuencias, clases, ER y gráficos XY; los diagramas no compatibles o inválidos permanecen visibles como código fuente. `F4` alterna fuente y preview de los Markdown del proyecto. El manual siempre usa preview y es de solo lectura.
+
+SVG también abre en preview cuando `preview.images` está habilitado. `F4` alterna XML y preview del borrador actual, sin guardarlo automáticamente. El render es local y estático: sin scripts, DTD, entidades ni imágenes externas, con fuente incluida. Usa el límite de texto de 2 MiB y raster de hasta 1600 píxeles por dimensión. Un SVG inválido muestra un aviso y permite volver al código. Consulte `docs/THIRD-PARTY-NOTICES.txt`. Markdown mejora títulos, enlaces, tablas y bloques de código con lenguaje e indentación; adapta wrappers details/summary sin ejecutar HTML.
+
+Guardar desde preview conserva el contenido de la pestaña. Los guardados y recargas mantienen la identidad del documento aunque cambie la pestaña activa, y no descartan ediciones realizadas durante la operación. Renombrar, eliminar o descartar cambios Git de un archivo con una operación pendiente se bloquea hasta finalizarla.
 
 ```json
 {
@@ -139,7 +143,7 @@ Solo se editan archivos UTF-8 de hasta 2 MiB (2.097.152 bytes). Archivos con NUL
 | `Ctrl+Shift+Left` / `Ctrl+Shift+Right` | Mover foco |
 | `Ctrl+N`, `Ctrl+S`, `Ctrl+W`, `Ctrl+Q` | Crear, guardar, cerrar, salir |
 | `Ctrl+F`, `Ctrl+Alt+F`, `Ctrl+E` | Buscar local/contextual, proyecto, exclusiones temporales |
-| `F4` | En diff, abrir archivo actual del proyecto sin cerrar el diff; fuera de diffs, alternar preview/edicion de Markdown |
+| `F4` | En diff, abrir archivo actual del proyecto sin cerrar el diff; fuera de diffs, alternar preview/edicion de Markdown y SVG |
 | `F5` | Actualizar panel activo; en Git, fetch, lectura local y refresco historico cuando corresponde |
 | `F10` | Abrir la carpeta del proyecto en una nueva ventana del explorador de archivos del sistema |
 | `F8` / `F9` | Con foco en Git, historial completo paginado / ramas locales y remotas conocidas |

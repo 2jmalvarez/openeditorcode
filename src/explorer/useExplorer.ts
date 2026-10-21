@@ -1,4 +1,5 @@
-import { createMemo, createSignal, onMount, type Accessor } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onMount, type Accessor } from "solid-js"
+import { filteredTree } from "./filter-tree"
 import { dirname, join, relative, sep } from "node:path"
 import { createTree, descendantDirectories, type TreeItem } from "./tree"
 import type { MassiveFile } from "../search/project-search"
@@ -9,6 +10,7 @@ type Props = {
   setStatus: (status: string) => void
   openFile: (path: string) => Promise<unknown>
   massiveFiles: Accessor<MassiveFile[]>
+  filteredFiles?: Accessor<readonly { path: string }[] | undefined>
   reportError?: (failure: { source: string; operation: string; summary: string; details: string }) => void
 }
 
@@ -17,7 +19,17 @@ export function useExplorer(props: Props) {
   const [expanded, setExpanded] = createSignal<Set<string>>(new Set([props.root]))
   const [selected, setSelected] = createSignal(0)
   const [showMassiveFiles, setShowMassiveFiles] = createSignal(false)
-  const visibleItems = createMemo<TreeItem[]>(() => showMassiveFiles()
+  const [collapsedFilter, setCollapsedFilter] = createSignal<Set<string>>(new Set())
+  const filtering = () => props.filteredFiles?.() !== undefined
+  let savedSelection = 0
+  createEffect(on(() => props.filteredFiles?.(), (files, previous) => {
+    if (files !== undefined && previous === undefined) savedSelection = selected()
+    setCollapsedFilter(new Set<string>())
+    setSelected(files === undefined ? Math.min(savedSelection, Math.max(0, (showMassiveFiles() ? props.massiveFiles() : tree()).length - 1)) : 0)
+  }, { defer: true }))
+  const visibleItems = createMemo<TreeItem[]>(() => filtering()
+    ? filteredTree(props.root, props.filteredFiles!()!, collapsedFilter())
+    : showMassiveFiles()
     ? props.massiveFiles().map((file) => ({ path: file.path, name: file.path.slice(props.root.length + 1), depth: 0, directory: false, ignored: false }))
     : tree())
   const selectedItem = () => visibleItems()[selected()]
@@ -32,7 +44,7 @@ export function useExplorer(props: Props) {
     try {
       const nextTree = await createTree(props.root, expanded())
       setTree(nextTree)
-      setSelected((current) => Math.min(current, Math.max(0, (showMassiveFiles() ? props.massiveFiles() : nextTree).length - 1)))
+      setSelected((current) => Math.min(current, Math.max(0, visibleItems().length - 1)))
     } catch (error) {
       const summary = error instanceof Error ? error.message : t("explorer.readFailed")
       props.setStatus(summary)
@@ -62,6 +74,11 @@ export function useExplorer(props: Props) {
   }
 
   async function collapseAllFolders() {
+    if (filtering()) {
+      setCollapsedFilter(new Set(filteredTree(props.root, props.filteredFiles!()!).filter((item) => item.directory).map((item) => item.path)))
+      setSelected(0)
+      return
+    }
     setExpanded(new Set<string>())
     setSelected(0)
     await refreshTree()
@@ -74,6 +91,7 @@ export function useExplorer(props: Props) {
       props.setStatus(t("explorer.selectFolder"))
       return
     }
+    if (filtering()) return activateItem(item)
     const next = new Set(expanded())
     if (next.has(item.path)) {
       for (const expandedPath of next) {
@@ -94,6 +112,13 @@ export function useExplorer(props: Props) {
   async function activateItem(item = selectedItem()) {
     if (!item) return
     if (item.directory) {
+      if (filtering()) {
+        const next = new Set(collapsedFilter())
+        if (next.has(item.path)) next.delete(item.path)
+        else next.add(item.path)
+        setCollapsedFilter(next)
+        return
+      }
       const next = new Set(expanded())
       if (next.has(item.path)) next.delete(item.path)
       else next.add(item.path)

@@ -108,6 +108,7 @@ export class EditorController {
   toggleWrap() { this.capture?.(); this.wrapMode = this.wrapMode === "none" ? "word" : "none"; this.setStatus(this.wrapMode === "word" ? "Line wrap on" : "Line wrap off") }
   toggleSearchMode() { this.fileSearch.setMode(this.fileSearch.mode === "fuzzy" ? "literal" : "fuzzy"); this.setStatus(`Search: ${this.fileSearch.mode}`) }
   toggleDiffView() { this.options.diffView = this.options.diffView === "split" ? "unified" : "split"; this.setStatus(`Diff: ${this.options.diffView}`) }
+  togglePanelHeight() { this.options.panelHeight = this.options.panelHeight === "expanded" ? "compact" : "expanded"; this.setStatus(`Panel height: ${this.options.panelHeight}`) }
   toggleMarkdownDefault() { this.options.markdownPreview = !this.options.markdownPreview; this.workspace.setMarkdownDefault(this.options.markdownPreview); this.setStatus(`Markdown default: ${this.options.markdownPreview ? "preview" : "source"}`) }
   toggleImageProtocol() { this.options.imageProtocol = this.options.imageProtocol === "auto" ? "blocks" : "auto"; this.setStatus(`Images: ${this.options.imageProtocol}`) }
   async openDiff(file: Change, sessionID?: string) {

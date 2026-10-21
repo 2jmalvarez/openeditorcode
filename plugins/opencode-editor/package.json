@@ -1,11 +1,11 @@
 {
   "name": "@2jmalvarez/opencode-editor",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "type": "module",
   "description": "Local OEC editor and project explorer for the OpenCode 2 terminal.",
   "license": "MIT",
   "exports": { "./tui": "./dist/tui.js" },
-  "files": ["dist/tui.js", "tui.ts", "README.md", "LICENSE"],
+  "files": ["dist/tui.js", "dist/svg.wasm", "dist/svg-font.ttf", "tui.ts", "README.md", "LICENSE", "THIRD-PARTY-NOTICES.txt"],
   "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
   "repository": { "type": "git", "url": "git+https://github.com/2jmalvarez/openeditorcode.git", "directory": "plugins/opencode-editor" },
   "homepage": "https://github.com/2jmalvarez/openeditorcode/tree/main/plugins/opencode-editor#readme",

@@ -1,6 +1,6 @@
 # Releases del plugin OpenCode
 
-Este procedimiento publica únicamente `@2jmalvarez/opencode-editor`. No cambiar las versiones raíz/Windows/Linux, ni `.github/workflows/publish.yml`. `dist/` no se versiona. El tarball contiene exactamente `package.json`, `dist/tui.js`, `tui.ts`, `README.md` y `LICENSE`. Las dependencias OEC se incluyen en el bundle; las APIs OpenCode/OpenTUI/Solid permanecen externas.
+Este procedimiento publica únicamente `@2jmalvarez/opencode-editor`. En un release solo del plugin no cambiar versiones raíz/Windows/Linux ni `.github/workflows/publish.yml`; una publicación conjunta autorizada verifica ambos flujos. `dist/` no se versiona. El tarball contiene exactamente `package.json`, `dist/tui.js`, `dist/svg.wasm`, `dist/svg-font.ttf`, `tui.ts`, `README.md`, `LICENSE` y `THIRD-PARTY-NOTICES.txt`. Las dependencias OEC y el wrapper SVG se incluyen en el bundle; las APIs OpenCode/OpenTUI/Solid permanecen externas.
 
 ## Bootstrap inicial (intervención humana)
 
@@ -58,6 +58,8 @@ Revisar la configuración guardada y los permisos del scope. Una confianza nueva
 GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restringen tags, conservar las reglas existentes para OEC y añadir `opencode-editor-v*`. No endurecer o cambiar el entorno compartido sin revisar el efecto sobre OEC. El workflow usa runners hospedados, Node 24, npm 11.5.1+ y Bun 1.3.14. Solo el job de publicación tiene `id-token: write`; no tiene `NPM_TOKEN` ni permisos de escritura GitHub. Provenance se genera por OIDC en el repositorio público (se solicita explícitamente también).
 
 ## Futuras versiones normales
+
+Release **`0.3.4` en preparación**, junto con OEC `0.2.41`: preview SVG/F4 con recursos portátiles, búsqueda literal de contenido en Files con Ctrl+F, presentación Markdown compartida, paneles expanded/compact y viewport real, encabezados Files/Diff iniciales y colores Git. Acciones contextuales expuestas en Ctrl+P. No anunciar publicación hasta confirmar workflows, registro e instalación por nombre. El smoke del sidebar comprueba también SVG del tarball y búsqueda de contenido.
 
 Release **`0.3.3` confirmada** el 2026-10-20, commit `c51c62f620260fc3c0d700f45fa1c5122f89a850`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/39444288606): Files del sidebar adaptable de 3 a 10 filas, con espacio reservado para seis MCP, contexto y Diff. Diff reduce su altura si falta espacio; scroll interno preservado y overflow general del anfitrión sin modificar. Incluye regresiones de presupuesto, resize y desbordamiento. Pasaron las ocho combinaciones Windows/Linux con OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1. Registro, `gitHead`, contenido, SRI y provenance coinciden con el artefacto CI; los smokes por nombre de editor, carpeta automática, sidebar y cuatro reinicios pasaron también desde Windows/OpenCode 2.1.1. SRI: `sha512-m4yNbbi2jsrkNTQ5UMLzArFtTHb7rlgHF42DlRV7d0uWS5ZiYe8fNOHgtOIEJXrxoVeBGFri4Vo463hZR01gaw==`. Tag y paquete publicados son inmutables. Versiones raíz/plataformas y configuración personal sin cambios.
 

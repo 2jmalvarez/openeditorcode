@@ -10,7 +10,7 @@ export const directory = resolve(import.meta.dir, "..")
 export const root = resolve(directory, "../..")
 export const registry = "https://registry.npmjs.org"
 export const name = "@2jmalvarez/opencode-editor"
-export const allowedFiles = ["LICENSE", "README.md", "dist/tui.js", "package.json", "tui.ts"]
+export const allowedFiles = ["LICENSE", "README.md", "THIRD-PARTY-NOTICES.txt", "dist/svg-font.ttf", "dist/svg.wasm", "dist/tui.js", "package.json", "tui.ts"]
 export const hostPackages = ["@opencode/plugin", "@opentui/core", "@opentui/solid", "solid-js"]
 export const testedHostVersions = ["2.0.26", "2.0.27", "2.1.0", "2.1.1"]
 
@@ -52,7 +52,7 @@ export function validateManifest(manifest: Record<string, any>) {
   validateTag(`opencode-editor-v${manifest.version}`, manifest.version)
   assert.equal(manifest.type, "module")
   assert.deepEqual(manifest.exports, { "./tui": "./dist/tui.js" })
-  assert.deepEqual(manifest.files, ["dist/tui.js", "tui.ts", "README.md", "LICENSE"])
+  assert.deepEqual(manifest.files, ["dist/tui.js", "dist/svg.wasm", "dist/svg-font.ttf", "tui.ts", "README.md", "LICENSE", "THIRD-PARTY-NOTICES.txt"])
   assert.equal(manifest.publishConfig?.access, "public")
   assert.equal(manifest.publishConfig?.registry, registry)
   assert.equal(manifest.repository?.url, "git+https://github.com/2jmalvarez/openeditorcode.git")

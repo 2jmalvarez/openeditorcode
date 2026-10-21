@@ -9,9 +9,9 @@ export const SHORTCUTS = `OEC shortcuts
 F6 (toggleBinding): conversation/editor, preserve panel visibility
 F7 (filesBinding): show/hide the entire Files section, including its header
 F8 (diffBinding): show/hide Diff (visible by default)
-F4: diff → current editable file; Markdown preview ↔ edit
+F4: diff → current editable file; Markdown / SVG preview ↔ edit
 F2 in Files: rename selected file/folder
-Ctrl+E in file search: fuzzy/literal
+Ctrl+E in name search: fuzzy/literal; Ctrl+F in search: name/path ↔ content
 Ctrl+S: save · Ctrl+W: close · Shift+Tab: next document
 Tab: focus Files/Diff/editor · / in Files: focus search
 Ctrl+F: find in editable file · Ctrl+L: line wrap
@@ -33,7 +33,10 @@ F5: refresh focused Files/Diff/editor
 Esc: clear search, then return focus
 Read-only views: arrows, Home/End, PageUp/Down
 Images: PNG, JPEG, GIF, WebP; no editing
+SVG: static local preview, F4 edits XML, previews unsaved changes; invalid SVG stays editable.
+Content search: literal, case-insensitive, disk files, first 80 matches; ignores binaries and files above 2 MiB.
 Diff: ● staged vs HEAD; ○ working tree vs index; ? untracked
+Diff colors: + green, − red; ● blue staged; ○ green new, red deleted, warning modified/renamed.
 Git reads disk/index, not unsaved editor buffers.
 Additional textarea shortcuts (editable source only):
 ${nativeShortcuts.filter(({ bind }) => !["ctrl+a", "ctrl+f", "ctrl+w", "ctrl+d", "home", "end", "shift+home", "shift+end", "return", "ctrl+right", "ctrl+left", "ctrl+shift+right", "ctrl+shift+left"].includes(bind)).map(({ bind, title }) => `${bind}: ${title}`).join("\n")}`
@@ -49,6 +52,7 @@ toggleBinding: conversation/editor (default f6)
 filesBinding: Files (default f7)
 diffBinding: Diff (default f8), independent of filesBinding
 explorerWidth: 18–60 columns
+panelHeight: expanded (default, share remaining height) | compact (bounded panels)
 searchMode: fuzzy (whole path, ordered letters) | literal (name contains text; paths if query contains /)
 markdownPreview: true | false (default view for newly opened Markdown)
 diffView: split | unified
@@ -64,6 +68,7 @@ export async function showSettings(context: Context, defaults: EditorPreferences
     { title: `Search: ${controller?.fileSearch.mode ?? defaults.searchMode}`, value: "search", disabled: !controller },
     { title: `Markdown default: ${(controller?.options ?? defaults).markdownPreview ? "preview" : "source"}`, value: "markdown", disabled: !controller },
     { title: `Diff layout: ${(controller?.options ?? defaults).diffView}`, value: "diff", disabled: !controller },
+    { title: `Panel height: ${(controller?.options ?? defaults).panelHeight}`, value: "panels", disabled: !controller },
     { title: `Image protocol: ${(controller?.options ?? defaults).imageProtocol}`, value: "image", disabled: !controller },
   ] })
   const choice = controller ? await controller.dialog(choose) : await choose()
@@ -74,6 +79,7 @@ export async function showSettings(context: Context, defaults: EditorPreferences
     if (choice === "search") controller.toggleSearchMode()
     if (choice === "markdown") controller.toggleMarkdownDefault()
     if (choice === "diff") controller.toggleDiffView()
+    if (choice === "panels") controller.togglePanelHeight()
     if (choice === "image") controller.toggleImageProtocol()
   }
 }

@@ -6,9 +6,18 @@ import { useRevision } from "../workbench/reactive"
 import { changeTree } from "./tree"
 import { useTreeViewport } from "../explorer/useTreeViewport"
 import { OEC_GROUP } from "../integration/reference"
+import { changePresentation } from "./presentation"
+import { paletteCommands } from "../integration/palette"
 
-export function ChangesPane(props: { controller: EditorController; sessionID?: string; keyboardMode?: string; height?: number; onFocus: () => void; focusTree: () => void; releaseFocus: () => void }) {
+export function ChangesPane(props: { controller: EditorController; sessionID?: string; keyboardMode?: string; height?: number; fill?: boolean; onFocus: () => void; focusTree: () => void; releaseFocus: () => void }) {
   const { controller } = props
+  const theme = controller.context.theme
+  const colors = () => ({
+    added: theme.diff?.text.added ?? theme.text.base,
+    removed: theme.diff?.text.removed ?? theme.text.base,
+    modified: theme.text.feedback?.warning.base ?? theme.text.base,
+    staged: theme.hue?.blue[200] ?? theme.text.base,
+  })
   const state = controller.changes
   const revision = useRevision(state)
   const controllerRevision = useRevision(controller)
@@ -56,7 +65,7 @@ export function ChangesPane(props: { controller: EditorController; sessionID?: s
   ].map((command) => ({ ...command, run: (_input?: string, event?: KeyEvent) => {
     event?.preventDefault(); event?.stopPropagation()
     return command.run()
-  } })) }))
+  } })).map((command) => paletteCommands("diff.tree", [command])[0]!) }))
   createEffect(on(tree, () => {
     const retained = tree().findIndex((row) => row.id === selectedID)
     const next = retained >= 0 ? retained : Math.max(0, Math.min(selected(), tree().length - 1))
@@ -68,22 +77,33 @@ export function ChangesPane(props: { controller: EditorController; sessionID?: s
     disposed = true; state.stop(); controller.context.renderer.off("frame", measure)
     if (focused() && !controller.modal && controller.context.keymap.mode.current() === (props.keyboardMode ?? controller.filesInputMode)) props.releaseFocus()
   })
-  return <box id="oec-changes-pane" ref={(value) => { panel = value }} focusable flexDirection="column" height={props.height ?? 8}
-    minHeight={0} flexShrink={props.keyboardMode ? 1 : 0} overflow="hidden"
+  return <box id="oec-changes-pane" ref={(value) => { panel = value }} focusable flexDirection="column" height={props.fill ? undefined : props.height ?? 8}
+    flexGrow={props.fill ? 1 : 0} flexBasis={props.fill ? 0 : undefined}
+    minHeight={0} flexShrink={props.fill || props.keyboardMode ? 1 : 0} paddingRight={1} overflow="hidden"
     on:focused={() => { props.onFocus(); setFocused(true) }} on:blurred={() => setFocused(false)}
     onMouseDown={(event) => { event.stopPropagation(); props.onFocus(); panel?.focus() }}>
+    <box id="oec-diff-status" flexDirection="column" flexShrink={0}>
     <text wrapMode="none" flexShrink={0} fg={controller.context.theme.text.muted}> {changes().files.length} · Enter: diff tab</text>
     <Show when={changes().error}><text fg={controller.context.theme.text.muted}> {changes().error} · F5 to retry</text></Show>
     <Show when={!changes().error && changes().repository === undefined}><text fg={controller.context.theme.text.muted}> Loading changes…</text></Show>
     <Show when={!changes().error && changes().repository === false}><text fg={controller.context.theme.text.muted}> No repository</text></Show>
     <Show when={!changes().error && changes().repository && !changes().files.length}><text fg={controller.context.theme.text.muted}> No changes</text></Show>
+    </box>
     <Show when={changes().files.length}>
        <scrollbox id="oec-diff-scroll" ref={viewport.attach} flexGrow={1} flexBasis={0} minHeight={0} scrollY onSizeChange={measure} viewportOptions={{ overflow: "hidden" }}>
         <box height={range().top} flexShrink={0} />
         <For each={rows()}>{(row, index) => <box height={1} flexShrink={0} paddingLeft={row.depth} minWidth={0} overflow="hidden"
           backgroundColor={range().start + index() === selected() && focused() ? controller.context.theme.background.raised.base : undefined}
           onMouseUp={(event) => { event.stopPropagation(); if (event.button === 0) { select(range().start + index()); queueMicrotask(open) } }}>
-            <text wrapMode="none" fg={controller.context.theme.text.base}>{row.directory ? `${row.expanded ? "▾" : "▸"} ${row.name}` : `${row.change!.area === "staged" ? "●" : "○"} ${row.change!.status === "untracked" ? "?" : row.change!.status[0].toUpperCase()} ${row.name} +${row.change!.additions ?? "?"} −${row.change!.deletions ?? "?"}`}</text>
+             <Show when={row.change} fallback={<text wrapMode="none" fg={theme.text.base}>{`${row.expanded ? "▾" : "▸"} ${row.name}`}</text>}>{(change) => {
+               const label = () => changePresentation(change())
+               return <text wrapMode="none" fg={theme.text.base}>
+                 <span style={{ fg: colors()[label().indicator] }}>{label().symbol}</span>{" "}
+                 <span style={{ fg: colors()[label().tone] }}>{label().status}</span>{` ${row.name} `}
+                 <span style={{ fg: colors().added }}>{label().additions}</span>{" "}
+                 <span style={{ fg: colors().removed }}>{label().deletions}</span>
+               </text>
+             }}</Show>
         </box>}</For>
         <box height={range().bottom} flexShrink={0} />
       </scrollbox>

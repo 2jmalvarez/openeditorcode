@@ -4,7 +4,7 @@ import { createMemo, createSignal, For, onCleanup, onMount, Show, type Accessor 
 import { useRenderer } from "@opentui/solid"
 import { displayPath, type TreeItem } from "./tree"
 import { virtualRange } from "./virtual-rows"
-import { relativeResult, type IndexedItem } from "../search/file-index"
+import type { IndexedItem } from "../search/file-index"
 import { t } from "../localization"
 import { ScrollingName } from "./ScrollingName"
 
@@ -17,12 +17,11 @@ type Props = {
   lineCounts: Accessor<Record<string, number>>
   setScroll: (scroll: ScrollBoxRenderable) => void
   onActivate: (index: number) => void
-  fileSearchOpen: Accessor<boolean>
   fileQuery: Accessor<string>
+  fileSearchMode?: Accessor<"name" | "content">
+  fileSearching?: Accessor<boolean>
   fileResults: Accessor<IndexedItem[]>
-  fileSearchIndex: Accessor<number>
   onFileQuery: (value: string) => void
-  onFileActivate: (index: number) => void
   massiveFilesOpen: Accessor<boolean>
   onToggleMassiveFiles: () => void
   width: Accessor<number>
@@ -45,6 +44,11 @@ export function ExplorerPane(props: Props) {
   const [range, setRange] = createSignal(virtualRange(props.tree().length, 0, 50))
   const rows = createMemo(() => props.tree().slice(range().start, range().end))
   let scroll: ScrollBoxRenderable | undefined
+  const placeholder = () => t(props.fileSearchMode?.() === "content" ? "app.searchContent" : "app.searchFile")
+  const searchHint = () => {
+    const hint = t(props.fileSearchMode?.() === "content" ? "app.searchNameHint" : "app.searchContentHint")
+    return Bun.stringWidth(placeholder()) + Bun.stringWidth(hint) + 1 <= props.width() - 3 ? hint : " Ctrl+F"
+  }
 
   function syncRange() {
     if (!scroll) return
@@ -58,14 +62,15 @@ export function ExplorerPane(props: Props) {
 
   return <box style={{ width: props.width(), flexShrink: 0, minHeight: 0, overflow: "hidden", flexDirection: "column", border: ["right"], borderColor: "#30404d" }}>
     <box style={{ flexShrink: 0, paddingX: 1, paddingTop: 1 }}><text onMouseDown={props.onToggleMassiveFiles} fg={props.active() ? "#70d6a7" : "#8ca0ae"}>{props.massiveFilesOpen() ? "ARCHIVOS MASIVOS [Arbol]" : `${t("app.explorer")} [Masivos]`}</text></box>
-    <Show when={props.fileSearchOpen()}>
-      <box style={{ paddingX: 1, flexDirection: "column" }}>
-        <input focused={props.active()} value={props.fileQuery()} onInput={props.onFileQuery} placeholder={t("app.searchFile")} style={{ backgroundColor: "#17202a" }} />
-         <text fg="#71808b">{props.fileResults().length === 1 ? t("app.resultOne") : t("app.results", { count: props.fileResults().length })} | Ctrl+E</text>
+    <box style={{ flexShrink: 0, paddingX: 1, flexDirection: "column" }}>
+      <box style={{ height: 1, flexShrink: 0, flexDirection: "row", backgroundColor: "#17202a" }}>
+        <input focused={props.active()} value={props.fileQuery()} onInput={props.onFileQuery} placeholder={placeholder()} style={{ width: 0, flexGrow: 1, minWidth: 1, backgroundColor: "#17202a" }} />
+        <text fg="#71808b" style={{ flexShrink: 0 }}>{searchHint()}</text>
       </box>
-    </Show>
+      <Show when={props.fileQuery().trim()}><text fg="#71808b">{props.fileSearching?.() ? t("app.filterSearching") : props.fileResults().length === 1 ? t("app.resultOne") : t("app.results", { count: props.fileResults().length })} | Ctrl+E</text></Show>
+    </box>
     <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0, paddingX: 1 }}>
-      <Show when={props.fileSearchOpen()} fallback={<>
+      <Show when={props.fileQuery().trim() && !props.fileSearching?.() && !props.tree().length}><text fg="#71808b">{t("search.noFiles")}</text></Show>
         <Show when={range().top}><box style={{ height: range().top }} /></Show>
         <For each={rows()}>{(item, itemIndex) => { const logicalIndex = () => range().start + itemIndex(); return (
           <box id={`tree-${logicalIndex()}`} onMouseDown={() => props.onActivate(logicalIndex())} style={{ height: 1, flexShrink: 0, paddingLeft: item.depth, overflow: "hidden", flexDirection: "row", alignItems: "center", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
@@ -79,13 +84,6 @@ export function ExplorerPane(props: Props) {
           </box>
         )}}</For>
         <Show when={range().bottom}><box style={{ height: range().bottom }} /></Show>
-      </>}>
-        <For each={props.fileResults()}>{(item, index) => (
-          <box id={`file-search-${index()}`} onMouseDown={() => props.onFileActivate(index())} style={{ height: 1, flexShrink: 0, overflow: "hidden", flexDirection: "row", backgroundColor: index() === props.fileSearchIndex() ? "#28404a" : undefined }}>
-            <text fg={item.path === props.filePath() ? "#f2c66d" : "#d6e5dc"}>📄 {relativeResult(props.root, item)}</text>
-          </box>
-        )}</For>
-      </Show>
     </scrollbox>
   </box>
 }

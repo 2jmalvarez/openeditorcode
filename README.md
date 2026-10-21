@@ -6,7 +6,9 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for release **0.2.40**.
+Documentation for **0.2.41** (release preparation; publication must be verified separately).
+
+New in this checkout: permanent hierarchical Explorer filtering with `Ctrl+F` to toggle name/path and content; static SVG preview with `F4` XML editing; improved Markdown presentation; safer preview saves and concurrent document operations. Plugin **0.3.4** is being prepared separately with SVG, content filtering, expanded/compact panels, Git colors and contextual `Ctrl+P` actions. Published plugin **0.3.3** does not include those new features.
 
 Updates are offered only when the public npm metadata and downloads for both the launcher and your platform are available. Incomplete releases leave the current installation untouched. Publication verifies both platform packages before publishing the launcher.
 
@@ -45,6 +47,7 @@ When launched with no open documents, OEC shows the Explorer and, with at least 
 - Read-only Markdown preview by default, with `F4` to switch between preview and editing; the built-in manual is always read-only.
 - Unicode terminal diagrams for supported fenced Mermaid blocks in Markdown previews.
 - PNG, JPEG, WebP, and GIF previews using Kitty or Sixel when available, with terminal blocks as a fallback.
+- SVG previews with `F4` to edit the XML source and preview unsaved changes.
 - OSC 52 copy and system clipboard paste on Windows, Wayland, and X11.
 - Local literal search and project-wide concurrent search backed by a reusable index of up to 50,000 entries.
 - Per-file and indexed-project line counts.
@@ -191,7 +194,7 @@ Without an argument, OEC opens the current directory. After a Windows build, the
 
 When closing a modified tab, the dialog offers **Save**, **Save and close**, and **Close without saving** (the default). Use up/down arrows and confirm with `Enter`. If a file changes outside OEC before saving, choose whether to reload it, overwrite it, or cancel.
 
-`Ctrl+F` is contextual: in Explorer it filters project files by name, and in Editor it searches the open file. `Esc` cancels and clears either search. Project search preserves its query, results, and selection when opening a result, reuses its index for the session, and clears with `Esc` from the modal.
+Explorer has an always-visible name/path filter with hierarchical results. `Ctrl+F` toggles that field between name/path and simple file-content search; in Editor it searches the open file. `Esc` clears the query without hiding the field and restores the normal tree. The advanced `Ctrl+Alt+F` project search is unchanged: it preserves its query, results, and selection when opening a result, reuses its index for the session, and clears with `Esc` from the modal.
 
 Markdown (`.md`, `.markdown`, `.mdown`, and `.mkd`) opens as rendered preview by default. `F4` switches between editable source and preview while retaining unsaved changes. Fenced `mermaid` blocks render as Unicode terminal diagrams for flowcharts, state, sequence, class, ER, and XY charts; unsupported or invalid diagrams remain visible as source code. The manual opened from the palette always remains read-only. PNG, JPEG, WebP, and GIF open as read-only previews; OEC prefers Kitty or Sixel when supported and falls back to terminal blocks.
 
@@ -222,7 +225,7 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 | `Ctrl+N` | Create a file in the selected folder |
 | `F2` | Rename the selected file or folder in Explorer |
 | `Shift+Enter` | Recursively expand or collapse the selected folder in Explorer; toggle it in Changes |
-| `Ctrl+F` | Search file names in Explorer or text in Editor |
+| `Ctrl+F` | Toggle Explorer filter between name/path and content; search text in Editor |
 | `Ctrl+Alt+F` | Search text in all project files |
 | `Ctrl+E` | Edit temporary exclusions from a project search |
 | `Ctrl+S` | Save the current file |
@@ -237,14 +240,14 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 | `Alt+Shift+Down` / `Alt+Shift+Up` | Duplicate the current line above / below |
 | `Alt+Shift+F` | Format the current document |
 | `Ctrl+L` | Toggle line wrapping |
-| `F4` | In a diff, open the current project file without closing the diff; otherwise toggle Markdown preview and editing |
+| `F4` | In a diff, open the current project file without closing the diff; otherwise toggle Markdown / SVG preview and editing |
 | `Ctrl+Q` | Quit |
 | `Tab` | Switch Explorer, Editor, and Changes |
 | `Esc` | Close a search or dialog; in Git history, go back one level toward local changes without closing diffs |
 
 ## Search and counts
 
-- `Ctrl+F` in Explorer: type part of a name or path to filter project files, including files inside collapsed folders. Use arrows to choose one, `Enter` to open it, and `Esc` to return to the tree.
+- Explorer: type in the permanent filter to find names/paths, including files inside collapsed folders. `Ctrl+F` toggles simple content search in the same field (literal, case-insensitive). Results keep their parent folders; use arrows and `Enter` to navigate/open. `Esc` clears the filter and restores the previous tree expansion. Opening a file keeps the filter for when you return.
 - `Ctrl+F` in Editor: type text to see local matches. Use arrows to choose one and `Enter` to move the cursor to its start.
 - `Ctrl+Alt+F`: type text and press `Enter` to search the project. The first search builds an in-memory index and later searches reuse it. After results arrive, use arrows to choose one and `Enter` to open the matching line.
 - `Ctrl+E` in file or project search opens session exclusions. They start from the root `.gitignore`, autocomplete patterns and folders, and allow including or excluding paths without changing `.gitignore`. `.git` is never included.
@@ -272,6 +275,7 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 - Only UTF-8 text files are opened and processed; binaries and files containing NUL are rejected.
 - Reading and analysis are limited to 2 MiB per file.
 - Image previews accept PNG, JPEG, WebP, and GIF up to 16 MiB; damaged or unsupported formats are reported without closing OEC.
+- SVG opens in preview; `F4` toggles editable XML and the current draft without saving. Invalid SVG shows a notice and still allows `F4` to edit. Rendering is local and static, with an embedded font and no scripts or external image resources. SVG uses the 2 MiB text-file limit and a maximum raster dimension of 1600 pixels. With `preview.images: false`, SVG opens as source only. See [third-party notices](docs/THIRD-PARTY-NOTICES.txt) for renderer and font licenses.
 - Saves use a temporary file before replacing the original and preserve its line-ending convention.
 - The root `.gitignore` is shown in gray in Explorer and is excluded from counts and project searches by default. Nested `.gitignore` files, `.git/info/exclude`, and global Git exclusions are not read. Temporary search exclusions can change this for the session; `.git` remains hidden and excluded.
 

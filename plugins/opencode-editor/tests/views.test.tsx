@@ -13,6 +13,55 @@ import { mockHost } from "./host"
 import { editorCommands } from "../src/workbench/useKeyboardShortcuts"
 import type { ImageRenderable, InputRenderable, KeyEvent, MarkdownRenderable } from "@opentui/core"
 import { configurationText, SHORTCUTS } from "../src/integration/reference"
+import { paletteCommands } from "../src/integration/palette"
+
+test("contextual palette commands expose every action with stable unique IDs and retain handlers", () => {
+  let calls = 0
+  const commands = paletteCommands("files.search", [
+    { bind: "ctrl+f", run: () => { calls++ } },
+    { bind: "ctrl+e", run: () => {} },
+    { bind: "return", run: () => {} },
+    { id: "custom.id", title: "Custom action", bind: "escape", enabled: () => false, run: () => {} },
+  ])
+  expect(commands.every((command) => command.id && command.title && command.palette && command.group === "OEC: opencode-editor")).toBe(true)
+  expect(new Set(commands.map((command) => command.id)).size).toBe(commands.length)
+  expect(commands[0]?.title).toContain("name/content")
+  expect(commands[3]?.id).toBe("custom.id")
+  expect((commands[3]?.enabled as () => boolean)()).toBe(false)
+  commands[0]!.run()
+  expect(calls).toBe(1)
+})
+
+test("SVG preview renders portable pixels, preserves unsaved XML and recovers from malformed source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-svg-plugin-"))
+  const path = join(root, "icon.svg")
+  const source = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10"><rect width="20" height="10" fill="red"/></svg>'
+  await writeFile(path, source)
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root, imageProtocol: "blocks" }))
+  await controller.open(path)
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <EditorRoute controller={controller} />
+  }, { width: 100, height: 28 })
+  try {
+    expect(controller.workspace.active?.view).toBe("preview")
+    for (let i = 0; i < 100 && !setup.renderer.root.findDescendantById("oec-image-preview"); i++) { await Bun.sleep(20); await setup.renderOnce() }
+    const image = setup.renderer.root.findDescendantById("oec-image-preview") as ImageRenderable
+    expect(image).toBeDefined(); await image.loadPromise
+    expect(image.image?.width).toBe(20)
+    await controller.alternateView(); await setup.renderOnce()
+    expect(setup.renderer.root.findDescendantById("oec-editor-buffer")).toBeDefined()
+    controller.workspace.edit(path, "<svg invalid")
+    await setup.renderOnce(); await controller.alternateView()
+    for (let i = 0; i < 20; i++) { await Bun.sleep(10); await setup.renderOnce() }
+    expect(setup.captureCharFrame()).toContain("Cannot display SVG")
+    expect(isDirty(controller.workspace.active!)).toBe(true)
+    expect(await readFile(path, "utf8")).toBe(source)
+    await controller.alternateView(); await setup.renderOnce()
+    expect(controller.workspace.active?.content).toBe("<svg invalid")
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
 
 test("literal search is opt-in, basename-based unless a path is supplied, and preserves fuzzy mode", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-search-modes-"))
@@ -123,7 +172,13 @@ test("Markdown F4 preview renders unsaved content and images use read-only tabs"
   }, { width: 100, height: 28 })
   try {
     await setup.renderOnce()
-    expect(setup.renderer.root.findDescendantById("oec-markdown-preview")).toBeDefined()
+    const preview = setup.renderer.root.findDescendantById("oec-markdown-preview") as MarkdownRenderable
+    expect(preview).toBeDefined()
+    expect(preview.screenX).toBeGreaterThanOrEqual(2)
+    expect(preview.internalBlockMode).toBe("top-level")
+    expect(preview.syntaxStyle.getStyle("markup.heading.1")?.fg).not.toEqual(preview.syntaxStyle.getStyle("default")?.fg)
+    expect(preview.syntaxStyle.getStyle("markup.link")?.underline).toBe(true)
+    expect(preview.tableOptions?.borders).toBe(true)
     await controller.alternateView(); await setup.renderOnce()
     expect(setup.renderer.root.findDescendantById("oec-editor-buffer")).toBeDefined()
     controller.workspace.edit(path, "# Unsaved heading\n")

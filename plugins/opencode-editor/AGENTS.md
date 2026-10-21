@@ -9,5 +9,9 @@
 - El enrutamiento de teclas del editor vive en `workbench/useKeyboardShortcuts.ts`; las teclas del árbol se limitan al renderable enfocado. No añadir listeners globales con `useKeyboard`.
 - Mantener confirmaciones, comparación antes de guardar y detección de archivos eliminados. Nunca recrearlos automáticamente.
 - El build incluye los módulos OEC compartidos, pero deja OpenCode, OpenTUI y Solid externos para usar las instancias del anfitrión.
+- SVG comparte el renderer seguro de OEC. El paquete incluye WASM, fuente y notices; las URLs se resuelven desde `import.meta.url`, no desde cwd ni rutas del checkout. F4 conserva el XML sin guardar y las confirmaciones de documento.
+- Ctrl+F con foco en el buscador Files alterna nombre/contenido; en el editor mantiene búsqueda local. Contenido es literal sobre disco, cancelable, respeta ignorados y límites de texto. Fuzzy/Literal conserva su estado independiente mediante Ctrl+E.
+- Expón acciones nuevas y existentes en Ctrl+P con IDs únicos, títulos y grupo `OEC: opencode-editor`, respetando foco, modales y disponibilidad. No captures atajos del chat desde acciones de paleta.
+- OpenTUI 0.5 no limpia dimensiones al recibir `undefined`: usa altura explícita y flexBasis `auto` al contraer paneles o pasar a compact.
 - Verificar desde la raíz: `bun run typecheck`, `bun run test`, `bun run build`, `bun run plugin:build`.
 - `scripts/smoke-host.ts` usa una instancia privada y datos temporales; no debe tocar configuración, credenciales o sesiones del usuario.

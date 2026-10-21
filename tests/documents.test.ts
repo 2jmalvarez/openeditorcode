@@ -50,6 +50,49 @@ test.each(["\n", "\r\n"])("saves Markdown previews without clearing their conten
   expect(documents.dirty()).toBe(false)
 })
 
+test("SVG opens in preview and F4 retains unsaved XML across tabs and saving", async () => {
+  let disk = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"/>'
+  const edited = disk.replace("24", "48")
+  const { documents, edit, text } = editableDocuments({
+    readFile: async () => disk,
+    writeFile: async (_root, _path, content) => { disk = content },
+  })
+  await documents.openFile("logo.SVG")
+  expect(documents.activeSvg()?.content).toBe(disk)
+  expect(documents.canTogglePreview()).toBe(true)
+  expect(documents.dirty()).toBe(false)
+  expect(text()).toBe("")
+  documents.togglePreview()
+  expect(text()).toBe(disk)
+  expect(documents.activeSvg()).toBeUndefined()
+  edit(edited)
+  documents.togglePreview()
+  expect(documents.activeSvg()?.content).toBe(edited)
+  expect(documents.dirty()).toBe(true)
+  await documents.openFile("other.txt")
+  documents.activateTab(0)
+  expect(documents.activeSvg()?.content).toBe(edited)
+  expect(documents.isTabDirty(0)).toBe(true)
+  expect(await documents.save()).toBe(true)
+  expect(disk).toBe(edited)
+  expect(documents.dirty()).toBe(false)
+  documents.togglePreview()
+  expect(text()).toBe(edited)
+})
+
+test("SVG honors disabled image previews independently of the Markdown default", async () => {
+  const source = '<svg xmlns="http://www.w3.org/2000/svg"/>'
+  const disabled = editableDocuments({ imagesEnabled: false, readFile: async () => source })
+  await disabled.documents.openFile("logo.svg")
+  expect(disabled.text()).toBe(source)
+  expect(disabled.documents.canTogglePreview()).toBe(false)
+  disabled.documents.togglePreview()
+  expect(disabled.documents.activePreview()).toBe(false)
+  const enabled = editableDocuments({ markdownDefault: "source", readFile: async () => source })
+  await enabled.documents.openFile("logo.svg")
+  expect(enabled.documents.activeSvg()).toBeDefined()
+})
+
 test("a pending save never replaces another tab's Markdown draft", async () => {
   const write = deferred<void>()
   const { documents, edit } = editableDocuments({ writeFile: async () => write.promise })

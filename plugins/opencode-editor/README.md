@@ -17,7 +17,7 @@ En 0.3.0: **F6** alterna conversación/editor sin reiniciar paneles; **F7** mues
 - Diffs en pestañas propias de solo lectura, con el componente público OpenTUI y tema del anfitrión, en vista dividida o unificada. `F4` abre el archivo actual para editar sin cerrar el diff ni restaurar versiones antiguas.
 - Markdown con preview por defecto y `F4` para alternar edición/preview, incluso con contenido sin guardar. Imágenes PNG/JPEG/GIF/WebP en pestañas de solo lectura (límite 16 MiB).
 - `F2` con foco en Files renombra archivos o carpetas y actualiza las rutas de sus pestañas abiertas, conservando ediciones. No sobrescribe destinos existentes.
-- Búsqueda **Fuzzy / Literal**: clic en el modo o `Ctrl+E` en el buscador. Fuzzy sigue siendo el default y usa toda la ruta; Literal busca texto consecutivo en el nombre (o en la ruta si la consulta contiene `/`).
+- Búsqueda **Fuzzy / Literal** por nombre: `Ctrl+E` en el buscador. Fuzzy sigue siendo el default y usa toda la ruta; Literal busca texto consecutivo en el nombre (o en la ruta si la consulta contiene `/`). `Ctrl+F` o el selector alterna con contenido literal.
 - `Ctrl+P` → **OEC: opencode-editor** → **All keyboard shortcuts** / **plugin configuration** muestran todos los controles y opciones. El menú permite cambiar preferencias durante la sesión sin escribir tu configuración personal.
 - Editor en una ruta propia, con explorador derecho y pestañas de archivos independientes de las pestañas de sesiones.
 - Alternancia entre editor y conversación sin enviar prompts ni interrumpir al agente.
@@ -27,6 +27,17 @@ En 0.3.0: **F6** alterna conversación/editor sin reiniciar paneles; **F7** mues
 - `Ctrl+A` selecciona todo el contenido del archivo activo; también está en la paleta como **select all file contents**. Solo actúa con foco en el editor, sin búsqueda ni modal; no captura `Ctrl+A` del chat.
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
+
+### Novedades de 0.3.4 (en preparación, sin publicar)
+
+- SVG abre en preview local estático; `F4` alterna XML editable y preview del borrador sin guardar. Un SVG inválido muestra un aviso y sigue permitiendo editar. Sin scripts, DTD, entidades ni recursos externos; texto hasta 2 MiB y raster hasta 1600 píxeles por dimensión. WASM, fuente y licencias se incluyen en el paquete.
+- En Search files…, `Ctrl+F` o el selector `Fuzzy ^F` / `Literal ^F` / `Name ^F` alterna nombre/ruta y contenido. Contenido busca texto literal sin distinguir mayúsculas en disco, con resultados en árbol (primeros 80 archivos), respetando `.gitignore`, `.git`, binarios y límite de 2 MiB. `Ctrl+E` conserva Fuzzy/Literal para nombres; no cambia la búsqueda local del editor.
+- `Ctrl+P` expone las nuevas acciones y las operaciones contextuales de Files/Diff, además de altura expanded/compact, expandir/contraer paneles, refrescar y limpiar búsqueda. Las acciones de edición solo están disponibles en su contexto.
+- Markdown comparte presentación con OEC: títulos por nivel, links, tablas, código con etiqueta de lenguaje y sangría; adapta wrappers details/summary sin ejecutar HTML.
+- Files y Diff muestran sus dos encabezados desde el inicio. Abrir cualquiera solicita autorización local cuando corresponde; dibujar los encabezados no lee archivos ni Git. La primera apertura de Diff conserva Files contraído.
+- `panelHeight: "expanded"` usa el viewport real del sidebar, descontando título, Context/MCP y contenido adicional del anfitrión. No agrega scroll exterior cuando los paneles caben. `compact` conserva las alturas acotadas anteriores.
+- Con ambos desplegados, sus listas y pistas de scroll tienen igual altura y alineación; el buscador y los mensajes de estado se descuentan antes de repartir. Una fila impar sobrante se ubica en la separación. Cada indicador móvil conserva su tamaño proporcional al contenido.
+- Diff usa colores del tema: `+N` verde, `−N` rojo; `●` azul para staged, `○` verde para nuevos, rojo para eliminados y amarillo/advertencia para modificados o renombrados. En staged, la letra mantiene el color del tipo de cambio. Los símbolos y letras permanecen para no depender solo del color.
 
 ### Novedades de 0.3.3
 
@@ -105,7 +116,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
     "package": "@2jmalvarez/opencode-editor@0.3.3",
-    "options": { "toggleBinding": "f6", "filesBinding": "f7", "diffBinding": "f8", "explorerWidth": 30 }
+    "options": { "toggleBinding": "f6", "filesBinding": "f7", "diffBinding": "f8", "explorerWidth": 30, "panelHeight": "expanded" }
   }]
 }
 ```
@@ -156,7 +167,8 @@ Si OpenCode oculta su sidebar por falta de ancho, usar **toggle conversation/edi
 | Alternar conversación/editor conservando paneles | `F6` |
 | Mostrar/ocultar Files | `F7` |
 | Mostrar/ocultar Diff | `F8` |
-| Diff → archivo actual / Markdown preview ↔ edición | `F4` |
+| Diff → archivo actual / Markdown y SVG preview ↔ edición | `F4` |
+| Alternar nombre/ruta ↔ contenido desde el buscador Files | `Ctrl+F` |
 | Renombrar selección con foco en Files | `F2` |
 | Alternar Fuzzy/Literal con foco en el buscador | `Ctrl+E` |
 | Nueva línea | `Enter` / `Shift+Enter` |
@@ -212,7 +224,8 @@ Dentro de `plugins[].options` del **`cli.json` global** de OpenCode (no `opencod
 - `searchMode`: `fuzzy` o `literal`.
 - `markdownPreview`: `true` abre nuevos `.md`/`.markdown`/`.mdown` con formato; `false` en edición. Desde un diff, F4 siempre abre la fuente para editar.
 - `diffView`: `split` o `unified`. No incrusta la pantalla privada de OpenCode: usa el componente público `diff` de OpenTUI en las pestañas OEC.
-- `imageProtocol`: `auto` negocia las capacidades de la terminal y dispone de fallback; `blocks` fuerza celdas de color, útil con Windows Terminal/WSL sin protocolo gráfico compatible. SVG continúa como texto, no se ejecuta ni se renderiza HTML o recursos remotos. Las imágenes corruptas muestran un aviso.
+- `panelHeight`: `expanded` (predeterminado) ocupa la altura restante del sidebar: Files y Diff se reparten el espacio por igual; al contraer u ocultar uno, el otro ocupa el espacio libre. Si ambos están contraídos, solo quedan sus encabezados. También se aplica al editor, con scroll independiente. `compact` conserva las alturas acotadas anteriores. Se puede alternar desde **plugin configuration → Panel height**; para persistirlo, configurar esta opción en `cli.json`.
+- `imageProtocol`: `auto` negocia las capacidades de la terminal y dispone de fallback; `blocks` fuerza celdas de color, útil con Windows Terminal/WSL sin protocolo gráfico compatible. También se aplica al preview SVG estático. No ejecuta HTML, scripts ni recursos remotos. Las imágenes corruptas muestran un aviso.
 - **plugin configuration** dentro del grupo **OEC: opencode-editor** muestra también raíz, atajos, ancho y opciones de borradores; los cambios del menú aplican solo al controller del proyecto actual, hasta recargar el plugin. Para defaults persistentes, editar `cli.json` y reiniciar. No modifica ese archivo automáticamente.
 
 Git solo ejecuta lecturas con argumentos separados, `--no-ext-diff` y `--no-textconv` para los patches, límites de salida y timeout. Se conserva la confirmación de acceso local; un workspace remoto necesita el override explícito `localRoot` y nunca se interpreta como acceso al disco remoto. Diffs de binarios o cambios de nombre/modo sin hunks muestran la descripción Git, no contenido editable.
@@ -233,7 +246,7 @@ Git solo ejecuta lecturas con argumentos separados, `--no-ext-diff` y `--no-text
 
 ## Límites y diferencias con OEC autónomo
 
-- Solo proyectos locales. Incluye renombrado F2, preview Markdown, imágenes y diffs de Git local en pestañas propias. No incluye creación/eliminación de archivos, búsqueda global de contenido, mutaciones/historial Git ni formateo. No hereda automáticamente todas las capacidades de OEC autónomo.
+- Solo proyectos locales. Incluye renombrado F2, preview Markdown/SVG, imágenes, filtro por contenido y diffs de Git local en pestañas propias. No incluye creación/eliminación de archivos, búsqueda avanzada por líneas, mutaciones/historial Git ni formateo. No hereda automáticamente todas las capacidades de OEC autónomo.
 - Pestañas de documentos propias, no mezcladas con las pestañas nativas de sesiones.
 - Hasta 64 archivos abiertos; límites y validación segura de OEC: 2 MiB al leer/guardar, rechazo de binarios/UTF-8 inválido y protección de rutas y symlinks.
 - Borradores limitados a 16 MiB por snapshot. Si se excede o falla el storage, se muestra un error; guardar archivos antes de salir.

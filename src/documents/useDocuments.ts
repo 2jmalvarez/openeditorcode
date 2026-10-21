@@ -2,7 +2,7 @@ import { basename, join, relative } from "node:path"
 import { batch, createSignal } from "solid-js"
 import { createTextFile, ExternalFileChangedError, readImageFile, readTextFile, writeTextFile } from "./files"
 import type { FileTab, GitDiff, OpenTab } from "./types"
-import { isImagePath, isMarkdownPath } from "./previews"
+import { isImagePath, isMarkdownPath, isSvgPath } from "./previews"
 import { language, t } from "../localization"
 import { oecManual } from "../docs/manual"
 
@@ -80,11 +80,12 @@ export function useDocuments(props: Props) {
   }
   const activeManual = () => { const tab = tabs()[activeTab()]; return tab?.kind === "manual" ? tab : undefined }
   const activeImage = () => { const tab = tabs()[activeTab()]; return tab?.kind === "image" ? tab : undefined }
+  const activeSvg = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.view === "preview" && isSvgPath(tab.path) ? tab : undefined }
   const activeLogs = () => { const tab = tabs()[activeTab()]; return tab?.kind === "logs" ? tab : undefined }
   const activePreviewContent = () => { const tab = tabs()[activeTab()]; return tab?.kind === "manual" ? oecManual(language()) : tab?.kind === "file" && tab.view === "preview" ? tab.content : "" }
   const activePreview = () => { const tab = tabs()[activeTab()]; return Boolean(activeManual() || activeImage() || tab?.kind === "file" && tab.view === "preview") }
   const activeProjectFile = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && tab.view === "source" ? tab.path : undefined }
-  const canTogglePreview = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && isMarkdownPath(tab.path) }
+  const canTogglePreview = () => { const tab = tabs()[activeTab()]; return tab?.kind === "file" && tab.source === "project" && (isMarkdownPath(tab.path) || isSvgPath(tab.path) && props.imagesEnabled !== false) }
   const dirty = () => {
     const tab = tabs()[activeTab()]
     if (!filePath() || tab?.kind !== "file") return false
@@ -166,7 +167,7 @@ export function useDocuments(props: Props) {
       }
       const content = await readFile(props.root, path)
       if (generation !== openGeneration) return false
-      const nextTabs: OpenTab[] = [...tabs(), { kind: "file", source: "project", path, content, savedContent: content, view: isMarkdownPath(path) && props.markdownDefault !== "source" ? "preview" : "source" }]
+      const nextTabs: OpenTab[] = [...tabs(), { kind: "file", source: "project", path, content, savedContent: content, view: (isMarkdownPath(path) && props.markdownDefault !== "source" || isSvgPath(path) && props.imagesEnabled !== false) ? "preview" : "source" }]
       setTabs(nextTabs)
       loadTab(nextTabs.length - 1, nextTabs)
       return true
@@ -457,5 +458,5 @@ export function useDocuments(props: Props) {
     loadTab(index)
   }
 
-  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, openActiveDiffFile, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, renameTabsAffectedBy, hasDirtyTabsAffectedBy, hasPendingOperationsAffectedBy, changeTab, activateTab, createFile }
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeSvg, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, openActiveDiffFile, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, renameTabsAffectedBy, hasDirtyTabsAffectedBy, hasPendingOperationsAffectedBy, changeTab, activateTab, createFile }
 }

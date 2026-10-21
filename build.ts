@@ -1,4 +1,5 @@
 import solidPlugin from "@opentui/solid/bun-plugin"
+import { dirname, join } from "node:path"
 
 const targets = {
   "win32-x64": { target: "bun-windows-x64", outfile: "packages/oec-win32-x64/bin/oec.exe" },
@@ -31,3 +32,5 @@ if (!result.success) {
   for (const log of result.logs) console.error(log)
   process.exit(1)
 }
+
+await Bun.write(join(dirname(target.outfile), "THIRD-PARTY-NOTICES.txt"), Bun.file("docs/THIRD-PARTY-NOTICES.txt"))

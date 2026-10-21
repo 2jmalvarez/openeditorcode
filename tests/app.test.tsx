@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { afterEach, beforeEach, expect, test } from "bun:test"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { KeyCodes } from "@opentui/core/testing"
@@ -232,7 +232,6 @@ test("toggles a Markdown file between preview and source with F4", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
     await waitForText(setup, "README.md")
-    setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("README.md")
     await Bun.sleep(80)
     setup.mockInput.pressEnter()
@@ -251,6 +250,52 @@ test("toggles a Markdown file between preview and source with F4", async () => {
   }
 })
 
+test("F4 edits SVG drafts and recovers from invalid or empty SVG without saving", async () => {
+  const path = join(root, "logo.svg")
+  const original = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><rect width="32" height="24" fill="red"/></svg>'
+  await writeFile(path, original, "utf8")
+  const config = factoryConfig()
+  config.preview.imageProtocol = "blocks"
+  const setup = await testRender(() => <App root={root} config={config} />, { width: 110, height: 30 })
+  const image = () => setup.renderer.root.findDescendantById("oec-standalone-image") as ImageRenderable | undefined
+  try {
+    await waitForText(setup, "logo.svg")
+    await setup.mockInput.typeText("logo.svg")
+    await Bun.sleep(80)
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "PREVIEW SVG")
+    for (let attempt = 0; attempt < 60 && !image(); attempt++) { await Bun.sleep(25); await setup.renderOnce() }
+    expect(image()).toBeDefined()
+    await image()!.loadPromise
+    expect(image()!.loadError).toBeNull()
+    expect(image()!.image?.width).toBe(32)
+    expect(image()!.height).toBeGreaterThan(2)
+
+    for (const draft of ["<svg>", "", original.replace('width="32"', 'width="48"')]) {
+      setup.mockInput.pressKey(KeyCodes.F4)
+      await setup.renderOnce()
+      expect(setup.captureCharFrame()).not.toContain("PREVIEW SVG")
+      setup.mockInput.pressKey("a", { ctrl: true })
+      setup.mockInput.pressKey(KeyCodes.BACKSPACE)
+      if (draft) await setup.mockInput.typeText(draft)
+      setup.mockInput.pressKey(KeyCodes.F4)
+      await waitForText(setup, "PREVIEW SVG")
+      expect(setup.captureCharFrame()).toContain("* logo.svg")
+      if (!draft || draft === "<svg>") await waitForText(setup, "No se pudo mostrar este SVG")
+      else {
+        for (let attempt = 0; attempt < 60 && !image(); attempt++) { await Bun.sleep(25); await setup.renderOnce() }
+        expect(image()).toBeDefined()
+        await image()!.loadPromise
+        expect(image()!.image?.width).toBe(48)
+      }
+      expect(await readFile(path, "utf8")).toBe(original)
+    }
+    setup.mockInput.pressKey("s", { ctrl: true })
+    await waitForText(setup, "Guardado: logo.svg")
+    expect(await readFile(path, "utf8")).toContain('width="48"')
+  } finally { setup.renderer.destroy() }
+})
+
 test("Ctrl+S and save-and-close preserve Markdown preview contents on disk", async () => {
   const path = join(root, "README.md")
   const original = "# Documento\r\n\r\nContenido fuente"
@@ -258,7 +303,6 @@ test("Ctrl+S and save-and-close preserve Markdown preview contents on disk", asy
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
     await waitForText(setup, "README.md")
-    setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("README.md")
     await Bun.sleep(80)
     setup.mockInput.pressEnter()
@@ -289,7 +333,6 @@ test("opens real images in a visible read-only preview with nonzero height", asy
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
     await waitForText(setup, "pixel.png")
-    setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("pixel.png")
     await Bun.sleep(80)
     setup.mockInput.pressEnter()
@@ -318,7 +361,6 @@ test("fits a full-size screenshot to the image pane rather than a thumbnail, als
   const setup = await testRender(() => <App root={root} config={config} />, { width: 160, height: 55 })
   try {
     await waitForText(setup, "preview.png")
-    setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("preview.png")
     await Bun.sleep(80)
     setup.mockInput.pressEnter()
@@ -360,7 +402,6 @@ test("renders Mermaid fenced blocks as Unicode diagrams in Markdown preview", as
   await writeFile(join(root, "diagram.md"), "# Arquitectura\n\n```mermaid\ngraph LR\n  API --> Database\n```", "utf8")
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("diagram.md")
     await Bun.sleep(80)
     setup.mockInput.pressEnter()
@@ -508,11 +549,10 @@ test("types a local search query and opens its result", async () => {
   }
 })
 
-test("filters project files with Ctrl+F while the explorer is active", async () => {
+test("filters project files immediately while the explorer is active", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
     await Bun.sleep(80)
-    setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("second")
     await Bun.sleep(120)
     await setup.renderOnce()
@@ -543,11 +583,63 @@ test("filters project files with Ctrl+F while the explorer is active", async () 
   }
 })
 
+test("toggles simple content search inline and keeps advanced search separate", async () => {
+  await mkdir(join(root, "src", "nested"), { recursive: true })
+  await writeFile(join(root, "src", "nested", "match.ts"), "needle only in content")
+  const setup = await testRender(() => <App root={root} />, { width: 120, height: 30 })
+  try {
+    await waitForText(setup, "Buscar archivo")
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await waitForText(setup, "Buscar por contenido")
+    await setup.mockInput.typeText("needle")
+    await waitForText(setup, "match.ts")
+    let frame = setup.captureCharFrame()
+    expect(frame).toContain("nested")
+    expect(frame).toContain("1 resultado")
+    expect(frame).not.toContain("hello.txt")
+    setup.mockInput.pressKey("f", { ctrl: true, meta: true })
+    await waitForText(setup, "BUSCAR EN TODO EL PROYECTO")
+    setup.mockInput.pressEscape()
+    await Bun.sleep(60)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("BUSCAR EN TODO EL PROYECTO")
+    expect(setup.captureCharFrame()).toContain("match.ts")
+    setup.mockInput.pressEscape()
+    await waitForText(setup, "hello.txt")
+    frame = setup.captureCharFrame()
+    expect(frame).not.toContain("match.ts")
+    expect(frame).not.toContain("nested")
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await waitForText(setup, "Buscar archivo")
+    await setup.mockInput.typeText("second")
+    await waitForText(setup, "1 resultado")
+    expect(setup.captureCharFrame()).toContain("second.txt")
+  } finally { setup.renderer.destroy() }
+})
+
+test("shows explorer filter help in the footer only when it fits", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 200, height: 30 })
+  try {
+    await waitForText(setup, "hello.txt")
+    const help = "Ctrl+F alterna nombre/contenido · Esc limpia"
+    expect(setup.captureCharFrame().trimEnd().split("\n").at(-1)).toContain(help)
+    setup.renderer.resize(60, 30)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain(help)
+    expect(setup.captureCharFrame().trimEnd().split("\n").at(-1)).toMatch(/v\d+\.\d+\.\d+/)
+    setup.renderer.resize(200, 30)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame().trimEnd().split("\n").at(-1)).toContain(help)
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "contenido de prueba")
+    expect(setup.captureCharFrame()).not.toContain(help)
+  } finally { setup.renderer.destroy() }
+})
+
 test("cancels explorer file search with Escape and restores its tree", async () => {
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
     await Bun.sleep(80)
-    setup.mockInput.pressKey("f", { ctrl: true })
     await setup.mockInput.typeText("second")
     await Bun.sleep(80)
     setup.mockInput.pressEscape()
@@ -555,7 +647,7 @@ test("cancels explorer file search with Escape and restores its tree", async () 
     await setup.renderOnce()
 
     const frame = setup.captureCharFrame()
-    expect(frame).not.toContain("Buscar archivo")
+    expect(frame).toContain("Buscar archivo")
     expect(frame).toContain("hello.txt")
     expect(frame).toContain("second.txt")
   } finally {

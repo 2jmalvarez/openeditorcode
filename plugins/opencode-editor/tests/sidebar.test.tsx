@@ -28,11 +28,11 @@ test("sidebar reserves six MCP rows and only exceeds its budget at minimum panel
   expect(sidebarLayout(32, true, true, false).files).toBe(9)
 })
 
-test("six MCP servers fit above Files and Diff; resize retains inner scrolling and outer overflow remains available", async () => {
+test("compact panels retain bounded sizes and outer overflow remains available", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-sidebar-budget-"))
   await Promise.all(Array.from({ length: 40 }, (_, i) => writeFile(join(root, `file-${i}.ts`), "file")))
   const host = mockHost(root)
-  const controller = new EditorController(host.context, parseOptions({ localRoot: root }))
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root, panelHeight: "compact" }), async () => ({ repository: true, files: [] }))
   await controller.toggleFiles()
   const [extra, setExtra] = createSignal(0)
   const setup = await testRender(() => {
@@ -117,7 +117,8 @@ test("sidebar search opens closed-folder results and local changes open a diff t
     return <SessionFiles controller={controller} sessionID="session-1" />
   }, { width: 70, height: 30 })
   try {
-    await controller.changes.refresh(); await setup.renderOnce()
+    await controller.changes.refresh()
+    for (let i = 0; i < 4; i++) await setup.renderOnce()
     let frame = setup.captureCharFrame().split("\n")
     const changed = frame.findIndex((line) => line.includes("M hello.ts"))
     expect(changed).toBeGreaterThan(0)
@@ -130,7 +131,9 @@ test("sidebar search opens closed-folder results and local changes open a diff t
     const input = setup.renderer.root.findDescendantById("oec-files-search") as InputRenderable
     input.focus()
     await setup.mockInput.typeText("HELLO")
-    await Bun.sleep(30); await setup.renderOnce()
+    // Wait for asynchronous filesystem search, not a fixed 30 ms machine budget.
+    for (let i = 0; i < 100 && !controller.fileSearch.items.length; i++) await Bun.sleep(20)
+    await setup.renderOnce()
     expect(controller.fileSearch.items.map((item) => item.path)).toEqual([join(root, "nested", "hello.ts")])
     expect(controller.filesFocused).toBe(false)
     frame = setup.captureCharFrame().split("\n")

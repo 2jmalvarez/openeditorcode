@@ -1,4 +1,5 @@
-import { createMemo, createSignal } from "solid-js"
+import { createMemo, createSignal, onCleanup } from "solid-js"
+import { filterFilesByContent } from "./content-files"
 import { formatNumber, t } from "../localization"
 import { countProjectLines, searchProjectText, sortMassiveFiles, type MassiveFile, type ProjectSearchResult } from "./project-search"
 import type { Command } from "../dialogs/types"
@@ -24,16 +25,17 @@ export function useSearch(props: Props) {
   const [projectSearching, setProjectSearching] = createSignal(false)
   const [lineCounts, setLineCounts] = createSignal<Record<string, number>>({})
   const [massiveFiles, setMassiveFiles] = createSignal<MassiveFile[]>([])
-  const [fileSearchOpen, setFileSearchOpen] = createSignal(false)
+  const [fileSearchMode, setFileSearchMode] = createSignal<"name" | "content">("name")
+  const [fileSearching, setFileSearching] = createSignal(false)
   const [fileQuery, setFileQuery] = createSignal("")
   const [fileResults, setFileResults] = createSignal<IndexedItem[]>([])
-  const [fileSearchIndex, setFileSearchIndex] = createSignal(0)
   const [exclusionQuery, setExclusionQuery] = createSignal("")
   const [exclusionIndex, setExclusionIndex] = createSignal(0)
   const exclusions = useSearchExclusions(props.root, props.respectGitignore)
   let indexPromise: ReturnType<typeof buildFileIndex> | undefined
   let searchGeneration = 0
   let fileGeneration = 0
+  onCleanup(() => { fileGeneration += 1 })
 
   async function projectIndex() {
     await exclusions.load()
@@ -50,6 +52,7 @@ export function useSearch(props: Props) {
     setProjectSearching(false)
     setProjectResults([])
     setFileResults([])
+    setFileSearching(false)
     if (clearLineCounts) {
       setLineCounts({})
       setMassiveFiles([])
@@ -130,48 +133,49 @@ export function useSearch(props: Props) {
     })
   }
 
-  function openFileSearch() {
-    setFileSearchOpen(true)
-    setFileQuery("")
-    setFileResults([])
-    setFileSearchIndex(0)
+  function toggleFileSearchMode() {
+    setFileSearchMode((mode) => mode === "name" ? "content" : "name")
+    void updateFileQuery(fileQuery())
   }
 
   function closeFileSearch() {
     fileGeneration += 1
-    setFileSearchOpen(false)
+    setFileSearching(false)
     setFileQuery("")
     setFileResults([])
-    setFileSearchIndex(0)
   }
 
   async function updateFileQuery(value: string) {
     setFileQuery(value)
-    setFileSearchIndex(0)
     const generation = ++fileGeneration
+    setFileResults([])
+    setFileSearching(false)
     if (!value.trim()) return setFileResults([])
-    await props.runActivity(t("search.fileActivity"), async () => {
-      try {
-        const index = await projectIndex()
-        const results = filterItems(props.root, index.items.filter((item) => !item.directory), value)
-        if (generation !== fileGeneration) return
-        setFileResults(results)
-        props.setStatus(t(results.length === 1 ? "search.oneFile" : results.length ? "search.files" : "search.noFiles", { count: formatNumber(results.length) }))
-      } catch (error) {
-        if (generation !== fileGeneration) return
-        const summary = t("search.filesFailed")
-        props.setStatus(summary)
-        props.reportError?.({ source: t("log.search"), operation: t("log.fileSearch"), summary, details: error instanceof Error ? error.stack ?? error.message : t("log.unknown") })
-      }
-    })
+    const mode = fileSearchMode()
+    setFileSearching(true)
+    if (mode === "content") await new Promise((resolve) => setTimeout(resolve, 150))
+    if (generation !== fileGeneration) return
+    try {
+      const index = await projectIndex()
+      if (generation !== fileGeneration) return
+      const results = mode === "content"
+        ? await filterFilesByContent(props.root, index.items, value, () => generation === fileGeneration)
+        : filterItems(props.root, index.items.filter((item) => !item.directory), value, index.items.length)
+      if (generation !== fileGeneration) return
+      setFileResults(results)
+      props.setStatus(t(results.length === 1 ? "search.oneFile" : results.length ? "search.files" : "search.noFiles", { count: formatNumber(results.length) }))
+    } catch (error) {
+      if (generation !== fileGeneration) return
+      const summary = t("search.filesFailed")
+      props.setStatus(summary)
+      props.reportError?.({ source: t("log.search"), operation: t("log.fileSearch"), summary, details: error instanceof Error ? error.stack ?? error.message : t("log.unknown") })
+    } finally {
+      if (generation === fileGeneration) setFileSearching(false)
+    }
   }
 
   async function refreshFileSearch() {
-    if (fileSearchOpen() && fileQuery().trim()) await updateFileQuery(fileQuery())
-  }
-
-  function moveFileSelection(direction: number) {
-    setFileSearchIndex((value) => Math.max(0, Math.min(value + direction, fileResults().length - 1)))
+    if (fileQuery().trim()) await updateFileQuery(fileQuery())
   }
 
   const exclusionSuggestions = createMemo(() => exclusions.suggestions(exclusionQuery()))
@@ -191,7 +195,7 @@ export function useSearch(props: Props) {
     if (!exclusions.toggle(pattern)) return
     invalidateIndex(false)
     await prepareExclusions()
-    if (fileSearchOpen() && fileQuery()) await updateFileQuery(fileQuery())
+    if (fileQuery()) await updateFileQuery(fileQuery())
   }
 
   async function removeExclusion() {
@@ -199,7 +203,7 @@ export function useSearch(props: Props) {
     if (!pattern || !exclusions.removeCustom(pattern)) return
     invalidateIndex(false)
     await prepareExclusions()
-    if (fileSearchOpen() && fileQuery()) await updateFileQuery(fileQuery())
+    if (fileQuery()) await updateFileQuery(fileQuery())
   }
 
   function completeExclusion() {
@@ -219,7 +223,7 @@ export function useSearch(props: Props) {
 
   return {
     query, searchIndex, setSearchIndex, projectResults, projectSearching, lineCounts, massiveFiles, reset, updateQuery, findInProject, showProjectLineCount, findMassiveFiles, paletteResults, invalidateIndex,
-    fileSearchOpen, fileQuery, fileResults, fileSearchIndex, setFileSearchIndex, openFileSearch, closeFileSearch, updateFileQuery, refreshFileSearch, moveFileSelection,
+    fileSearchMode, fileSearching, fileQuery, fileResults, toggleFileSearchMode, closeFileSearch, updateFileQuery, refreshFileSearch,
     exclusionQuery, exclusionIndex, setExclusionIndex, exclusionSuggestions, updateExclusionQuery, prepareExclusions, toggleExclusion, removeExclusion, completeExclusion, reloadExclusions,
   }
 }

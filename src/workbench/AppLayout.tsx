@@ -1,5 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { Show } from "solid-js"
+import { useTerminalDimensions } from "@opentui/solid"
 import { DocumentTabs } from "../documents/DocumentTabs"
 import { Overlays } from "../dialogs/Overlays"
 import { EditorPane } from "../editor/EditorPane"
@@ -9,6 +10,7 @@ import { DiffPane } from "../git/DiffPane"
 import { GitPane } from "../git/GitPane"
 import { MarkdownPreview } from "../documents/MarkdownPreview"
 import { ImagePreview } from "../documents/ImagePreview"
+import { SvgPreview } from "../documents/SvgPreview"
 import { LogPane } from "../logs/LogPane"
 import type { useWorkbench } from "./useWorkbench"
 import { t } from "../localization"
@@ -16,6 +18,15 @@ import { t } from "../localization"
 type Props = ReturnType<typeof useWorkbench>
 
 export function AppLayout(props: Props) {
+  const terminal = useTerminalDimensions()
+  const footerMessage = () => (props.activity.busy() ? `${props.activity.spinner()} ${props.activity.message()}` : props.logs.notice() || props.status())
+    + (props.documents.activePreview() && props.documents.canTogglePreview() ? t("app.f4Edit") : "")
+    + (props.documents.activeDiff() ? t("app.f4Open") : "")
+  const footerDetails = () => (props.config().keyboard.profile === "vim" && props.documents.activeProjectFile() ? `${props.editor.vimMode().toUpperCase()}  |  ` : "")
+    + (props.documents.filePath() && !props.documents.activePreview() ? `${t("app.line")} ${props.editor.cursor().line}:${props.editor.cursor().column}  |  ` : "")
+    + `v${props.appVersion}` + (props.updates.latestVersion() ? ` ↑ ${props.updates.latestVersion()}` : "")
+  const showSearchHelp = () => props.active() === "explorer" && !props.overlays.overlay()
+    && Bun.stringWidth(footerMessage()) + Bun.stringWidth(footerDetails()) + Bun.stringWidth(t("app.explorerSearchHelp")) + 4 <= terminal().width - 2
   return <box style={{ flexDirection: "column", height: "100%", backgroundColor: "#101419" }}>
     <box style={{ height: 1, paddingX: 1, flexDirection: "row", alignItems: "center", backgroundColor: "#17202a" }}>
       <text fg="#70d6a7"><strong>{props.rootName()}</strong></text>
@@ -24,7 +35,7 @@ export function AppLayout(props: Props) {
     </box>
     <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
       <Show when={props.explorerVisible()} fallback={<box />}>
-        <ExplorerPane root={props.root} active={() => props.active() === "explorer"} tree={props.explorer.tree} selected={props.explorer.selected} filePath={props.documents.filePath} lineCounts={props.search.lineCounts} setScroll={props.setExplorerScroll} onActivate={props.activateExplorerAt} fileSearchOpen={props.search.fileSearchOpen} fileQuery={props.search.fileQuery} fileResults={props.search.fileResults} fileSearchIndex={props.search.fileSearchIndex} onFileQuery={(value) => void props.search.updateFileQuery(value)} onFileActivate={(index) => void props.openFileSearchResult(index)} massiveFilesOpen={props.explorer.showMassiveFiles} onToggleMassiveFiles={props.toggleMassiveFiles} width={() => props.config().layout.explorerWidth} />
+        <ExplorerPane root={props.root} active={() => props.active() === "explorer" && !props.overlays.overlay()} tree={props.explorer.tree} selected={props.explorer.selected} filePath={props.documents.filePath} lineCounts={props.search.lineCounts} setScroll={props.setExplorerScroll} onActivate={props.activateExplorerAt} fileSearchMode={props.search.fileSearchMode} fileSearching={props.search.fileSearching} fileQuery={props.search.fileQuery} fileResults={props.search.fileResults} onFileQuery={(value) => void props.search.updateFileQuery(value)} massiveFilesOpen={props.explorer.showMassiveFiles} onToggleMassiveFiles={props.toggleMassiveFiles} width={() => props.config().layout.explorerWidth} />
       </Show>
         <box style={{ flexGrow: 1, minWidth: 0, flexDirection: "column", border: ["top"], borderColor: props.active() === "editor" ? "#70d6a7" : "#30404d" }}>
         <DocumentTabs tabs={props.documents.tabs} activeTab={props.documents.activeTab} isTabDirty={props.documents.isTabDirty} onActivate={props.documents.activateTab} onClose={props.requestCloseTab} />
@@ -37,7 +48,9 @@ export function AppLayout(props: Props) {
                 when={props.documents.activeManual() || props.documents.activePreview()}
                 fallback={<><EditorPane filePath={props.documents.filePath} content={props.editor.content} active={props.active} explorerVisible={props.explorerVisible} gitVisible={props.gitVisible} wrapMode={props.editor.wrapMode} lineLabels={props.editor.metrics.lineLabels} scrollbar={props.editor.metrics.scrollbar} setEditor={props.editor.setEditor} onContentChange={props.editor.onContentChange} onCursorChange={props.editor.onCursorChange} onUnmount={props.editor.detachEditor} config={props.config} syntaxTheme={props.syntaxTheme} /><FindPanel open={props.editor.findOpen} query={props.editor.findQuery} results={props.editor.findResults} index={props.editor.findIndex} onQuery={props.editor.updateFindQuery} maxWidth={() => props.config().layout.findPanelMaxWidth} /></>}
               >
-                 <Show when={props.documents.activeImage()} fallback={<MarkdownPreview content={props.documents.activePreviewContent} active={() => props.active() === "editor"} manual={() => Boolean(props.documents.activeManual())} />}>
+                 <Show when={props.documents.activeImage()} fallback={<Show when={props.documents.activeSvg()} fallback={<MarkdownPreview content={props.documents.activePreviewContent} active={() => props.active() === "editor"} manual={() => Boolean(props.documents.activeManual())} />}>
+                   <SvgPreview content={props.documents.activePreviewContent} active={() => props.active() === "editor"} protocol={() => props.config().preview.imageProtocol} />
+                 </Show>}>
                   <ImagePreview bytes={() => props.documents.activeImage()?.bytes} active={() => props.active() === "editor"} protocol={() => props.config().preview.imageProtocol} />
                 </Show>
               </Show>}
@@ -55,8 +68,9 @@ export function AppLayout(props: Props) {
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>
       <box style={{ flexDirection: "row" }}>
-         <text fg="#8ca0ae"><Show when={props.activity.busy()}>{props.activity.spinner()} </Show>{props.activity.busy() ? props.activity.message() : props.logs.notice() || props.status()}<Show when={props.documents.activePreview() && props.documents.canTogglePreview()}>{t("app.f4Edit")}</Show><Show when={props.documents.activeDiff()}>{t("app.f4Open")}</Show></text>
-        <text style={{ marginLeft: "auto" }} fg="#8ca0ae"><Show when={props.config().keyboard.profile === "vim" && props.documents.activeProjectFile()}>{props.editor.vimMode().toUpperCase()}  |  </Show><Show when={props.documents.filePath() && !props.documents.activePreview()}>{t("app.line")} {props.editor.cursor().line}:{props.editor.cursor().column}  |  </Show>v{props.appVersion}<Show when={props.updates.latestVersion()}> ↑ {props.updates.latestVersion()}</Show></text>
+        <text fg="#8ca0ae">{footerMessage()}</text>
+        <Show when={showSearchHelp()}><text style={{ marginLeft: 2 }} fg="#71808b">{t("app.explorerSearchHelp")}</text></Show>
+        <text style={{ marginLeft: "auto" }} fg="#8ca0ae">{footerDetails()}</text>
       </box>
     </box>
     <Overlays root={props.root} overlay={props.overlays.overlay} query={props.search.query} setQuery={(value) => props.search.updateQuery(value, props.overlays.overlay() === "project-search")} newFileName={props.overlays.newFileName} setNewFileName={props.overlays.setNewFileName} newFileDirectory={props.overlays.newFileDirectory} renameName={props.overlays.renameName} setRenameName={props.overlays.setRenameName} searchIndex={props.search.searchIndex} paletteResults={props.paletteResults} projectResults={props.search.projectResults} projectSearching={props.search.projectSearching} confirmChoice={props.overlays.confirmChoice} pendingDeletion={props.overlays.pendingDeletion} pendingRename={props.overlays.pendingRename} pendingAction={props.overlays.pendingAction} pendingGitRevert={props.overlays.pendingGitRevert} pendingExternalChange={props.overlays.pendingExternalChange} exclusionQuery={props.search.exclusionQuery} setExclusionQuery={props.search.updateExclusionQuery} exclusionIndex={props.search.exclusionIndex} exclusionSuggestions={props.search.exclusionSuggestions} settingsIndex={props.overlays.settingsIndex} settingsScope={props.overlays.settingsScope} settingsValues={props.settingsValues} />

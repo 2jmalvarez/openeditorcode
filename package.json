@@ -1,6 +1,6 @@
 {
   "name": "openeditorcode",
-  "version": "0.2.40",
+  "version": "0.2.41",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/2jmalvarez/openeditorcode.git"
@@ -10,8 +10,10 @@
     "@opencode/plugin": "2.1.0",
     "@opentui/core": "0.6.6",
     "@opentui/solid": "0.6.6",
+    "@resvg/resvg-wasm": "2.6.2",
     "@types/bun": "1.3.14",
     "beautiful-mermaid": "^1.1.3",
+    "dejavu-fonts-ttf": "2.37.3",
     "ignore": "^7.0.5",
     "prettier": "^3.9.6",
     "solid-js": "^1.9.17",
@@ -21,8 +23,8 @@
     "@babel/core": "7.29.7"
   },
   "optionalDependencies": {
-    "@2jmalvarez/oec-linux-x64": "0.2.40",
-    "@2jmalvarez/oec-win32-x64": "0.2.40"
+    "@2jmalvarez/oec-linux-x64": "0.2.41",
+    "@2jmalvarez/oec-win32-x64": "0.2.41"
   },
   "bin": {
     "oec": "bin/oec.js",

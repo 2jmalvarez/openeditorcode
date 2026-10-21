@@ -4,6 +4,14 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path"
 import { t } from "../localization"
 import { writeAndReplaceWindowsFile } from "./windows-save"
 import { parseWslPath, WslFileChangedError, writeWslFile } from "./wsl-save"
+import { svgWasmPath, svgFontPath } from "./svg-assets"
+
+// Build-time assets are embedded by Bun in the standalone executable. These are
+// fixed package resources, never paths supplied by an SVG or by the user.
+export async function readSvgAssets(): Promise<{ wasm: ArrayBuffer; font: Uint8Array }> {
+  const [wasm, font] = await Promise.all([Bun.file(svgWasmPath).arrayBuffer(), Bun.file(svgFontPath).bytes()])
+  return { wasm, font }
+}
 
 export const MAX_FILE_BYTES = 2 * 1024 * 1024
 export const MAX_IMAGE_BYTES = 16 * 1024 * 1024
