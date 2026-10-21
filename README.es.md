@@ -18,7 +18,7 @@ El plugin 0.3.3 está verificado con OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1 en W
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
-Documentacion para **0.2.41** (release en preparación; la publicación se verifica por separado).
+Documentación para **0.2.41**, publicada y verificada en npm para Windows y Linux ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.41)).
 
 Novedades del checkout: filtro permanente jerárquico del Explorador con `Ctrl+F` para alternar nombre/ruta y contenido; preview SVG con `F4` para editar XML; presentación Markdown mejorada; guardado desde preview y operaciones concurrentes de documentos protegidas. El plugin **0.3.4** se prepara por separado con SVG, filtro por contenido, paneles expanded/compact, colores Git y acciones contextuales en `Ctrl+P`. El plugin publicado **0.3.3** no incluye estas novedades.
 

@@ -94,7 +94,14 @@ export function ChangesPane(props: { controller: EditorController; sessionID?: s
         <box height={range().top} flexShrink={0} />
         <For each={rows()}>{(row, index) => <box height={1} flexShrink={0} paddingLeft={row.depth} minWidth={0} overflow="hidden"
           backgroundColor={range().start + index() === selected() && focused() ? controller.context.theme.background.raised.base : undefined}
-          onMouseUp={(event) => { event.stopPropagation(); if (event.button === 0) { select(range().start + index()); queueMicrotask(open) } }}>
+          // Like Files, activate on press: a Git refresh may replace this row
+          // before release, leaving OpenTUI's mouse-up target detached.
+          onMouseDown={(event) => {
+            event.stopPropagation()
+            if (event.button !== 0 || controller.modal) return
+            props.onFocus(); panel?.focus()
+            select(range().start + index()); open()
+          }}>
              <Show when={row.change} fallback={<text wrapMode="none" fg={theme.text.base}>{`${row.expanded ? "▾" : "▸"} ${row.name}`}</text>}>{(change) => {
                const label = () => changePresentation(change())
                return <text wrapMode="none" fg={theme.text.base}>

@@ -293,10 +293,10 @@ test("F4 edits SVG drafts and recovers from invalid or empty SVG without saving"
     setup.mockInput.pressKey("s", { ctrl: true })
     // Windows ACL-preserving saves launch PowerShell. Loaded CI workers can
     // need more than the usual UI wait; observe completion without retrying save.
-    await waitForText(setup, "Guardado: logo.svg", 200)
+    await waitForText(setup, "Guardado: logo.svg", process.platform === "win32" ? 800 : 60)
     expect(await readFile(path, "utf8")).toContain('width="48"')
   } finally { setup.renderer.destroy() }
-}, 15_000)
+}, 30_000)
 
 test("Ctrl+S and save-and-close preserve Markdown preview contents on disk", async () => {
   const path = join(root, "README.md")
@@ -310,7 +310,7 @@ test("Ctrl+S and save-and-close preserve Markdown preview contents on disk", asy
     setup.mockInput.pressEnter()
     await waitForText(setup, "PREVIEW MARKDOWN")
     setup.mockInput.pressKey("s", { ctrl: true })
-    await waitForText(setup, "Guardado: README.md")
+    await waitForText(setup, "Guardado: README.md", process.platform === "win32" ? 800 : 60)
     expect(await readFile(path, "utf8")).toBe(original)
 
     setup.mockInput.pressKey(KeyCodes.F4)
@@ -324,10 +324,10 @@ test("Ctrl+S and save-and-close preserve Markdown preview contents on disk", asy
     await waitForText(setup, "Guardar y cerrar")
     setup.mockInput.pressArrow("up") // Default is discard; choose save and close.
     setup.mockInput.pressEnter()
-    await waitForText(setup, "Archivo cerrado.")
+    await waitForText(setup, "Archivo cerrado.", process.platform === "win32" ? 800 : 60)
     expect(await readFile(path, "utf8")).toBe("# Documento editado")
   } finally { setup.renderer.destroy() }
-})
+}, 50_000)
 
 test("opens real images in a visible read-only preview with nonzero height", async () => {
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==", "base64")

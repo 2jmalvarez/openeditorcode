@@ -6,7 +6,7 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for **0.2.41** (release preparation; publication must be verified separately).
+Documentation for **0.2.41**, published and verified on npm for Windows and Linux ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.41)).
 
 New in this checkout: permanent hierarchical Explorer filtering with `Ctrl+F` to toggle name/path and content; static SVG preview with `F4` XML editing; improved Markdown presentation; safer preview saves and concurrent document operations. Plugin **0.3.4** is being prepared separately with SVG, content filtering, expanded/compact panels, Git colors and contextual `Ctrl+P` actions. Published plugin **0.3.3** does not include those new features.
 

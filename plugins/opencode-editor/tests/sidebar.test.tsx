@@ -130,7 +130,16 @@ test("sidebar search opens closed-folder results and local changes open a diff t
     }
     const target = changedText(setup.renderer.root)!
     expect(target).toBeDefined()
-    await setup.mockMouse.click(target.screenX + 1, target.screenY)
+    const clickX = target.screenX + 1, clickY = target.screenY
+    await setup.mockMouse.pressDown(clickX, clickY)
+    for (let i = 0; i < 200 && controller.workspace.active?.kind !== "diff"; i++) await Bun.sleep(20)
+    expect(controller.workspace.active?.kind).toBe("diff")
+    // A background Git refresh can replace virtualized rows between press and
+    // release. The user's single click must still open the intended diff.
+    await controller.changes.refresh()
+    await setup.renderOnce()
+    expect(target.isDestroyed).toBe(true)
+    await setup.mockMouse.release(clickX, clickY)
     for (let i = 0; i < 200 && host.destinations.at(-1)?.type !== "plugin"; i++) { await Bun.sleep(20); await setup.renderOnce() }
     expect(host.toasts).toEqual([])
     expect(host.dispatches).toEqual([])
