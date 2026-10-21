@@ -185,6 +185,11 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   async function acceptDeletion() {
     const item = overlays.pendingDeletion()
     if (!item) return overlays.close()
+    if (documents.hasPendingOperationsAffectedBy(item.path, item.directory)) {
+      overlays.close()
+      setStatus(t("status.operationPending"))
+      return
+    }
     if (documents.hasDirtyTabsAffectedBy(item.path, item.directory)) {
       overlays.close()
       setStatus(t("status.deleteBlocked"))
@@ -222,6 +227,10 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     const name = overlays.renameName().trim()
     if (!item) return overlays.close()
     if (name === item.name) return overlays.close()
+    if (documents.hasPendingOperationsAffectedBy(item.path, item.directory)) {
+      setStatus(t("status.operationPending"))
+      return
+    }
     await activity.run(t("activity.rename"), async () => {
       try {
         const nextPath = await renameProjectEntry(root, item.path, name)
@@ -269,6 +278,11 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     if (git.mode() !== "local") return overlays.close()
     const files = overlays.pendingGitRevert()
     if (!files.length) return overlays.close()
+    if (files.some((file) => documents.hasPendingOperationsAffectedBy(join(root, file.workspacePath ?? file.path), false))) {
+      overlays.close()
+      setStatus(t("status.operationPending"))
+      return
+    }
     if (files.some((file) => documents.hasDirtyTabsAffectedBy(join(root, file.workspacePath ?? file.path), false))) {
       overlays.close()
       setStatus(t("status.discardBlocked"))

@@ -6,6 +6,7 @@ import { factoryConfig, serializeConfig } from "./defaults"
 import { parseConfig, parseProjectConfig, resolveConfig } from "./schema"
 import type { ConfigPaths, ConfigRecovery, OecConfig, ProjectConfig } from "./types"
 import { t } from "../localization"
+import { ensurePhysicallyInsideRoot } from "../documents/files"
 
 const MAX_CONFIG_BYTES = 256 * 1024
 
@@ -68,7 +69,7 @@ export async function saveConfig(paths: ConfigPaths, text: string): Promise<OecC
 }
 
 export async function loadProjectConfig(root: string): Promise<{ config?: ProjectConfig; path: string }> {
-  const path = projectConfigPath(root)
+  const path = await ensurePhysicallyInsideRoot(root, projectConfigPath(root))
   try { return { config: parseProjectConfig(await readFile(path, "utf8")), path } } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return { path }
     throw error
@@ -77,7 +78,10 @@ export async function loadProjectConfig(root: string): Promise<{ config?: Projec
 
 export async function saveProjectConfig(root: string, text: string): Promise<ProjectConfig> {
   const config = parseProjectConfig(text)
-  await atomicWrite(projectConfigPath(root), `${JSON.stringify(config, null, 2)}\n`)
+  const path = await ensurePhysicallyInsideRoot(root, projectConfigPath(root))
+  await mkdir(dirname(path), { recursive: true })
+  await ensurePhysicallyInsideRoot(root, dirname(path))
+  await atomicWrite(path, `${JSON.stringify(config, null, 2)}\n`)
   return config
 }
 

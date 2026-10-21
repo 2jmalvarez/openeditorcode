@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { installationTarget, launch, launcherLanguage, updateCommand } from "../bin/launcher.js"
+import { installationTarget, launch, launcherLanguage, npmCommand, updateCommand } from "../bin/launcher.js"
 
 test("launcher chooses Spanish only for Spanish system locales", () => {
   expect(launcherLanguage({ LANG: "es_AR.UTF-8" })).toBe("es")
@@ -120,8 +120,9 @@ test("Windows update overrides the registry for both packages", async () => {
   deps.platform = "win32"
   deps.packageRoot = "C:\\Program Files\\OEC\\node_modules\\openeditorcode"
   deps.exists = (path) => path === "C:\\Program Files\\OEC\\oec.cmd"
+  deps.npmOptions = { env: { npm_execpath: "C:\\node\\npm-cli.js" }, executable: "C:\\node\\node.exe", exists: () => true }
   expect(await launch([], deps)).toBe(0)
-  expect(deps.calls[2]).toMatchObject({ command: "cmd.exe", args: ["/d", "/s", "/c", 'npm install --global openeditorcode@0.2.36 "--prefix=C:\\Program Files\\OEC" --registry=https://registry.npmjs.org/ --@2jmalvarez:registry=https://registry.npmjs.org/'] })
+  expect(deps.calls[2]).toMatchObject({ command: "C:\\node\\node.exe", args: ["C:\\node\\npm-cli.js", "install", "--global", "openeditorcode@0.2.36", "--prefix=C:\\Program Files\\OEC", "--registry=https://registry.npmjs.org/", "--@2jmalvarez:registry=https://registry.npmjs.org/"] })
 })
 
 test("targets the launcher installation regardless of the working directory or npm default prefix", async () => {
@@ -169,15 +170,42 @@ test("recognizes local and global npm layouts on both platforms", () => {
   expect(installationTarget("C:\\work\\node_modules\\openeditorcode", "win32", () => false)).toEqual({ prefix: "C:\\work", global: false })
   expect(installationTarget("C:\\Program Files\\node\\node_modules\\openeditorcode", "win32", (path) => path === "C:\\Program Files\\node\\oec.cmd")).toEqual({ prefix: "C:\\Program Files\\node", global: true })
   expect(installationTarget("/other/package", "linux", () => false)).toBeUndefined()
-  expect(updateCommand({ prefix: "C:\\work space", global: false }, "win32", "0.2.36").args[3]).toContain('"--prefix=C:\\work space"')
+  expect(updateCommand({ prefix: "C:\\work space", global: false }, "win32", "0.2.36", { env: { npm_execpath: "C:\\node\\npm-cli.js" }, exists: () => true }).args).toContain("--prefix=C:\\work space")
 })
 
-test.skipIf(process.platform !== "win32")("passes a spaced Windows prefix as one argument through cmd.exe", () => {
-  const invocation = updateCommand({ prefix: "C:\\Program Files\\OEC", global: true }, "win32", "0.2.36")
-  const command = invocation.args[3].replace(/^npm /, 'node -p process.argv -- ')
-  const result = spawnSync("cmd.exe", ["/d", "/s", "/c", command], { encoding: "utf8", windowsVerbatimArguments: true })
-  expect({ command, status: result.status, stderr: result.stderr, stdout: result.stdout }).toMatchObject({ status: 0, stderr: "" })
-  expect(result.stdout).toContain("'--prefix=C:\\\\Program Files\\\\OEC'")
+test.each(["C:\\Program Files\\OEC", "C:\\tools&whoami&rem", "C:\\%OEC_TEST_EXPAND%\\(café)^!"])("passes the Windows prefix literally without a shell: %s", async (prefix) => {
+  const directory = await mkdtemp(join(tmpdir(), "oec-npm-argv-"))
+  try {
+    const cli = join(directory, "npm-cli.js")
+    await writeFile(cli, "console.log(JSON.stringify(process.argv.slice(2)))")
+    const resolvedCli = process.platform === "win32" ? cli : "C:\\test\\npm-cli.js"
+    const invocation = updateCommand({ prefix, global: true }, "win32", "0.2.36", {
+      env: { npm_execpath: resolvedCli }, exists: (candidate) => candidate === resolvedCli,
+    })
+    // On non-Windows CI, use a synthetic Windows npm path and substitute only the test script.
+    if (process.platform !== "win32") invocation.args[0] = cli
+    const result = spawnSync(invocation.command, invocation.args, { encoding: "utf8", env: { ...process.env, OEC_TEST_EXPAND: "expanded" } })
+    expect(result.status).toBe(0)
+    expect(JSON.parse(result.stdout)).toContain(`--prefix=${prefix}`)
+    expect(invocation.command).not.toMatch(/cmd\.exe$/i)
+  } finally { await rm(directory, { recursive: true, force: true }) }
+})
+
+test("resolves Windows npm from PATH or beside the runtime and fails closed without a JavaScript entry", () => {
+  const cli = "C:\\Node Tools\\node_modules\\npm\\bin\\npm-cli.js"
+  for (const env of [{ Path: '"C:\\Node Tools"' }, {}]) {
+    expect(npmCommand(["--version"], "win32", { env, executable: "C:\\Node Tools\\node.exe", exists: (path) => path === cli })).toEqual({ command: "C:\\Node Tools\\node.exe", args: [cli, "--version"] })
+  }
+  expect(() => npmCommand([], "win32", { env: { npm_execpath: "C:\\unsafe.cmd" }, exists: () => false })).toThrow("npm-cli.js")
+})
+
+test("keeps the previous binary and cleans its backup when npm cannot be located", async () => {
+  const deps = dependencies([42, 0])
+  deps.platform = "win32"
+  deps.packageRoot = "C:\\OEC\\node_modules\\openeditorcode"
+  deps.npmOptions = { env: {}, exists: () => false }
+  expect(await launch([], deps)).toBe(0)
+  expect(deps.calls.map((call) => call.command)).toEqual(["/bin/oec-1", "backup", "/tmp/oec-update/oec", "cleanup"])
 })
 
 test("npm honors the update registry and local scope despite a private user configuration", async () => {
@@ -186,16 +214,15 @@ test("npm honors the update registry and local scope despite a private user conf
     const config = join(directory, "user.npmrc")
     await writeFile(config, "registry=https://npm.registry.example.test/\n@2jmalvarez:registry=https://npm.registry.example.test/\nglobal=true\n")
     const target = { prefix: join(directory, "project with spaces"), global: false }
-    const flags = updateCommand(target, process.platform, "0.2.36").args
+    const invocation = updateCommand(target, process.platform, "0.2.36")
+    const flags = invocation.args.slice(process.platform === "win32" ? 1 : 0)
     const env = { ...process.env, npm_config_userconfig: config, npm_config_registry: "https://npm.registry.example.test/", npm_config_global: "true" }
     const legacy = process.platform === "win32"
       ? spawnSync("cmd.exe", ["/d", "/s", "/c", "npm config get registry"], { encoding: "utf8", env, windowsVerbatimArguments: true })
       : spawnSync("npm", ["config", "get", "registry"], { encoding: "utf8", env })
     expect(legacy.stdout.trim()).toBe("https://npm.registry.example.test/")
     const query = (key) => {
-      const result = process.platform === "win32"
-        ? spawnSync("cmd.exe", ["/d", "/s", "/c", flags[3].replace("npm install ", `npm config get ${key} `).replace("openeditorcode@0.2.36 ", "")], { encoding: "utf8", env, windowsVerbatimArguments: true })
-        : spawnSync("npm", ["config", "get", key, ...flags.slice(1).filter((arg) => arg !== "openeditorcode@0.2.36")], { encoding: "utf8", env })
+      const result = spawnSync(invocation.command, [...(process.platform === "win32" ? [invocation.args[0]] : []), "config", "get", key, ...flags.slice(1).filter((arg) => arg !== "openeditorcode@0.2.36")], { encoding: "utf8", env })
       expect(result.status).toBe(0)
       return result.stdout.trim()
     }

@@ -2,7 +2,9 @@
 
 Seguridad y privacidad: [protecciones, borradores y limitaciones](docs/security.md).
 
-El plugin opcional [`@2jmalvarez/opencode-editor@0.3.0`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.0) integra el editor local en **OpenCode 2**, con árboles Files/Diff y pestañas propias. `F6` alterna conversación/editor, `F7` muestra/oculta Files completo y `F8` alterna Diff (visible por defecto tras confirmar acceso local). Lee Git local, incluido WSL, y abre diffs en pestañas de solo lectura; `F4` abre el archivo actual para editar o alterna preview Markdown. Incluye imágenes, renombrado `F2`, búsqueda difusa/literal, scroll manual estable y todos los comandos en **OEC: opencode-editor**. Consultar la [guía del plugin](plugins/opencode-editor/README.md). La instalación de `openeditorcode` no instala este plugin. OEC autónomo permanece independiente; ambos editores admiten `Ctrl+A` para seleccionar todo el archivo activo.
+El plugin opcional [`@2jmalvarez/opencode-editor@0.3.3`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.3) integra el editor local en **OpenCode 2**, con árboles Files/Diff y pestañas propias. `F6` alterna conversación/editor, `F7` muestra/oculta Files completo y `F8` alterna Diff (visible por defecto tras confirmar acceso local). Lee Git local, incluido WSL, y abre diffs en pestañas de solo lectura; `F4` abre el archivo actual para editar o alterna preview Markdown. Incluye imágenes, renombrado `F2`, búsqueda difusa/literal, scroll manual estable y todos los comandos en **OEC: opencode-editor**. Consultar la [guía del plugin](plugins/opencode-editor/README.md). La instalación de `openeditorcode` no instala este plugin. OEC autónomo permanece independiente; ambos editores admiten `Ctrl+A` para seleccionar todo el archivo activo.
+
+El plugin 0.3.3 está verificado con OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1 en Windows/Linux. Para OpenCode 2.1.x usar 0.3.1 o posterior; versiones anteriores del plugin no son compatibles con sus requisitos de propietario de recursos OpenTUI.
 
 <details>
 <summary>Capturas del plugin OpenCode</summary>

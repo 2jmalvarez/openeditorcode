@@ -231,9 +231,9 @@ Git solo ejecuta lecturas con argumentos separados, `--no-ext-diff` y `--no-text
 - Cada instancia/generación tiene una entrada separada para no sobrescribir borradores de otra terminal. Al abrir el editor se pueden recuperar entradas anteriores; cancelar conserva esas entradas.
 - La persistencia es diferida (300 ms, con un máximo de dos segundos durante edición continua), y se solicita también al cambiar de vista. Una terminación abrupta puede perder los últimos cambios aún no persistidos.
 
-## Límites del MVP
+## Límites y diferencias con OEC autónomo
 
-- Solo proyectos locales; sin creación/renombrado/eliminación, búsqueda global de contenido, mutaciones Git, formateo ni previews. Markdown se abre como texto editable. La sección de cambios usa la API VCS y el visor nativo de OpenCode.
+- Solo proyectos locales. Incluye renombrado F2, preview Markdown, imágenes y diffs de Git local en pestañas propias. No incluye creación/eliminación de archivos, búsqueda global de contenido, mutaciones/historial Git ni formateo. No hereda automáticamente todas las capacidades de OEC autónomo.
 - Pestañas de documentos propias, no mezcladas con las pestañas nativas de sesiones.
 - Hasta 64 archivos abiertos; límites y validación segura de OEC: 2 MiB al leer/guardar, rechazo de binarios/UTF-8 inválido y protección de rutas y symlinks.
 - Borradores limitados a 16 MiB por snapshot. Si se excede o falla el storage, se muestra un error; guardar archivos antes de salir.

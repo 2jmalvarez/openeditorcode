@@ -251,6 +251,38 @@ test("toggles a Markdown file between preview and source with F4", async () => {
   }
 })
 
+test("Ctrl+S and save-and-close preserve Markdown preview contents on disk", async () => {
+  const path = join(root, "README.md")
+  const original = "# Documento\r\n\r\nContenido fuente"
+  await writeFile(path, original, "utf8")
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await waitForText(setup, "README.md")
+    setup.mockInput.pressKey("f", { ctrl: true })
+    await setup.mockInput.typeText("README.md")
+    await Bun.sleep(80)
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "PREVIEW MARKDOWN")
+    setup.mockInput.pressKey("s", { ctrl: true })
+    await waitForText(setup, "Guardado: README.md")
+    expect(await readFile(path, "utf8")).toBe(original)
+
+    setup.mockInput.pressKey(KeyCodes.F4)
+    await setup.renderOnce()
+    setup.mockInput.pressKey("a", { ctrl: true })
+    await setup.mockInput.typeText("# Documento editado")
+    setup.mockInput.pressKey(KeyCodes.F4)
+    await waitForText(setup, "PREVIEW MARKDOWN")
+    expect(setup.captureCharFrame()).toContain("* README.md")
+    setup.mockInput.pressKey("w", { ctrl: true })
+    await waitForText(setup, "Guardar y cerrar")
+    setup.mockInput.pressArrow("up") // Default is discard; choose save and close.
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "Archivo cerrado.")
+    expect(await readFile(path, "utf8")).toBe("# Documento editado")
+  } finally { setup.renderer.destroy() }
+})
+
 test("opens real images in a visible read-only preview with nonzero height", async () => {
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==", "base64")
   await writeFile(join(root, "pixel.png"), png)

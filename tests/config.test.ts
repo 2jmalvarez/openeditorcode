@@ -1,10 +1,10 @@
 import { afterEach, expect, test } from "bun:test"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { factoryConfig, serializeConfig } from "../src/config/defaults"
 import { parseConfig, parseProjectConfig, resolveConfig } from "../src/config/schema"
-import { configPaths, loadConfig, saveConfig } from "../src/config/storage"
+import { configPaths, loadConfig, loadProjectConfig, saveConfig, saveProjectConfig } from "../src/config/storage"
 
 const directories: string[] = []
 async function paths() {
@@ -79,4 +79,31 @@ test("project configuration overrides only its declared settings", () => {
 
 test("rejects formatter commands in project configuration", () => {
   expect(() => parseProjectConfig(JSON.stringify({ schemaVersion: 3, formatters: { external: {} } }))).toThrow()
+})
+
+test("rejects project configuration through an external directory link without changing its target", async () => {
+  const target = await paths()
+  const root = join(target.directory, "project")
+  const outside = join(target.directory, "outside")
+  await mkdir(root); await mkdir(outside)
+  const content = '{"schemaVersion":3,"appearance":{"language":"en"}}'
+  await writeFile(join(outside, "config.json"), content)
+  await symlink(outside, join(root, ".oec"), process.platform === "win32" ? "junction" : "dir")
+  await expect(loadProjectConfig(root)).rejects.toThrow()
+  await expect(saveProjectConfig(root, '{"schemaVersion":3}')).rejects.toThrow()
+  expect(await readFile(join(outside, "config.json"), "utf8")).toBe(content)
+})
+
+test("creates project configuration safely and allows directory links that remain inside the root", async () => {
+  const target = await paths()
+  const root = target.directory
+  expect((await loadProjectConfig(root)).config).toBeUndefined()
+  await saveProjectConfig(root, '{"schemaVersion":3}')
+  expect((await loadProjectConfig(root)).config).toEqual({ schemaVersion: 3 })
+  await rm(join(root, ".oec"), { recursive: true })
+  const internal = join(root, "settings")
+  await mkdir(internal)
+  await symlink(internal, join(root, ".oec"), process.platform === "win32" ? "junction" : "dir")
+  await saveProjectConfig(root, '{"schemaVersion":3,"appearance":{"language":"es"}}')
+  expect((await loadProjectConfig(root)).config?.appearance?.language).toBe("es")
 })

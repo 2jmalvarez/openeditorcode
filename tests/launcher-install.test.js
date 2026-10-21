@@ -66,11 +66,8 @@ function npm(command, env, cwd) {
 
 function install(target, tarball, env, cwd) {
   const command = updateCommand(target, process.platform, "1.0.1")
-  if (process.platform === "win32") {
-    npm(command.args[3].replace("openeditorcode@1.0.1", `"${tarball}"`), env, cwd)
-  } else {
-    npm(command.args.map((arg) => arg === "openeditorcode@1.0.1" ? tarball : arg), env, cwd)
-  }
+  const result = spawnSync(command.command, command.args.map((arg) => arg === "openeditorcode@1.0.1" ? tarball : arg), { cwd, env, encoding: "utf8", timeout: 90_000 })
+  if (result.status !== 0) throw new Error(`${result.error ?? ""}\n${result.stderr}\n${result.stdout}`)
 }
 
 test("npm updates only the active global or local prefix under a private registry configuration", async () => {
@@ -95,7 +92,7 @@ test("npm updates only the active global or local prefix under a private registr
     install({ prefix: wrongPrefix, global: true }, archives[0], env, root)
 
     for (const global of [true, false]) {
-      const prefix = global ? join(root, "home", "user", ".nvm", "versions", "node", "v22.23.2") : join(root, "local project")
+      const prefix = global ? join(root, "home", "user", ".nvm", "versions", "node", "v22.23.2") : join(root, "local project & café %OEC_TEST_EXPAND%")
       await mkdir(prefix, { recursive: true })
       if (!global) await writeFile(join(prefix, "package.json"), '{"name":"local-project","version":"1.0.0"}')
       const packageRoot = global

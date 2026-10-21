@@ -1,7 +1,7 @@
 import { basename, join, relative } from "node:path"
 import { batch, createSignal } from "solid-js"
 import { createTextFile, ExternalFileChangedError, readImageFile, readTextFile, writeTextFile } from "./files"
-import type { GitDiff, OpenTab } from "./types"
+import type { FileTab, GitDiff, OpenTab } from "./types"
 import { isImagePath, isMarkdownPath } from "./previews"
 import { language, t } from "../localization"
 import { oecManual } from "../docs/manual"
@@ -58,6 +58,22 @@ export function useDocuments(props: Props) {
   const [savedContent, setSavedContent] = createSignal("")
   const [externalChange, setExternalChange] = createSignal<string>()
   let openGeneration = 0
+  // Identity survives immutable tab updates, but never a close/reopen at the same path.
+  const identities = new WeakMap<FileTab, object>()
+  const pending = new Set<object>()
+  function identity(tab: FileTab): object {
+    let value = identities.get(tab)
+    if (!value) { value = {}; identities.set(tab, value) }
+    return value
+  }
+  function updateTab(tab: FileTab, changes: Partial<FileTab>): FileTab {
+    const next = { ...tab, ...changes }
+    identities.set(next, identity(tab))
+    return next
+  }
+  function findTab(tab: FileTab): number {
+    return tabs().findIndex((current) => current.kind === "file" && current.path === tab.path && identity(current) === identity(tab))
+  }
   const activeDiff = () => {
     const tab = tabs()[activeTab()]
     return tab?.kind === "diff" ? tab.diff : undefined
@@ -96,13 +112,13 @@ export function useDocuments(props: Props) {
     const tab = tabs()[index]
     if (!tab || tab.kind !== "file" || tab.view === "preview") return
     const content = props.getText()
-    setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, content, savedContent: savedContent() } : currentTab))
+    setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? updateTab(currentTab, { content, savedContent: savedContent() }) : currentTab))
   }
 
   function syncContent(content: string) {
     const index = activeTab()
     if (index < 0) return
-    setTabs((current) => current.map((tab, tabIndex) => tabIndex === index && tab.kind === "file" && tab.view === "source" ? { ...tab, content } : tab))
+    setTabs((current) => current.map((tab, tabIndex) => tabIndex === index && tab.kind === "file" && tab.view === "source" ? updateTab(tab, { content }) : tab))
   }
 
   function loadTab(index: number, nextTabs = tabs()) {
@@ -227,6 +243,27 @@ export function useDocuments(props: Props) {
     return openFile(join(props.root, diff.workspacePath ?? diff.file.workspacePath ?? diff.file.path), true)
   }
 
+  async function writeTab(tab: FileTab, force = false): Promise<boolean> {
+    const key = identity(tab)
+    if (pending.has(key)) return false
+    pending.add(key)
+    try {
+      const contentToSave = preserveLineEndings(tab.content, tab.savedContent)
+      if (tab.source === "config-global" || tab.source === "config-project") {
+        if (!props.writeConfig) return false
+        await props.writeConfig(tab.source, contentToSave)
+      } else await writeFile(props.root, tab.path, contentToSave, force ? undefined : { expectedContent: tab.savedContent })
+      syncActiveTab()
+      const index = findTab(tab)
+      if (index < 0) return false
+      // Keep any edits made while the snapshot was being written.
+      setTabs((current) => current.map((entry, i) => i === index && entry.kind === "file" ? updateTab(entry, { savedContent: contentToSave }) : entry))
+      if (index === activeTab()) setSavedContent(contentToSave)
+      if (externalChange() === tab.path) setExternalChange(undefined)
+      return !isTabDirty(index)
+    } finally { pending.delete(key) }
+  }
+
   async function save(force = false, expectedPath?: string): Promise<boolean> {
     const path = filePath()
     if (activeManual()) { props.setStatus(t("documents.manualReadOnly")); return false }
@@ -240,21 +277,17 @@ export function useDocuments(props: Props) {
       props.setStatus(t("documents.conflictInactive"))
       return false
     }
+    syncActiveTab()
+    const tab = tabs()[activeTab()]
+    if (!tab || tab.kind !== "file") return false
     try {
-      const content = props.getText()
-      const tab = tabs()[activeTab()]
-      const contentToSave = tab?.kind === "file" ? preserveLineEndings(content, tab.savedContent) : content
-      if (tab?.kind === "file" && (tab.source === "config-global" || tab.source === "config-project")) {
-        if (!props.writeConfig) return false
-        await props.writeConfig(tab.source, contentToSave)
-      } else await writeFile(props.root, path, contentToSave, force ? undefined : { expectedContent: tab?.kind === "file" ? tab.savedContent : "" })
-      setSavedContent(contentToSave)
-      setTabs((current) => current.map((tab, index) => index === activeTab() && tab.kind === "file" ? { ...tab, content, savedContent: contentToSave } : tab))
-      setExternalChange(undefined)
+      if (!await writeTab(tab, force)) return false
       props.setStatus(t("documents.saved", { name: basename(path) }))
-      return true
+      // Callers may continue with close/quit: never authorize closing a different tab.
+      const index = findTab(tab)
+      return index >= 0 && index === activeTab() && !isTabDirty(index)
     } catch (error) {
-      if (error instanceof ExternalFileChangedError) setExternalChange(path)
+      if (error instanceof ExternalFileChangedError && findTab(tab) >= 0 && findTab(tab) === activeTab()) setExternalChange(path)
       const summary = error instanceof Error ? error.message : t("documents.saveFailed")
       props.setStatus(summary)
       if (!(error instanceof ExternalFileChangedError)) props.reportError?.({ source: t("log.files"), operation: t("log.saveFile"), summary, details: error instanceof Error ? error.stack ?? error.message : t("log.unknown") })
@@ -265,46 +298,53 @@ export function useDocuments(props: Props) {
   async function saveAllDirtyTabs(): Promise<boolean> {
     syncActiveTab()
     const currentTabs = tabs()
-    for (let index = 0; index < currentTabs.length; index += 1) {
-      const tab = currentTabs[index]
-      if (tab.kind !== "file" || contentIsEqual(tab.content, tab.savedContent)) continue
-      const contentToSave = preserveLineEndings(tab.content, tab.savedContent)
+    for (const original of currentTabs) {
+      if (original.kind !== "file") continue
+      syncActiveTab()
+      const tab = tabs()[findTab(original)]
+      if (!tab || tab.kind !== "file") return false
+      if (contentIsEqual(tab.content, tab.savedContent)) continue
       try {
-        if (tab.source === "config-global" || tab.source === "config-project") {
-          if (!props.writeConfig) return false
-          await props.writeConfig(tab.source, contentToSave)
-        } else await writeFile(props.root, tab.path, contentToSave, { expectedContent: tab.savedContent })
-        setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, savedContent: contentToSave } : currentTab))
-        if (index === activeTab()) setSavedContent(contentToSave)
+        if (!await writeTab(tab)) return false
       } catch (error) {
         props.setStatus(error instanceof Error ? error.message : t("documents.saveNamedFailed", { name: basename(tab.path) }))
         return false
       }
     }
+    if (hasDirtyTabs()) return false
     props.setStatus(t("documents.allSaved"))
     return true
   }
 
   async function reloadActiveFile(expectedPath?: string): Promise<boolean> {
+    syncActiveTab()
     const tab = tabs()[activeTab()]
     if (!tab || tab.kind !== "file" || tab.source !== "project") return false
     if (expectedPath && tab.path !== expectedPath) {
       props.setStatus(t("documents.conflictInactive"))
       return false
     }
+    const key = identity(tab)
+    if (pending.has(key)) return false
+    pending.add(key)
     try {
       const content = await readFile(props.root, tab.path)
-      const index = activeTab()
-      setTabs((current) => current.map((currentTab, tabIndex) => tabIndex === index && currentTab.kind === "file" ? { ...currentTab, content, savedContent: content } : currentTab))
-      setSavedContent(content)
-      if (tab.view === "source") props.setText(content)
-      setExternalChange(undefined)
+      syncActiveTab()
+      const index = findTab(tab)
+      const current = tabs()[index]
+      if (!current || current.kind !== "file" || current.content !== tab.content || current.savedContent !== tab.savedContent) return false
+      setTabs((entries) => entries.map((entry, i) => i === index && entry.kind === "file" ? updateTab(entry, { content, savedContent: content }) : entry))
+      if (index === activeTab()) {
+        setSavedContent(content)
+        if (current.view === "source") props.setText(content)
+      }
+      if (externalChange() === tab.path) setExternalChange(undefined)
       props.setStatus(t("documents.reloaded", { name: basename(tab.path) }))
       return true
     } catch (error) {
       props.setStatus(error instanceof Error ? error.message : t("documents.reloadFailed"))
       return false
-    }
+    } finally { pending.delete(key) }
   }
 
   function closeFile() {
@@ -350,6 +390,13 @@ export function useDocuments(props: Props) {
     return affectedTabIndexes(path, directory).some(isTabDirty)
   }
 
+  function hasPendingOperationsAffectedBy(path: string, directory: boolean): boolean {
+    return affectedTabIndexes(path, directory).some((index) => {
+      const tab = tabs()[index]
+      return tab?.kind === "file" && pending.has(identity(tab))
+    })
+  }
+
   function closeTabsAffectedBy(path: string, directory: boolean) {
     syncActiveTab()
     const affected = new Set(affectedTabIndexes(path, directory))
@@ -377,7 +424,8 @@ export function useDocuments(props: Props) {
     syncActiveTab()
     setTabs((current) => current.map((tab) => {
       if ((tab.kind !== "file" && tab.kind !== "image") || tab.kind === "file" && tab.source !== "project") return tab
-      return { ...tab, path: renamedPath(path, nextPath, tab.path, directory) }
+      const changes = { path: renamedPath(path, nextPath, tab.path, directory) }
+      return tab.kind === "file" ? updateTab(tab, changes) : { ...tab, ...changes }
     }))
     const currentPath = filePath()
     if (currentPath) setFilePath(renamedPath(path, nextPath, currentPath, directory))
@@ -405,9 +453,9 @@ export function useDocuments(props: Props) {
     if (!canTogglePreview()) { props.setStatus(t(activeManual() ? "documents.manualReadOnly" : "documents.previewOnly")); return }
     syncActiveTab()
     const index = activeTab()
-    setTabs((current) => current.map((tab, tabIndex) => tabIndex === index && tab.kind === "file" ? { ...tab, view: tab.view === "preview" ? "source" : "preview" } : tab))
+    setTabs((current) => current.map((tab, tabIndex) => tabIndex === index && tab.kind === "file" ? updateTab(tab, { view: tab.view === "preview" ? "source" : "preview" }) : tab))
     loadTab(index)
   }
 
-  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, openActiveDiffFile, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, renameTabsAffectedBy, hasDirtyTabsAffectedBy, changeTab, activateTab, createFile }
+  return { filePath, tabs, activeTab, activeDiff, activeManual, activeImage, activeLogs, activePreview, activePreviewContent, activeProjectFile, canTogglePreview, dirty, isTabDirty, hasDirtyTabs, title, externalChange, syncContent, openFile, openConfig, openManual, openLogs, openDiff, openActiveDiffFile, togglePreview, save, reloadActiveFile, saveAllDirtyTabs, closeFile, closeTabsAffectedBy, renameTabsAffectedBy, hasDirtyTabsAffectedBy, hasPendingOperationsAffectedBy, changeTab, activateTab, createFile }
 }

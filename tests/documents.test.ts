@@ -21,6 +21,148 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
+function editableDocuments(overrides: Partial<Parameters<typeof useDocuments>[0]> = {}) {
+  let text = ""
+  const documents = useDocuments({
+    root: "root", content: () => text, getText: () => text,
+    setText: (value) => { text = value }, clearEditor: () => { text = "" },
+    blurEditor: () => undefined, focusEditor: () => undefined, focusExplorer: () => undefined,
+    setStatus: () => undefined, readFile: async (_root, path) => `original ${path}`, ...overrides,
+  })
+  return { documents, text: () => text, edit: (value: string) => { text = value; documents.syncContent(value) } }
+}
+
+test.each(["\n", "\r\n"])("saves Markdown previews without clearing their content (%j)", async (newline) => {
+  let disk = `# Document${newline}Original${newline}`
+  const { documents, edit, text } = editableDocuments({
+    readFile: async () => disk,
+    writeFile: async (_root, _path, content) => { disk = content },
+  })
+  await documents.openFile("README.md")
+  expect(text()).toBe("")
+  expect(await documents.save()).toBe(true)
+  expect(disk).toBe(`# Document${newline}Original${newline}`)
+  documents.togglePreview()
+  edit("# Document\nEdited\n")
+  documents.togglePreview()
+  expect(await documents.save()).toBe(true)
+  expect(disk).toBe(`# Document${newline}Edited${newline}`)
+  expect(documents.dirty()).toBe(false)
+})
+
+test("a pending save never replaces another tab's Markdown draft", async () => {
+  const write = deferred<void>()
+  const { documents, edit } = editableDocuments({ writeFile: async () => write.promise })
+  await documents.openFile("A.txt")
+  await documents.openFile("B.md")
+  documents.togglePreview(); edit("# Important B draft"); documents.togglePreview()
+  documents.activateTab(0); edit("edited A")
+  const saving = documents.save()
+  documents.activateTab(1)
+  write.resolve()
+  expect(await saving).toBe(false) // Not safe to continue a save-and-close action on another tab.
+  expect(documents.activePreviewContent()).toBe("# Important B draft")
+  expect(documents.dirty()).toBe(true)
+  expect(documents.tabs()[0]).toMatchObject({ content: "edited A", savedContent: "edited A" })
+})
+
+test("keeps edits made during a save and does not allow save-and-close to discard them", async () => {
+  const write = deferred<void>()
+  const { documents, edit, text } = editableDocuments({ writeFile: async () => write.promise })
+  await documents.openFile("A.txt"); edit("snapshot")
+  const saving = documents.save()
+  edit("newer draft")
+  const duplicate = documents.save()
+  write.resolve()
+  expect(await duplicate).toBe(false)
+  expect(await saving).toBe(false)
+  expect(text()).toBe("newer draft")
+  expect(documents.tabs()[0]).toMatchObject({ content: "newer draft", savedContent: "snapshot" })
+  expect(documents.dirty()).toBe(true)
+})
+
+test("does not apply a save to a closed and reopened document with the same path", async () => {
+  const write = deferred<void>()
+  const { documents, edit } = editableDocuments({ writeFile: async () => write.promise })
+  await documents.openFile("A.txt"); edit("old snapshot")
+  const saving = documents.save()
+  documents.closeFile()
+  await documents.openFile("A.txt"); edit("reopened draft")
+  write.resolve()
+  expect(await saving).toBe(false)
+  expect(documents.tabs()[0]).toMatchObject({ content: "reopened draft", savedContent: "original A.txt" })
+})
+
+test("save all tracks document identity when tab indices change and retains newer edits", async () => {
+  const write = deferred<void>()
+  const { documents, edit } = editableDocuments({ writeFile: async () => write.promise })
+  await documents.openFile("before.txt")
+  await documents.openFile("A.txt"); edit("snapshot")
+  const saving = documents.saveAllDirtyTabs()
+  documents.closeTabsAffectedBy("before.txt", false)
+  edit("newer draft")
+  write.resolve()
+  expect(await saving).toBe(false)
+  expect(documents.tabs()[0]).toMatchObject({ path: "A.txt", content: "newer draft", savedContent: "snapshot" })
+  expect(documents.dirty()).toBe(true)
+})
+
+test.each([false, true])("exposes pending project operations until completion or failure (%s)", async (fail) => {
+  const write = deferred<void>()
+  const path = join("root", "folder", "A.txt")
+  const { documents, edit } = editableDocuments({ writeFile: async () => write.promise })
+  await documents.openFile(path); edit("snapshot")
+  const saving = documents.save()
+  expect(documents.hasPendingOperationsAffectedBy(path, false)).toBe(true)
+  expect(documents.hasPendingOperationsAffectedBy(join("root", "folder"), true)).toBe(true)
+  expect(documents.hasPendingOperationsAffectedBy(join("root", "other"), true)).toBe(false)
+  if (fail) write.reject(new Error("write failed"))
+  else write.resolve()
+  expect(await saving).toBe(!fail)
+  expect(documents.hasPendingOperationsAffectedBy(path, false)).toBe(false)
+})
+
+test("save all does not authorize quitting when an already-saved tab acquires new edits", async () => {
+  const secondWrite = deferred<void>()
+  const writingSecond = deferred<void>()
+  const writes: string[] = []
+  const { documents, edit } = editableDocuments({ writeFile: async (_root, path) => {
+    writes.push(path)
+    if (path === "B.txt") { writingSecond.resolve(); await secondWrite.promise }
+  } })
+  await documents.openFile("A.txt"); edit("edited A")
+  await documents.openFile("B.txt"); edit("edited B")
+  const saving = documents.saveAllDirtyTabs()
+  await writingSecond.promise
+  documents.activateTab(0); edit("new A after its save")
+  secondWrite.resolve()
+  expect(await saving).toBe(false)
+  expect(writes).toEqual(["A.txt", "B.txt"])
+  expect(documents.tabs()[0]).toMatchObject({ content: "new A after its save", savedContent: "edited A" })
+  expect(documents.tabs()[1]).toMatchObject({ content: "edited B", savedContent: "edited B" })
+  expect(documents.hasDirtyTabs()).toBe(true)
+})
+
+test.each(["switch", "edit", "reopen", "rename"])("a pending reload preserves document identity and later edits: %s", async (action) => {
+  const read = deferred<string>()
+  let pending = false
+  const { documents, edit, text } = editableDocuments({ readFile: async (_root, path) => pending ? read.promise : `original ${path}` })
+  await documents.openFile("A.txt")
+  await documents.openFile("B.txt"); edit("important B")
+  documents.activateTab(0)
+  pending = true
+  const reload = documents.reloadActiveFile()
+  if (action === "switch") documents.activateTab(1)
+  else if (action === "edit") edit("newer A")
+  else if (action === "rename") documents.renameTabsAffectedBy("A.txt", "renamed.txt", false)
+  else { documents.closeFile(); pending = false; await documents.openFile("A.txt"); edit("reopened A") }
+  const before = text()
+  read.resolve("external A")
+  expect(await reload).toBe(action === "switch")
+  expect(text()).toBe(before)
+  expect(documents.tabs().find((tab) => tab.path === "B.txt")).toMatchObject({ content: "important B", savedContent: "original B.txt" })
+})
+
 function diffDocuments(root: string, readFile?: typeof readTextFile) {
   let text = ""
   let status = ""

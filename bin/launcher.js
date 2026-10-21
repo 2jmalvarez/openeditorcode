@@ -35,14 +35,24 @@ export function installationTarget(packageRoot, platform, exists = existsSync) {
   return { prefix: global ? globalPrefix : parent, global }
 }
 
-function npmCommand(args, platform) {
-  return platform === "win32"
-    ? { command: "cmd.exe", args: ["/d", "/s", "/c", `npm ${args.map((arg) => arg.includes(" ") ? `"${arg}"` : arg).join(" ")}`] }
-    : { command: "npm", args }
+export function npmCommand(args, platform = process.platform, { env = process.env, executable = process.execPath, exists = existsSync } = {}) {
+  if (platform !== "win32") return { command: "npm", args }
+  const variable = (name) => Object.entries(env).find(([key]) => key.toLowerCase() === name)?.[1]
+  const configured = variable("npm_execpath")
+  const directories = (variable("path") || "").split(";").map((directory) => directory.replace(/^"|"$/g, "")).filter(Boolean)
+  const candidates = [
+    ...(configured && win32.isAbsolute(configured) && win32.basename(configured).toLowerCase() === "npm-cli.js" ? [configured] : []),
+    ...directories.map((directory) => win32.join(directory, "node_modules", "npm", "bin", "npm-cli.js")),
+    win32.join(win32.dirname(executable), "node_modules", "npm", "bin", "npm-cli.js"),
+  ]
+  const cli = candidates.find((candidate) => exists(candidate))
+  if (!cli) throw new Error("Could not locate npm-cli.js; reinstall Node.js/npm to enable OEC updates")
+  // Run JavaScript directly: no cmd.exe, shell expansion or executable shim interpolation.
+  return { command: executable, args: [cli, ...args] }
 }
 
 async function commandOutput(command, args, env, timeout = 30_000) {
-  const child = spawn(command, args, { env, timeout, stdio: ["ignore", "pipe", "inherit"], windowsVerbatimArguments: process.platform === "win32" && /(?:^|[\\/])cmd\.exe$/i.test(command) })
+  const child = spawn(command, args, { env, timeout, stdio: ["ignore", "pipe", "inherit"] })
   const exited = new Promise((resolve) => { child.on("error", () => resolve(1)); child.on("exit", (code) => resolve(code ?? 1)) })
   let output = ""
   for await (const chunk of child.stdout) {
@@ -53,9 +63,9 @@ async function commandOutput(command, args, env, timeout = 30_000) {
   return output.trim()
 }
 
-export function updateCommand(target, platform, version) {
+export function updateCommand(target, platform, version, options) {
   const args = ["install", ...(target.global ? ["--global"] : ["--global=false", "--no-save", "--package-lock=false"]), `openeditorcode@${version}`, `--prefix=${target.prefix}`, `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`]
-  return npmCommand(args, platform)
+  return npmCommand(args, platform, options)
 }
 
 export function createLauncherDependencies() {
@@ -72,8 +82,7 @@ export function createLauncherDependencies() {
     binaryVersion: (executable, env) => commandOutput(executable, ["--version"], env, 5_000),
     ensureAvailable: (version, packageName) => checkReleaseAvailability(version, [packageName], { signal: AbortSignal.timeout(15_000) }),
     latestVersion: async (env) => {
-      const npm = npmCommand(["view", "openeditorcode@latest", "version", `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`], process.platform)
-      if (process.platform === "win32") npm.command = env.ComSpec || "cmd.exe"
+      const npm = npmCommand(["view", "openeditorcode@latest", "version", `--registry=${registry}`, `--@2jmalvarez:registry=${registry}`], process.platform, { env })
       return commandOutput(npm.command, npm.args, env)
     },
     resolve(packageName, platform) {
@@ -81,7 +90,7 @@ export function createLauncherDependencies() {
     },
     run(command, args, env = process.env) {
       return new Promise((resolve) => {
-        const child = spawn(command, args, { stdio: "inherit", env, windowsVerbatimArguments: process.platform === "win32" && /(?:^|[\\/])cmd\.exe$/i.test(command) })
+        const child = spawn(command, args, { stdio: "inherit", env })
         child.on("error", (error) => {
            console.error(launcherLanguage(env) === "es" ? `No se pudo iniciar ${command}: ${error.message}` : `Could not start ${command}: ${error.message}`)
           resolve(1)
@@ -149,9 +158,8 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
     return dependencies.run(executable, args, appEnv)
   }
 
-  const npm = updateCommand(target, dependencies.platform, requestedVersion)
-  if (dependencies.platform === "win32") npm.command = dependencies.env.ComSpec || "cmd.exe"
   try {
+    const npm = updateCommand(target, dependencies.platform, requestedVersion, dependencies.npmOptions ?? { env: dependencies.env })
     const updateCode = await dependencies.run(npm.command, npm.args, dependencies.env)
     if (updateCode !== 0) {
       console.error(spanish ? "La actualización falló. Reabriendo la versión anterior de OEC." : "Update failed. Reopening the previous version of OEC.")
@@ -167,6 +175,9 @@ export async function launch(args, dependencies = createLauncherDependencies()) 
       return await dependencies.run(backup.path, args, appEnv)
     }
     return await dependencies.run(executable, args, appEnv)
+  } catch (error) {
+    console.error(spanish ? `La actualización falló. Reabriendo la versión anterior de OEC: ${error.message}` : `Update failed. Reopening the previous version of OEC: ${error.message}`)
+    return await dependencies.run(backup.path, args, appEnv)
   } finally {
     await backup.cleanup().catch(() => undefined)
   }
