@@ -5,7 +5,7 @@ Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye 
 Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.4`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.4)**. Publicado mediante GitHub Actions/OIDC con integridad/provenance e instalación real por nombre verificadas en Windows y Linux. Los smokes cubren editor, carpeta automática, sidebar, SVG, contenido, Git, paleta, foco, scroll y permisos recordados. Evidencia e historial en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
-> Estado de verificación de 0.3.4: paquete npm, integridad/provenance y smokes por nombre en Windows/WSL Linux verificados. El workflow de publicación aún figura fallido: su instalación por nombre en el runner Linux agota la preparación npm con `NpmInstallFailedError`. No confundir las comprobaciones locales con un cierre exitoso de CI; ver [evidencia y bloqueo](RELEASING.md).
+> Estado de verificación de 0.3.4: paquete npm, integridad/provenance y smokes por nombre confirmados en Windows y Linux por la [verificación independiente de CI](https://github.com/2jmalvarez/openeditorcode/actions/runs/39641519368). El workflow de publicación original conserva su fallo histórico; no se movieron tags ni se republicó el paquete. Ver [evidencia de cierre](RELEASING.md).
 
 ## Funciones
 
