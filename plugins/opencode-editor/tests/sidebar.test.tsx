@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { testRender, useRenderer } from "@opentui/solid"
 import { createSignal, Show } from "solid-js"
-import type { InputRenderable, ScrollBoxRenderable } from "@opentui/core"
+import { TextRenderable, type InputRenderable, type Renderable, type ScrollBoxRenderable } from "@opentui/core"
 import { FilesToggle } from "../src/explorer/FilesToggle"
 import { SessionFiles } from "../src/explorer/SessionFiles"
 import { EditorProjects } from "../src/integration/projects"
@@ -122,8 +122,17 @@ test("sidebar search opens closed-folder results and local changes open a diff t
     let frame = setup.captureCharFrame().split("\n")
     const changed = frame.findIndex((line) => line.includes("M hello.ts"))
     expect(changed).toBeGreaterThan(0)
-    await setup.mockMouse.click(7, changed)
-    for (let i = 0; i < 60 && host.destinations.at(-1)?.type !== "plugin"; i++) await Bun.sleep(20)
+    // Use actual layout coordinates rather than assuming captured text rows
+    // coincide with mouse hit regions after viewport measurement.
+    const changedText = (node: Renderable): TextRenderable | undefined => {
+      if (node instanceof TextRenderable && node.plainText.includes("M hello.ts")) return node
+      for (const child of node.getChildren()) { const found = changedText(child); if (found) return found }
+    }
+    const target = changedText(setup.renderer.root)!
+    expect(target).toBeDefined()
+    await setup.mockMouse.click(target.screenX + 1, target.screenY)
+    for (let i = 0; i < 200 && host.destinations.at(-1)?.type !== "plugin"; i++) { await Bun.sleep(20); await setup.renderOnce() }
+    expect(host.toasts).toEqual([])
     expect(host.dispatches).toEqual([])
     expect(controller.workspace.active?.kind).toBe("diff")
     expect(controller.workspace.active?.content).toContain("-hello")
@@ -142,13 +151,13 @@ test("sidebar search opens closed-folder results and local changes open a diff t
     const result = frame.findIndex((line) => line.includes("hello.ts") && !line.includes("M hello"))
     expect(result).toBeGreaterThan(0)
     await setup.mockInput.pressEnter()
-    await Bun.sleep(30)
+    for (let i = 0; i < 100 && controller.workspace.activePath !== join(root, "nested", "hello.ts"); i++) { await Bun.sleep(20); await setup.renderOnce() }
     expect(controller.workspace.activePath).toBe(join(root, "nested", "hello.ts"))
     expect(host.destinations.at(-1)?.type).toBe("plugin")
   } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
   expect([...host.events.values()].every((handlers) => handlers.size === 0)).toBe(true)
   expect(host.layers.size).toBe(0)
-})
+}, 15_000)
 
 test("selected long names scroll once to the end and reset when selection changes", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-sidebar-long-name-"))
