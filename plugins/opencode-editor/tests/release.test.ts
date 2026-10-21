@@ -27,6 +27,17 @@ describe("plugin release boundaries", () => {
     const actions = [...workflow.matchAll(/uses: (actions\/[^@\s]+)@([a-f0-9]+)/g)]
     for (const [, , sha] of actions) expect(sha).toHaveLength(40)
   })
+  test("installer diagnostics stay isolated and run only after failed Linux verification", () => {
+    const workflow = readFileSync(new URL("../../../.github/workflows/verify-published-opencode-editor.yml", import.meta.url), "utf8")
+    const script = readFileSync(new URL("../scripts/diagnose-install.ts", import.meta.url), "utf8")
+    expect(workflow).toContain("if: failure() && runner.os == 'Linux'")
+    expect(workflow.indexOf("scripts/diagnose-install.ts")).toBeGreaterThan(workflow.indexOf("scripts/smoke-access.ts"))
+    expect(script).toContain('temporary("oec-install-diagnostic-")')
+    expect(script).toContain('HOME: home, USERPROFILE: home')
+    expect(script).toContain('"trace=connect"')
+    expect(script).not.toMatch(/trace=(?:network|all)|NPM_TOKEN|NODE_AUTH_TOKEN/)
+    expect(script).toContain('ignoreScripts: true')
+  })
   test("CI host matrix matches the versions accepted by the host downloader", () => {
     const workflow = readFileSync(new URL("../../../.github/workflows/publish-opencode-editor.yml", import.meta.url), "utf8")
     const matrix = workflow.match(/opencode: (\[[^\n]+\])/)?.[1]

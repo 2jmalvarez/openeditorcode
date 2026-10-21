@@ -65,3 +65,11 @@ jobs:
           bun run plugin:smoke "$executable" "$package" --auto-root
           bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "$executable" "$package"
           bun run plugins/opencode-editor/scripts/smoke-access.ts "$executable" "$package"
+      - name: Inspect isolated Linux installer cause after a smoke failure
+        if: failure() && runner.os == 'Linux'
+        shell: bash
+        run: |
+          if ! command -v strace; then sudo apt-get install -y strace; fi
+          executable="$RUNNER_TEMP/published-host/package/bin/opencode"
+          package="$(bun -e 'const p = await Bun.file("plugins/opencode-editor/package.json").json(); console.log(p.name + "@" + p.version)')"
+          bun run plugins/opencode-editor/scripts/diagnose-install.ts "$executable" "$package"
