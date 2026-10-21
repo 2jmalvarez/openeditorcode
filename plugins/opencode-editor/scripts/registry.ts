@@ -1,16 +1,23 @@
 import assert from "node:assert/strict"
 import { rm } from "node:fs/promises"
 import { join, resolve } from "node:path"
-import { command, directory, download, integrity, metadata, name, temporary } from "./release"
+import { command, directory, download, integrity, metadata, name, temporary, validateRegistryRevision, validateTag } from "./release"
 
 const mode = process.argv[2]
-assert.ok(mode === "before" || mode === "after", "Usage: registry.ts before|after <pack.json>")
+assert.ok(mode === "before" || mode === "after", "Usage: registry.ts before|after <pack.json> [--published]")
+const published = process.argv[4] === "--published"
+assert.ok(process.argv[4] === undefined || published, "Unknown registry verification option")
 const packPath = resolve(process.argv[3]!)
 const pack = await Bun.file(packPath).json()
 assert.equal(pack.name, name)
 assert.equal(pack.version, (await Bun.file(join(directory, "package.json")).json()).version)
 assert.match(pack.commit ?? "", /^[a-f0-9]{40}$/, "Registry verification requires an immutable release commit")
-if (process.env.GITHUB_ACTIONS === "true") assert.equal(pack.commit, process.env.GITHUB_SHA, "Artifact was built from another revision")
+if (published) {
+  const tag = `opencode-editor-v${pack.version}`
+  validateTag(tag, pack.version)
+  assert.equal(mode, "after", "Published-tag verification cannot authorize publication")
+  validateRegistryRevision(mode, true, pack.commit, await command(["git", "rev-parse", `${tag}^{commit}`]))
+} else if (process.env.GITHUB_ACTIONS === "true") validateRegistryRevision(mode, false, pack.commit, process.env.GITHUB_SHA)
 const archive = join(resolve(packPath, ".."), pack.filename)
 assert.equal(integrity(new Uint8Array(await Bun.file(archive).arrayBuffer())), pack.integrity)
 let found = await metadata(name, pack.version)

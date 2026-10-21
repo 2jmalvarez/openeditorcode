@@ -17,7 +17,17 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "oec-plugin-ui-"))
   await writeFile(join(root, "hello.ts"), Array.from({ length: 60 }, (_, index) => `const line${index} = ${index};`).join("\n"))
 })
-afterEach(async () => { await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }) })
+afterEach(async () => {
+  // Bun 1.3.14 can ignore rm's maxRetries while Git releases Windows handles.
+  // Retry only fixture cleanup, never the test's actions or assertions.
+  for (let attempt = 0; ; attempt++) {
+    try { await rm(root, { recursive: true, force: true }); break }
+    catch (error) {
+      if (attempt >= 19 || !["EBUSY", "EPERM", "ENOTEMPTY"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error
+      await Bun.sleep(100)
+    }
+  }
+})
 
 test("active editor recovers real keyboard focus without stealing it from a modal", async () => {
   const host = mockHost(root)

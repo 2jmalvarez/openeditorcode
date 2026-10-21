@@ -52,9 +52,7 @@ jobs:
         run: |
           bun -e 'import { execFileSync } from "node:child_process"; import { appendFileSync } from "node:fs"; import assert from "node:assert/strict"; const p = await Bun.file("published-package/pack.json").json(); const manifest = await Bun.file("plugins/opencode-editor/package.json").json(); assert.equal(p.name, manifest.name); assert.equal(p.version, manifest.version); assert.match(p.commit, /^[a-f0-9]{40}$/); const tag = "opencode-editor-v" + p.version; assert.equal(execFileSync("git", ["rev-parse", tag + "^{commit}"], {encoding:"utf8"}).trim(), p.commit); appendFileSync(process.env.GITHUB_OUTPUT, "commit=" + p.commit + "\n");'
       - name: Verify public integrity and provenance without publishing
-        env:
-          GITHUB_SHA: ${{ steps.release.outputs.commit }}
-        run: bun run plugin:registry after published-package/pack.json
+        run: bun run plugin:registry after published-package/pack.json --published
       - name: Diagnose and verify actual installation by name
         shell: bash
         env:

@@ -46,6 +46,12 @@ export function validateTag(tag: string, version: string) {
   return version.includes("-") ? "next" : "latest"
 }
 
+export function validateRegistryRevision(mode: string, published: boolean, commit: string, expected: string | undefined) {
+  assert.match(commit, /^[a-f0-9]{40}$/, "Registry verification requires an immutable release commit")
+  if (published) assert.equal(mode, "after", "Published-tag verification cannot authorize publication")
+  assert.equal(commit, expected, published ? "Artifact does not match its immutable release tag" : "Artifact was built from another revision")
+}
+
 export function validateManifest(manifest: Record<string, any>) {
   assert.equal(manifest.name, name)
   assert.notEqual(manifest.private, true)

@@ -1,15 +1,27 @@
 import { describe, expect, test } from "bun:test"
-import { releaseCommand, testedHostVersions, validateBundle, validateManifest, validateTag } from "../scripts/release"
+import { releaseCommand, testedHostVersions, validateBundle, validateManifest, validateRegistryRevision, validateTag } from "../scripts/release"
 import { readFileSync } from "node:fs"
 import manifest from "../package.json"
 import { validateInstalledNames } from "../scripts/install-check"
 
 describe("plugin release boundaries", () => {
+  test("published verification binds to the tag without weakening publication revision checks", () => {
+    const release = "8".repeat(40)
+    const main = "e".repeat(40)
+    expect(() => validateRegistryRevision("after", true, release, release)).not.toThrow()
+    expect(() => validateRegistryRevision("after", true, release, main)).toThrow("immutable release tag")
+    expect(() => validateRegistryRevision("before", true, release, release)).toThrow("cannot authorize publication")
+    expect(() => validateRegistryRevision("before", false, release, main)).toThrow("another revision")
+    expect(() => validateRegistryRevision("after", false, release, main)).toThrow("another revision")
+    expect(() => validateRegistryRevision("before", false, release, release)).not.toThrow()
+    expect(() => validateRegistryRevision("after", true, "invalid", "invalid")).toThrow("immutable release commit")
+  })
   test("published-package verification cannot publish or move release tags", () => {
     const workflow = readFileSync(new URL("../../../.github/workflows/verify-published-opencode-editor.yml", import.meta.url), "utf8")
     expect(workflow).toContain("workflow_dispatch:")
     expect(workflow).toContain('tag + "^{commit}"')
-    expect(workflow).toContain("plugin:registry after published-package/pack.json")
+    expect(workflow).toContain("plugin:registry after published-package/pack.json --published")
+    expect(workflow).not.toContain("GITHUB_SHA:")
     expect(workflow).toContain('OEC_SMOKE_DEBUG: "1"')
     expect(workflow).not.toMatch(/npm publish|git (?:push|tag)|id-token:|contents: write/)
     const actions = [...workflow.matchAll(/uses: (actions\/[^@\s]+)@([a-f0-9]+)/g)]
