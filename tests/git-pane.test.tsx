@@ -1,11 +1,15 @@
 /** @jsxImportSource @opentui/solid */
-import { expect, test } from "bun:test"
+import { afterEach, beforeEach, expect, test } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
 import { GitPane } from "../src/git/GitPane"
 import type { GitTreeItem } from "../src/git/tree"
 import type { GitMode } from "../src/git/useGit"
-import { t } from "../src/localization"
+import { configureLanguage, language, t } from "../src/localization"
+
+let previousLanguage = language()
+beforeEach(() => { previousLanguage = language(); configureLanguage("es") })
+afterEach(() => configureLanguage(previousLanguage))
 
 test("GitPane renders history rows without file metadata and hides the commit input outside local mode", async () => {
   const [mode, setMode] = createSignal<GitMode>("local")

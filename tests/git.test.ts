@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test"
+import { afterAll, afterEach, beforeEach, expect, test } from "bun:test"
 import { mkdir, mkdtemp, readFile, rename, rm, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -7,6 +7,11 @@ import { commitGitChanges, fetchGit, parseGitNumstat, parseGitStatus, readGitDif
 import type { OpenTab } from "../src/documents/types"
 import { createGitTree } from "../src/git/tree"
 import { fetchAndRefreshGit } from "../src/git/useGit"
+import { configureLanguage, language } from "../src/localization"
+
+let previousLanguage = language()
+beforeEach(() => { previousLanguage = language(); configureLanguage("es") })
+afterEach(() => configureLanguage(previousLanguage))
 
 const temporaryRoots: string[] = []
 

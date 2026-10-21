@@ -13,9 +13,9 @@ import { factoryConfig } from "../src/config/defaults"
 
 let root = ""
 
-async function waitForText(setup: Awaited<ReturnType<typeof testRender>>, text: string) {
+async function waitForText(setup: Awaited<ReturnType<typeof testRender>>, text: string, maxAttempts = 60) {
   let frame = ""
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     await setup.renderOnce()
     frame = setup.captureCharFrame()
     if (frame.includes(text)) return
@@ -291,10 +291,12 @@ test("F4 edits SVG drafts and recovers from invalid or empty SVG without saving"
       expect(await readFile(path, "utf8")).toBe(original)
     }
     setup.mockInput.pressKey("s", { ctrl: true })
-    await waitForText(setup, "Guardado: logo.svg")
+    // Windows ACL-preserving saves launch PowerShell. Loaded CI workers can
+    // need more than the usual UI wait; observe completion without retrying save.
+    await waitForText(setup, "Guardado: logo.svg", 200)
     expect(await readFile(path, "utf8")).toContain('width="48"')
   } finally { setup.renderer.destroy() }
-})
+}, 15_000)
 
 test("Ctrl+S and save-and-close preserve Markdown preview contents on disk", async () => {
   const path = join(root, "README.md")
