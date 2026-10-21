@@ -12,6 +12,7 @@ const project = join(directory, "project")
 const configDirectory = join(directory, "config")
 await mkdir(project); await mkdir(configDirectory)
 await copyFile(join(import.meta.dir, "..", "docs", "images", "plugin-screen-2.png"), join(project, "preview.png"))
+await writeFile(join(project, "preview.svg"), '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#70d6a7"/><text x="5" y="32" font-size="20">SVG</text></svg>')
 const config = factoryConfig()
 config.appearance.language = "es"
 config.preview.imageProtocol = "blocks"
@@ -42,8 +43,8 @@ const waitFor = async (predicate: () => boolean, label: string, milliseconds = 3
 }
 try {
   await waitFor(() => output.toLowerCase().includes("explorador"), "Explorer did not start")
-  child.stdin.write("\x06") // Explorer file search: Ctrl+F.
-  await Bun.sleep(150)
+  // The Explorer name filter is already visible. Ctrl+F would toggle content
+  // search and correctly exclude the binary PNG from content results.
   child.stdin.write("preview.png")
   await Bun.sleep(300)
   child.stdin.write("\r")
@@ -51,6 +52,16 @@ try {
   // A one-row thumbnail paints only a handful of half-blocks. The real screenshot
   // must paint a substantial image in the available terminal area.
   await waitFor(() => (output.match(/[▀▄]/g) ?? []).length >= 40, "Image remained a thumbnail instead of filling the preview", 4000)
+  child.stdin.write("\x1b[1;6D") // Ctrl+Shift+Left: focus Explorer, even with Git visible.
+  await Bun.sleep(150)
+  child.stdin.write("\x1b") // Clear the retained filter.
+  await Bun.sleep(150)
+  child.stdin.write("preview.svg")
+  await Bun.sleep(300)
+  const cells = (output.match(/[▀▄]/g) ?? []).length
+  child.stdin.write("\r")
+  await waitFor(() => output.includes("PREVIEW SVG"), "SVG preview did not open")
+  await waitFor(() => (output.match(/[▀▄]/g) ?? []).length > cells + 20, "Embedded WASM/font did not paint SVG pixels", 5000)
 } catch (error) {
   process.exitCode = 1
   console.error(`Image smoke failed: ${error instanceof Error ? error.message : String(error)}`)
