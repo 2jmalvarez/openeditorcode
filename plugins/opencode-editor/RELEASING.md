@@ -1,5 +1,7 @@
 # Releases del plugin OpenCode
 
+Recuperación de `0.3.4`, cuarto intento [39606966281](https://github.com/2jmalvarez/openeditorcode/actions/runs/39606966281), snapshot `e06ac8b2319773fff4c4ef6946e3baa8f5b01c96`: toda la matriz Linux y Windows 2.1.x pasó, pero dos runners Windows fallaron antes de publicar. El clic Diff ya no falla: su test completó las aserciones y falló al borrar el sandbox (`EBUSY` por handles Git en cierre). La limpieza temporal ahora usa reintentos acotados de `rm`, sin repetir acciones de producto. Un runner también registró un error de guardado SVG; la prueba ahora abre F12 inmediatamente y adjunta los detalles técnicos al fallo, en vez de ocultarlos tras una espera agotada. No se modifica el guardado ni sus protecciones sin ese diagnóstico.
+
 Este procedimiento publica únicamente `@2jmalvarez/opencode-editor`. En un release solo del plugin no cambiar versiones raíz/Windows/Linux ni `.github/workflows/publish.yml`; una publicación conjunta autorizada verifica ambos flujos. `dist/` no se versiona. El tarball contiene exactamente `package.json`, `dist/tui.js`, `dist/svg.wasm`, `dist/svg-font.ttf`, `tui.ts`, `README.md`, `LICENSE` y `THIRD-PARTY-NOTICES.txt`. Las dependencias OEC y el wrapper SVG se incluyen en el bundle; las APIs OpenCode/OpenTUI/Solid permanecen externas.
 
 ## Bootstrap inicial (intervención humana)

@@ -19,6 +19,12 @@ async function waitForText(setup: Awaited<ReturnType<typeof testRender>>, text: 
     await setup.renderOnce()
     frame = setup.captureCharFrame()
     if (frame.includes(text)) return
+    if (frame.includes("Falló una operación") || frame.includes("errores sin leer")) {
+      setup.mockInput.pressKey(KeyCodes.F12)
+      await setup.renderOnce()
+      await setup.renderOnce()
+      throw new Error(`UI operation failed while waiting for ${text}:\n${setup.captureCharFrame()}`)
+    }
     await Bun.sleep(25)
   }
   expect(frame).toContain(text)

@@ -163,7 +163,7 @@ test("sidebar search opens closed-folder results and local changes open a diff t
     for (let i = 0; i < 100 && controller.workspace.activePath !== join(root, "nested", "hello.ts"); i++) { await Bun.sleep(20); await setup.renderOnce() }
     expect(controller.workspace.activePath).toBe(join(root, "nested", "hello.ts"))
     expect(host.destinations.at(-1)?.type).toBe("plugin")
-  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }) }
   expect([...host.events.values()].every((handlers) => handlers.size === 0)).toBe(true)
   expect(host.layers.size).toBe(0)
 }, 15_000)
