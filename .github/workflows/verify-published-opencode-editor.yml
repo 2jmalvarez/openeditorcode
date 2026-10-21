@@ -1,0 +1,69 @@
+name: Verify published OpenCode plugin
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_run:
+        description: Publication run supplying the immutable package artifact
+        required: true
+        default: "39608347412"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  security:
+    uses: ./.github/workflows/security.yml
+  verify:
+    needs: security
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run plugin:test
+      - run: bun run build
+      - run: bun run plugin:build
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: opencode-editor-package
+          path: published-package
+          run-id: ${{ inputs.release_run }}
+          github-token: ${{ github.token }}
+      - name: Bind public artifact to the immutable release tag
+        id: release
+        shell: bash
+        run: |
+          bun -e 'import { execFileSync } from "node:child_process"; import { appendFileSync } from "node:fs"; import assert from "node:assert/strict"; const p = await Bun.file("published-package/pack.json").json(); const manifest = await Bun.file("plugins/opencode-editor/package.json").json(); assert.equal(p.name, manifest.name); assert.equal(p.version, manifest.version); assert.match(p.commit, /^[a-f0-9]{40}$/); const tag = "opencode-editor-v" + p.version; assert.equal(execFileSync("git", ["rev-parse", tag + "^{commit}"], {encoding:"utf8"}).trim(), p.commit); appendFileSync(process.env.GITHUB_OUTPUT, "commit=" + p.commit + "\n");'
+      - name: Verify public integrity and provenance without publishing
+        env:
+          GITHUB_SHA: ${{ steps.release.outputs.commit }}
+        run: bun run plugin:registry after published-package/pack.json
+      - name: Diagnose and verify actual installation by name
+        shell: bash
+        env:
+          OEC_SMOKE_DEBUG: "1"
+        run: |
+          set -euo pipefail
+          executable="$(bun run plugins/opencode-editor/scripts/host-executable.ts 2.1.1 "$RUNNER_TEMP/published-host")"
+          package="$(bun -e 'const p = await Bun.file("plugins/opencode-editor/package.json").json(); console.log(p.name + "@" + p.version)')"
+          bun run plugin:smoke "$executable" "$package"
+          bun run plugin:smoke "$executable" "$package" --auto-root
+          bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "$executable" "$package"
+          bun run plugins/opencode-editor/scripts/smoke-access.ts "$executable" "$package"

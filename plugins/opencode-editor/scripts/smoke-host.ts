@@ -3,6 +3,7 @@ import { join, resolve } from "node:path"
 import assert from "node:assert/strict"
 import { allowedFiles, command, temporary as createTemporary, validateBundle, validateManifest } from "./release"
 import { installPackedPlugin } from "./install-check"
+import { redactSecrets } from "../../../src/logs/redact"
 
 // Explicit executable avoids shell wrappers. No user config, service, sessions, or credentials are touched.
 const executable = process.argv[2]
@@ -161,6 +162,7 @@ try {
   const child = Bun.spawn([executable, "--standalone", project], {
     cwd: project, stdin: "pipe", stdout: "pipe", stderr: "pipe", signal: timeout.signal,
     env: {
+       OPENCODE_LOG_LEVEL: process.env.OEC_SMOKE_DEBUG === "1" ? "DEBUG" : undefined,
        PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, WINDIR: process.env.WINDIR,
        TERM: "xterm-256color", TEMP: temporary, TMP: temporary, LOCALAPPDATA: temporary, APPDATA: temporary,
       HOME: temporary, USERPROFILE: temporary,
@@ -176,7 +178,7 @@ try {
       for (const item of await readdir(directory, { withFileTypes: true }).catch(() => [])) {
         const path = join(directory, item.name)
         if (item.isDirectory()) await logs(path)
-        else if (item.name.endsWith(".log") || item.name === "loaded.json") diagnostics.push(`${path}: ${(await readFile(path, "utf8")).slice(-8000)}`)
+        else if (item.name.endsWith(".log") || item.name === "loaded.json") diagnostics.push(`${path}: ${redactSecrets((await readFile(path, "utf8")).slice(-64_000))}`)
       }
     }
     await logs(temporary)

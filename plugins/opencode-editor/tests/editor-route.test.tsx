@@ -17,7 +17,7 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "oec-plugin-ui-"))
   await writeFile(join(root, "hello.ts"), Array.from({ length: 60 }, (_, index) => `const line${index} = ${index};`).join("\n"))
 })
-afterEach(async () => { await rm(root, { recursive: true, force: true }) })
+afterEach(async () => { await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }) })
 
 test("active editor recovers real keyboard focus without stealing it from a modal", async () => {
   const host = mockHost(root)

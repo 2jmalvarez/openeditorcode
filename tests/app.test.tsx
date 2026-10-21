@@ -273,6 +273,9 @@ test("F4 edits SVG drafts and recovers from invalid or empty SVG without saving"
     for (let attempt = 0; attempt < 60 && !image(); attempt++) { await Bun.sleep(25); await setup.renderOnce() }
     expect(image()).toBeDefined()
     await image()!.loadPromise
+    // Decoding invalidates Yoga layout; a completed load does not imply the
+    // renderer has committed the image's dimensions yet.
+    await setup.renderOnce()
     expect(image()!.loadError).toBeNull()
     expect(image()!.image?.width).toBe(32)
     expect(image()!.height).toBeGreaterThan(2)

@@ -10,6 +10,7 @@ assert.ok(executable, "Pass an OpenCode executable")
 const sandbox = await temporary("oec-access-host-")
 const project = join(sandbox, "project")
 const observer = join(sandbox, "observer")
+let failed = false
 try {
   await mkdir(project); await mkdir(observer)
   await writeFile(join(project, "hello.txt"), "local access fixture\n")
@@ -79,4 +80,13 @@ export default { id: "oec.access-observer", setup(context) {
     assert.ok(code === 0 && result?.ok, `${phase}: ${JSON.stringify(result)}\n${stderr}\n${stdout.slice(-2000)}`)
     console.log(`OpenCode ${result.version}: local access ${phase} passed`)
   }
-} finally { await rm(sandbox, { recursive: true, force: true }) }
+} catch (error) {
+  failed = true
+  throw error
+} finally {
+  try { await rm(sandbox, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }) }
+  catch (error) {
+    if (!failed) throw error
+    console.error(`Access smoke sandbox cleanup also failed: ${String(error)}`)
+  }
+}

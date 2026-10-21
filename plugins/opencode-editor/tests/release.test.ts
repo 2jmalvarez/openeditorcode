@@ -5,6 +5,16 @@ import manifest from "../package.json"
 import { validateInstalledNames } from "../scripts/install-check"
 
 describe("plugin release boundaries", () => {
+  test("published-package verification cannot publish or move release tags", () => {
+    const workflow = readFileSync(new URL("../../../.github/workflows/verify-published-opencode-editor.yml", import.meta.url), "utf8")
+    expect(workflow).toContain("workflow_dispatch:")
+    expect(workflow).toContain('tag + "^{commit}"')
+    expect(workflow).toContain("plugin:registry after published-package/pack.json")
+    expect(workflow).toContain('OEC_SMOKE_DEBUG: "1"')
+    expect(workflow).not.toMatch(/npm publish|git (?:push|tag)|id-token:|contents: write/)
+    const actions = [...workflow.matchAll(/uses: (actions\/[^@\s]+)@([a-f0-9]+)/g)]
+    for (const [, , sha] of actions) expect(sha).toHaveLength(40)
+  })
   test("CI host matrix matches the versions accepted by the host downloader", () => {
     const workflow = readFileSync(new URL("../../../.github/workflows/publish-opencode-editor.yml", import.meta.url), "utf8")
     const matrix = workflow.match(/opencode: (\[[^\n]+\])/)?.[1]
