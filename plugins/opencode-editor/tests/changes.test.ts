@@ -67,7 +67,7 @@ test("coalesces refreshes and aborts generations that can no longer publish", as
   } finally { state.dispose() }
 })
 
-test("local Git errors clear stale rows and recover; mapped remote workspaces never query server VCS", async () => {
+test("local Git errors retain stale rows and recover; mapped remote workspaces never query server VCS", async () => {
   const host = mockHost(root)
   let fail = false
   const state = new ChangesState({ ...host.context, location: { directory: root, workspaceID: "remote" } }, root, async () => {
@@ -79,10 +79,38 @@ test("local Git errors clear stale rows and recover; mapped remote workspaces ne
     expect(state.files).toHaveLength(1)
     fail = true; await state.refresh()
     expect(state.error).toBe("Local Git unavailable")
-    expect(state.files).toEqual([])
+    expect(state.files).toHaveLength(1)
+    expect(state.stale).toBe(true)
     fail = false; await state.refresh()
     expect(state.error).toBe("")
+    expect(state.stale).toBe(false)
     expect(state.files).toHaveLength(1)
     expect(host.vcs.calls).toEqual([])
+  } finally { state.dispose() }
+})
+
+test("partial repository failures retain only failed repositories' previous rows and branches", async () => {
+  const host = mockHost(root)
+  const a = resolve(root, "a"), b = resolve(root, "b")
+  let value: LocalChanges = { repository: true, repositories: [
+    { id: "a", root: a, name: "a", branch: "main" }, { id: "b", root: b, name: "b", branch: "dev" },
+  ], files: [ { ...result("a.txt").files[0]!, repositoryRoot: a }, { ...result("b.txt").files[0]!, repositoryRoot: b } ] }
+  const state = new ChangesState(host.context, root, async () => value)
+  try {
+    state.start(); await tick()
+    value = { repository: true, repositories: [
+      { id: "a", root: a, name: "a", branch: "", error: "Git refresh timed out" },
+      { id: "b", root: b, name: "b", branch: "new" },
+    ], files: [] }
+    await state.refresh()
+    expect(state.files.map((file) => file.file)).toEqual(["a.txt"])
+    expect(state.repositories.map((repo) => repo.branch)).toEqual(["main", "new"])
+    expect(state.stale).toBe(true)
+    await state.refresh()
+    expect(state.files).toHaveLength(1)
+    value = { repository: true, repositories: [], files: [] }
+    await state.refresh()
+    expect(state.stale).toBe(false)
+    expect(state.files).toEqual([])
   } finally { state.dispose() }
 })

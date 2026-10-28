@@ -87,9 +87,10 @@ export function ChangesPane(props: { controller: EditorController; sessionID?: s
     <box id="oec-diff-status" flexDirection="column" flexShrink={0}>
     <text wrapMode="none" flexShrink={0} fg={controller.context.theme.text.muted}> {changes().files.length} · Enter: diff tab</text>
     <Show when={changes().error}><text fg={controller.context.theme.text.muted}> {changes().error} · F5 to retry</text></Show>
+    <Show when={changes().stale}><text fg={controller.context.theme.text.muted}> Changes may be outdated · F5 to retry</text></Show>
     <Show when={!changes().error && changes().repository === undefined}><text fg={controller.context.theme.text.muted}> Loading changes…</text></Show>
     <Show when={!changes().error && changes().repository === false}><text fg={controller.context.theme.text.muted}> No repository</text></Show>
-    <Show when={!changes().error && changes().repository && !changes().files.length && !changes().repositories.length}><text fg={controller.context.theme.text.muted}> No changes</text></Show>
+    <Show when={!changes().error && !changes().stale && changes().repository && !changes().files.length && !changes().repositories.length}><text fg={controller.context.theme.text.muted}> No changes</text></Show>
     </box>
     <Show when={changes().files.length || changes().repositories.length}>
        <scrollbox id="oec-diff-scroll" ref={viewport.attach} flexGrow={1} flexBasis={0} minHeight={0} scrollY onSizeChange={measure} viewportOptions={{ overflow: "hidden" }}>

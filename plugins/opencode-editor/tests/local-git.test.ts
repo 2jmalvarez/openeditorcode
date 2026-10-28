@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { changePath, discoverLocalRepositories, gitCommand, readLocalChanges, readLocalPatch } from "../src/changes/git"
+import { changePath, changesError, createChangesReader, discoverLocalRepositories, gitCommand, readLocalChanges, readLocalPatch } from "../src/changes/git"
 import { EditorController } from "../src/integration/controller"
 import { parseOptions } from "../src/integration/options"
 import { mockHost } from "./host"
@@ -152,6 +152,52 @@ test.skipIf(process.platform === "win32")("discovery never follows directory sym
     await symlink(join(root, "outside-ignore"), join(container, ".gitignore"))
     await expect(discoverLocalRepositories(container, AbortSignal.timeout(10_000))).rejects.toThrow()
   } finally { await cleanup(); await rm(container, { recursive: true, force: true }) }
+})
+
+test("workspace reader caches discovery, forces rescans and never shares caches across roots or readers", async () => {
+  let scans = 0
+  const options = {
+    discover: async (root: string) => { scans++; return [root] },
+    readRepository: async () => ({ repository: true, files: [] }),
+  }
+  const reader = createChangesReader(options)
+  const signal = new AbortController().signal
+  await reader("/a", signal)
+  await reader("/a", signal)
+  expect(scans).toBe(1)
+  await reader("/a", signal, true)
+  expect(scans).toBe(2)
+  await reader("/b", signal)
+  expect(scans).toBe(3)
+  await createChangesReader(options)("/b", signal)
+  expect(scans).toBe(4)
+  const expired = createChangesReader({ ...options, discoveryTTL: 0 })
+  await expired("/b", signal); await expired("/b", signal)
+  expect(scans).toBe(6)
+})
+
+test("repository workers have independent deadlines, bounded concurrency and preserve healthy results", async () => {
+  let active = 0, maximum = 0
+  const reader = createChangesReader({
+    timeoutMs: 20,
+    discover: async () => ["/a", "/b", "/c", "/healthy"],
+    readRepository: async (_root, directory, _roots, signal) => {
+      active++; maximum = Math.max(maximum, active)
+      try {
+        if (directory !== "/healthy") {
+          await Bun.sleep(40)
+          signal.throwIfAborted()
+        }
+        signal.throwIfAborted()
+        return { repository: true, repositories: [{ id: directory, root: directory, name: directory, branch: "main" }], files: [] }
+      } catch (error) {
+        return { repository: true, repositories: [{ id: directory, root: directory, name: directory, branch: "", error: changesError(error) }], files: [] }
+      } finally { active-- }
+    },
+  })
+  const result = await reader("/", new AbortController().signal)
+  expect(maximum).toBe(3)
+  expect(result.repositories?.map((repo) => repo.error)).toEqual(["Git refresh timed out", "Git refresh timed out", "Git refresh timed out", undefined])
 })
 
 const distro = process.env.OEC_TEST_WSL_DISTRO

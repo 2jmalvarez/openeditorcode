@@ -51,6 +51,35 @@ test("Diff renders repo markers and branches, and mouse toggles only the clicked
   } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
+test("Diff keeps visible rows after a timeout and clears its outdated warning after recovery", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-diff-timeout-"))
+  const host = mockHost(root)
+  let fail = false
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }), async () => {
+    if (fail) throw new DOMException("The operation timed out.", "TimeoutError")
+    return { repository: true, files: [{ path: "retained.txt", file: "retained.txt", area: "changes", status: "modified", additions: 1, deletions: 0 }] }
+  })
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <ChangesPane controller={controller} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
+  }, { width: 70, height: 20 })
+  try {
+    await controller.changes.refresh(); await setup.renderOnce(); await setup.renderOnce()
+    fail = true
+    await controller.changes.refresh(); await setup.renderOnce(); await setup.renderOnce()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("retained.txt")
+    expect(frame).toContain("1 · Enter: diff tab")
+    expect(frame).toContain("Git refresh timed out")
+    expect(frame).toContain("Changes may be outdated · F5 to retry")
+    expect(frame).not.toContain("No changes")
+    fail = false
+    await controller.changes.refresh(); await setup.renderOnce(); await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("outdated")
+    expect(setup.captureCharFrame()).not.toContain("timed out")
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test("long branches only occupy remaining width and cannot squeeze the repository count or gap", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-repo-branch-width-"))
   const host = mockHost(root)

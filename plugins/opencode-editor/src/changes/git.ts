@@ -8,7 +8,11 @@ import { parseGitStatus, parseGitNumstat, type GitFile } from "../../../../src/g
 export type Change = GitFile & { file: string; repositoryRoot?: string }
 export type LocalRepository = { id: string; root: string; name: string; branch: string; error?: string }
 export type LocalChanges = { repository: boolean; files: Change[]; repositories?: LocalRepository[] }
-export type ChangesReader = (root: string, signal: AbortSignal) => Promise<LocalChanges>
+export type ChangesReader = (root: string, signal: AbortSignal, rediscover?: boolean) => Promise<LocalChanges>
+
+export function changesError(error: unknown): string {
+  return error instanceof Error && error.name === "TimeoutError" ? "Git refresh timed out" : error instanceof Error ? error.message : String(error)
+}
 
 function within(root: string, path: string) {
   const rest = relative(root, path)
@@ -119,34 +123,61 @@ export async function discoverLocalRepositories(root: string, signal: AbortSigna
   return found.sort((a, b) => a.localeCompare(b))
 }
 
-export const readLocalChanges: ChangesReader = async (root, signal) => {
-  const roots = await discoverLocalRepositories(root, signal)
-  const repositories: LocalRepository[] = []
-  const files: Change[] = []
-  for (const directory of roots) {
-    signal.throwIfAborted()
-    const id = relative(root, directory).replace(/\\/g, "/") || "."
-    const repository: LocalRepository = { id, root: directory, name: id === "." ? basename(root) : id, branch: "" }
-    repositories.push(repository)
-    try {
-      const [state, branch] = await Promise.all([
-        readRepositoryChanges(directory, signal, roots),
-        git(directory, ["symbolic-ref", "--quiet", "--short", "HEAD"], signal),
-      ])
-      if (branch.code === 0) repository.branch = branch.stdout.trim()
-      else {
-        const head = await git(directory, ["rev-parse", "--short", "HEAD"], signal)
-        if (head.code) throw new Error(head.stderr.trim() || "Could not read Git branch")
-        repository.branch = `detached HEAD · ${head.stdout.trim()}`
-      }
-      files.push(...state.files.map((file) => ({ ...file, repositoryRoot: directory })))
-    } catch (error) {
-      signal.throwIfAborted()
-      repository.error = error instanceof Error ? error.message : String(error)
+async function readLocalRepository(root: string, directory: string, roots: readonly string[], signal: AbortSignal): Promise<LocalChanges> {
+  const id = relative(root, directory).replace(/\\/g, "/") || "."
+  const repository: LocalRepository = { id, root: directory, name: id === "." ? basename(root) : id, branch: "" }
+  try {
+    const [state, branch] = await Promise.all([
+      readRepositoryChanges(directory, signal, roots),
+      git(directory, ["symbolic-ref", "--quiet", "--short", "HEAD"], signal),
+    ])
+    if (branch.code === 0) repository.branch = branch.stdout.trim()
+    else {
+      const head = await git(directory, ["rev-parse", "--short", "HEAD"], signal)
+      if (head.code) throw new Error(head.stderr.trim() || "Could not read Git branch")
+      repository.branch = `detached HEAD · ${head.stdout.trim()}`
     }
+    return { repository: true, repositories: [repository], files: state.files.map((file) => ({ ...file, repositoryRoot: directory })) }
+  } catch (error) {
+    repository.error = changesError(signal.aborted ? signal.reason : error)
   }
-  return { repository: repositories.length > 0, repositories, files }
+  return { repository: true, repositories: [repository], files: [] }
 }
+
+/** One cache per controller/root, never shared across consent boundaries. */
+export function createChangesReader(options: {
+  discoveryTTL?: number
+  timeoutMs?: number
+  discover?: typeof discoverLocalRepositories
+  readRepository?: typeof readLocalRepository
+} = {}): ChangesReader {
+  let cached: { root: string; roots: string[]; at: number } | undefined
+  return async (root, signal, rediscover = false) => {
+    const timeout = () => AbortSignal.any([signal, AbortSignal.timeout(options.timeoutMs ?? 10_000)])
+    if (rediscover || !cached || cached.root !== root || Date.now() - cached.at >= (options.discoveryTTL ?? 30_000)) {
+      const roots = await (options.discover ?? discoverLocalRepositories)(root, timeout())
+      signal.throwIfAborted()
+      cached = { root, roots, at: Date.now() }
+    }
+    const roots = cached.roots
+    const results: LocalChanges[] = new Array(roots.length)
+    let next = 0
+    // Bound subprocess pressure, but do not let one slow repository consume
+    // every other repository's deadline.
+    await Promise.all(Array.from({ length: Math.min(3, roots.length) }, async () => {
+      while (next < roots.length) {
+        signal.throwIfAborted()
+        const index = next++
+        results[index] = await (options.readRepository ?? readLocalRepository)(root, roots[index]!, roots, timeout())
+      }
+    }))
+    signal.throwIfAborted()
+    return { repository: roots.length > 0, repositories: results.flatMap((result) => result.repositories ?? []), files: results.flatMap((result) => result.files) }
+  }
+}
+
+// Direct one-shot callers do not retain a workspace cache.
+export const readLocalChanges: ChangesReader = (root, signal) => createChangesReader()(root, signal)
 
 export async function readLocalPatch(root: string, file: Change): Promise<string> {
   const path = changePath(root, file.path)
