@@ -7,6 +7,7 @@ import type { FocusTarget } from "../workbench/types"
 import { editorWidth } from "../workbench/layout"
 import type { OecConfig } from "../config/types"
 import { t } from "../localization"
+import { EditorScrollFrame } from "./EditorScrollFrame"
 
 type Props = {
   filePath: Accessor<string | undefined>
@@ -16,7 +17,6 @@ type Props = {
   gitVisible: Accessor<boolean>
   wrapMode: Accessor<"none" | "word">
   lineLabels: Accessor<string>
-  scrollbar: Accessor<string>
   setEditor: (editor: TextareaRenderable) => void
   onContentChange: () => void
   onCursorChange: () => void
@@ -27,6 +27,7 @@ type Props = {
 
 export function EditorPane(props: Props) {
   const renderer = useRenderer()
+  const [editor, setEditor] = createSignal<TextareaRenderable>()
   const [welcomeNarrow, setWelcomeNarrow] = createSignal(false)
 
   function syncWelcomeWidth() {
@@ -51,8 +52,8 @@ export function EditorPane(props: Props) {
        <text style={{ marginTop: 1 }} fg="#8ca0ae">{t("welcome.tagline")}</text>
       <box style={{ marginTop: 1, width: "92%", height: 7, flexShrink: 0, paddingX: 2, paddingY: 1, flexDirection: "column", border: true, borderColor: "#f2c66d", backgroundColor: "#20272d" }}>
         <text fg="#f2c66d"><strong>{t("welcome.openPanels")}</strong></text>
-        <box style={{ height: 1, flexShrink: 0, marginTop: 1, flexDirection: "row" }}><text fg="#70d6a7"><strong>Ctrl+B</strong></text><text style={{ marginLeft: "auto" }} fg="#ffffff"><strong>{t("welcome.toggleExplorer")}</strong></text></box>
-        <box style={{ height: 1, flexShrink: 0, flexDirection: "row" }}><text fg="#70d6a7"><strong>Ctrl+Alt+B</strong></text><text style={{ marginLeft: "auto" }} fg="#ffffff"><strong>{t("welcome.toggleChanges")}</strong></text></box>
+        <box style={{ height: 1, flexShrink: 0, marginTop: 1, flexDirection: "row" }}><text fg="#70d6a7"><strong>F7</strong></text><text style={{ marginLeft: "auto" }} fg="#ffffff"><strong>{t("welcome.toggleExplorer")}</strong></text></box>
+        <box style={{ height: 1, flexShrink: 0, flexDirection: "row" }}><text fg="#70d6a7"><strong>F8</strong></text><text style={{ marginLeft: "auto" }} fg="#ffffff"><strong>{t("welcome.toggleChanges")}</strong></text></box>
         <box style={{ height: 1, flexShrink: 0, flexDirection: "row" }}><text fg="#70d6a7"><strong>Ctrl+Shift+← / →</strong></text><text style={{ marginLeft: "auto" }} fg="#ffffff"><strong>{t("welcome.movePanels")}</strong></text></box>
       </box>
       <box style={{ marginTop: 1, width: "92%", flexDirection: "row", flexWrap: "wrap", justifyContent: "center" }}>
@@ -80,13 +81,13 @@ export function EditorPane(props: Props) {
       </Show>
     </box>}
   >
-    <box style={{ flexGrow: 1, minHeight: 0, flexDirection: "row" }}>
+    <EditorScrollFrame editor={editor} gutter={props.config().editor.lineNumbers ? 5 : 0} foreground="#60717f" background="#151c23">
         <Show when={props.config().editor.lineNumbers}><box style={{ width: 5, flexShrink: 0, paddingRight: 1, backgroundColor: "#151c23" }}>
           <text fg="#60717f">{props.lineLabels()}</text>
         </box></Show>
       <textarea
         id="oec-source-editor"
-        ref={props.setEditor}
+        ref={(value) => { setEditor(value); props.setEditor(value) }}
         initialValue={props.content()}
         focused={props.active() === "editor"}
         wrapMode={props.wrapMode()}
@@ -100,7 +101,6 @@ export function EditorPane(props: Props) {
         onContentChange={props.onContentChange}
         onCursorChange={props.onCursorChange}
       />
-      <box style={{ width: 1, flexShrink: 0, backgroundColor: "#151c23" }}><text fg="#60717f">{props.scrollbar()}</text></box>
-    </box>
+    </EditorScrollFrame>
   </Show>
 }

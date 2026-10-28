@@ -83,7 +83,7 @@ The welcome screen MUST prominently explain how to open both side panels and mov
 #### Scenario: No document is open
 
 - WHEN the welcome screen is visible
-- THEN `Ctrl+B`, `Ctrl+Alt+B`, and `Ctrl+Shift+Left/Right` are displayed in a primary navigation block above secondary shortcuts
+- THEN `F7`, `F8`, and `Ctrl+Shift+Left/Right` are displayed in a primary navigation block above secondary shortcuts
 
 #### Scenario: Central area is narrower than the explorer
 

@@ -10,9 +10,11 @@ import { ProjectPanels } from "../explorer/ProjectPanels"
 import { EditorBuffer, type BufferHandle } from "./EditorBuffer"
 import { useRevision } from "./reactive"
 import { editorCommands } from "./useKeyboardShortcuts"
+import { usePointer } from "../../../../src/ui/usePointer"
 
 export function EditorRoute(props: { controller: EditorController }) {
   const { controller } = props
+  const pointer = usePointer(() => !controller.modal)
   const revision = useRevision(controller.workspace)
   const statusRevision = useRevision(controller)
   const active = () => { revision(); return controller.workspace.active }
@@ -62,7 +64,7 @@ export function EditorRoute(props: { controller: EditorController }) {
   onCleanup(() => { clearInterval(poll); handle()?.capture(); void controller.drafts.flush() })
   return <box id="oec-editor-route" height="100%" flexGrow={1} minHeight={0} flexDirection="column" backgroundColor={controller.context.theme.background.base}>
     <box height={1} flexShrink={0} flexDirection="row" backgroundColor={controller.context.theme.background.raised.base}>
-      <text fg={controller.context.theme.text.base} onMouseDown={() => void controller.run(() => controller.back())}> ← Conversation </text>
+      <text {...pointer} fg={controller.context.theme.text.base} onMouseDown={() => void controller.run(() => controller.back())}> ← Conversation </text>
       <text fg={controller.context.theme.text.muted}>│ OEC · {controller.workspace.root}</text>
     </box>
     <box flexGrow={1} minHeight={0} flexDirection="row">

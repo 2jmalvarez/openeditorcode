@@ -116,9 +116,13 @@ export class EditorController {
     const generation = ++this.navigation
     await this.ready()
     this.capture?.()
-    const patch = await readLocalPatch(this.workspace.root, file)
+    const root = file.repositoryRoot ?? this.workspace.root
+    await ensurePhysicallyInsideRoot(this.workspace.root, root)
+    const path = changePath(root, file.path)
+    await ensurePhysicallyInsideRoot(this.workspace.root, path)
+    const patch = await readLocalPatch(root, file)
     if (this.disposed || generation !== this.navigation) return
-    this.workspace.openView("diff", changePath(this.workspace.root, file.path), patch, file.area)
+    this.workspace.openView("diff", path, patch, file.area)
     await this.enter(sessionID)
     this.setStatus("Git diff · disk/index, not unsaved edits · F4 edit current file")
   }

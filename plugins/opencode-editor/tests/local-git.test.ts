@@ -1,8 +1,11 @@
 import { expect, test } from "bun:test"
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { changePath, gitCommand, readLocalChanges, readLocalPatch } from "../src/changes/git"
+import { changePath, discoverLocalRepositories, gitCommand, readLocalChanges, readLocalPatch } from "../src/changes/git"
+import { EditorController } from "../src/integration/controller"
+import { parseOptions } from "../src/integration/options"
+import { mockHost } from "./host"
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "oec-plugin-git-"))
@@ -72,6 +75,83 @@ test("uses literal WSL distribution arguments rather than Windows Git or a shell
   expect(args.slice(1, 5)).toEqual(["--distribution", "Ubuntu-24.04", "--exec", "git"])
   expect(args).toContain("/home/juan/a '& repo")
   expect(args).not.toContain("/bin/sh")
+})
+
+test("container workspaces discover sibling and nested repositories, branches, clean repos and independent diff tabs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-multi-repo-"))
+  const run = async (directory: string, ...args: string[]) => {
+    const child = Bun.spawn(["git", "-C", directory, ...args], { stdout: "pipe", stderr: "pipe" })
+    const [code, out, error] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()])
+    if (code) throw new Error(error)
+    return out.trim()
+  }
+  const controller = new EditorController(mockHost(root).context, parseOptions({ localRoot: root }))
+  try {
+    const a = join(root, "a"), b = join(root, "packages", "b"), clean = join(root, "clean"), nested = join(a, "nested")
+    for (const directory of [a, b, clean, nested]) {
+      await mkdir(directory, { recursive: true })
+      await run(directory, "init", "-q", "-b", directory === b ? "feature/test" : "main")
+    }
+    await writeFile(join(a, "same.txt"), "from a\n")
+    await writeFile(join(b, "same.txt"), "from b\n")
+    await writeFile(join(nested, "inside.txt"), "nested\n")
+    const result = await readLocalChanges(root, AbortSignal.timeout(10_000))
+    expect(result.repository).toBe(true)
+    expect(result.repositories?.map((repo) => repo.id)).toEqual(["a", "a/nested", "clean", "packages/b"])
+    expect(result.repositories?.find((repo) => repo.id === "packages/b")?.branch).toBe("feature/test")
+    expect(result.repositories?.every((repo) => !repo.error)).toBe(true)
+    const same = result.files.filter((file) => file.path === "same.txt")
+    expect(same).toHaveLength(2)
+    expect(result.files.filter((file) => file.path === "inside.txt")).toHaveLength(1)
+    expect(result.files.some((file) => file.repositoryRoot === a && file.path.startsWith("nested"))).toBe(false)
+    for (const file of same) await controller.openDiff(file)
+    const tabs = controller.workspace.documents.filter((file) => file.kind === "diff")
+    expect(tabs).toHaveLength(2)
+    expect(tabs.map((file) => file.content).join("\n")).toContain("+from a")
+    expect(tabs.map((file) => file.content).join("\n")).toContain("+from b")
+    await controller.alternateView()
+    expect(controller.workspace.active?.path).toBe(join(b, "same.txt"))
+    await expect(controller.openDiff({ ...same[0]!, repositoryRoot: tmpdir() })).rejects.toThrow()
+    await run(b, "symbolic-ref", "HEAD", "refs/heads/changed")
+    const refreshed = await readLocalChanges(root, AbortSignal.timeout(10_000))
+    expect(refreshed.repositories?.find((repo) => repo.root === b)?.branch).toBe("changed")
+    await rm(join(b, ".git"), { recursive: true })
+    expect((await discoverLocalRepositories(root, AbortSignal.timeout(10_000))).includes(b)).toBe(false)
+  } finally { await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
+test("discovery skips ignored/dependency folders, supports gitfiles and detached HEAD, and aborts", async () => {
+  const { root, git, cleanup } = await fixture()
+  try {
+    await writeFile(join(root, ".gitignore"), "ignored/\n")
+    await git("add", ".gitignore")
+    await git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "initial")
+    for (const name of ["ignored", "node_modules"]) {
+      await mkdir(join(root, name))
+      const child = Bun.spawn(["git", "-C", join(root, name), "init", "-q"], { stdout: "ignore", stderr: "pipe" })
+      expect(await child.exited).toBe(0)
+    }
+    await git("worktree", "add", "-q", "--detach", "linked")
+    const result = await readLocalChanges(root, AbortSignal.timeout(10_000))
+    expect(result.repositories?.map((repo) => repo.id)).toEqual([".", "linked"])
+    expect(result.repositories?.find((repo) => repo.id === "linked")?.branch).toContain("detached HEAD")
+    const abort = new AbortController(); abort.abort()
+    await expect(discoverLocalRepositories(root, abort.signal)).rejects.toThrow()
+  } finally { await cleanup() }
+})
+
+test.skipIf(process.platform === "win32")("discovery never follows directory symlinks outside the workspace", async () => {
+  const { root, cleanup } = await fixture()
+  const container = await mkdtemp(join(tmpdir(), "oec-discovery-links-"))
+  try {
+    await symlink(root, join(container, "external"), "dir")
+    const result = await readLocalChanges(container, AbortSignal.timeout(10_000))
+    expect(result.repositories).toEqual([])
+    expect(result.repository).toBe(false)
+    await writeFile(join(root, "outside-ignore"), "external/\n")
+    await symlink(join(root, "outside-ignore"), join(container, ".gitignore"))
+    await expect(discoverLocalRepositories(container, AbortSignal.timeout(10_000))).rejects.toThrow()
+  } finally { await cleanup(); await rm(container, { recursive: true, force: true }) }
 })
 
 const distro = process.env.OEC_TEST_WSL_DISTRO

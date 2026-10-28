@@ -5,12 +5,81 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { testRender, useRenderer } from "@opentui/solid"
 import { SessionFiles } from "../src/explorer/SessionFiles"
+import { ChangesPane } from "../src/changes/ChangesPane"
 import { EditorRoute } from "../src/workbench/EditorRoute"
 import { EditorController } from "../src/integration/controller"
 import { EditorProjects } from "../src/integration/projects"
 import { parseOptions } from "../src/integration/options"
 import { mockHost } from "./host"
 import type { TextareaRenderable } from "@opentui/core"
+
+test("Diff renders repo markers and branches, and mouse toggles only the clicked repository", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-repo-panel-"))
+  const host = mockHost(root)
+  const repositories = [
+    { id: "a", root: join(root, "a"), name: "a", branch: "main" },
+    { id: "b", root: join(root, "b"), name: "b", branch: "feature/test" },
+  ]
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }), async () => ({
+    repository: true, repositories,
+    files: [{ path: "a-only.txt", file: "a-only.txt", area: "changes", status: "untracked", repositoryRoot: repositories[0]!.root, additions: 1, deletions: 0 }],
+  }))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <SessionFiles controller={controller} sessionID="session-1" />
+  }, { width: 42, height: 32 })
+  try {
+    await controller.changes.refresh(); await setup.renderOnce(); await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("● ▾ a (1)")
+    expect(setup.captureCharFrame()).toContain("main")
+    expect(setup.captureCharFrame()).toContain("feature/test")
+    expect(setup.captureCharFrame()).toContain("No changes")
+    const lines = setup.captureCharFrame().split("\n")
+    expect(lines.find((line) => line.includes("● ▾ a (1)"))).toMatch(/a \(1\)\s+main/)
+    expect(lines.find((line) => line.includes("● ▾ b"))).toMatch(/b\s+feature\/test/)
+    expect(setup.captureCharFrame()).not.toContain("(0)")
+    expect(setup.renderer.root.findDescendantById("oec-diff-row:repo:a:branch")).toBeUndefined()
+    const repo = () => setup.renderer.root.findDescendantById("oec-diff-row:repo:a")!
+    await setup.mockMouse.click(repo().screenX + 2, repo().screenY)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("a-only.txt")
+    expect(setup.captureCharFrame()).toContain("main")
+    expect(setup.captureCharFrame()).toMatch(/● ▸ a \(1\)\s+main/)
+    await setup.mockMouse.click(repo().screenX + 2, repo().screenY)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("a-only.txt")
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
+test("long branches only occupy remaining width and cannot squeeze the repository count or gap", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-repo-branch-width-"))
+  const host = mockHost(root)
+  const branch = "feat/dev-core-fitness-fix-a-very-long-branch-name"
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }), async () => ({
+    repository: true,
+    repositories: [{ id: "fitness", root, name: "fitness", branch }],
+    files: Array.from({ length: 12 }, (_, index) => ({ path: `${index}.txt`, file: `${index}.txt`, area: "changes" as const, status: "modified" as const, repositoryRoot: root, additions: 1, deletions: 0 })),
+  }))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <ChangesPane controller={controller} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
+  }, { width: 42, height: 20 })
+  try {
+    await controller.changes.refresh()
+    for (const width of [42, 28, 20, 42]) {
+      setup.renderer.resize(width, 20)
+      await setup.renderOnce(); await setup.renderOnce()
+      const header = setup.captureCharFrame().split("\n").find((line) => line.includes("● ▾ fitness"))!
+      expect(header).toContain("● ▾ fitness (12)  ")
+      expect(header).not.toContain(branch)
+      const row = setup.renderer.root.findDescendantById("oec-diff-row:repo:fitness")!
+      const [label, branchBox] = row.getChildren()
+      expect(branchBox!.screenX).toBeGreaterThanOrEqual(label!.screenX + label!.width + 2)
+      expect(branchBox!.screenX + branchBox!.width).toBeLessThanOrEqual(row.screenX + row.width)
+      expect(row.height).toBe(1)
+    }
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
 
 test("F6 preserves panels; F7 Files and F8 Diff toggle independently without losing documents", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-panel-keys-"))

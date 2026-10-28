@@ -60,15 +60,19 @@ rm \-f "$HOME/.local/bin/oec" "$HOME/.local/bin/openeditorcode" "$HOME/.local/bi
 .PP
 Remove any installer-added PATH entry from the shell startup file only if it is no longer needed. For npm installations use npm uninstall \-g openeditorcode instead. User configuration is preserved by both methods.
 .SH GIT
-With Git focused, F8 opens the current branch's complete history in the right pane, loading commits in pages as you navigate with no total limit. F9 lists known local and remote branches. Remote branches are locally available references, not a live server listing.
+F7 toggles Explorer and F8 toggles Changes, matching Files and Diff in the plugin. Middle-click anywhere on a document tab to close it, with confirmation for unsaved changes.
+.PP
+"Git: view commit history" in Ctrl+P opens the current branch's complete history in the right pane, loading commits in pages as you navigate with no total limit. With Git focused, F9 lists known local and remote branches. Remote branches are locally available references, not a live server listing.
 .PP
 Enter on a branch opens its commits without checkout; on a commit it opens changed files; on a file it opens a read-only historical diff tab while keeping the right pane open. With Git focused, Esc returns from files to history, then to branches if history was opened from that list, then to local changes. Open diff tabs are preserved.
 .PP
-Stage, unstage, discard, commit, pull (F6) and push (F7) are available only in local changes and are blocked while browsing history or branches. F5 fetches and rereads local status even if fetch fails, and refreshes the history or branch list when applicable without returning to local changes. Setting git.fetchOnRefresh to false skips fetch but retains local reads.
+Stage, unstage, discard, commit, pull (F6) and push ("Git: push changes" in Ctrl+P) are available only in local changes and are blocked while browsing history or branches. F5 fetches and rereads local status even if fetch fails, and refreshes the history or branch list when applicable without returning to local changes. Setting git.fetchOnRefresh to false skips fetch but retains local reads.
+.PP
+The Changes footer provides clickable stage, unstage, discard, pull, push, history and branches buttons. Commit is to the right of the message and requires a message and staged changes. With Git focused, Shift+F6 pushes and Shift+F9 opens history. Clickable controls show a hand pointer when the terminal supports OSC 22.
 .PP
 In local, staged or historical diffs, F4 opens the current project file without closing the diff. It does not open or restore historical content. Missing files produce a notice and are not recreated. Outside diffs, F4 retains Markdown preview/editing; the bundled manual remains read-only.
 .PP
-Ctrl+P includes the commands "Git: view commit history" (F8), "Git: view all branches" (F9) and, with an active diff, "Open project file" (F4).
+Ctrl+P includes the commands "Git: view commit history", "Git: push changes", "Git: view all branches" (F9) and, with an active diff, "Open project file" (F4).
 .SH CONFIGURATION
 On Windows OEC stores config.json under %APPDATA%\\openeditorcode. On Linux it uses ${XDG_CONFIG_HOME:-$HOME/.config}/openeditorcode. Invalid or startup-crashing configuration is copied to config.bkp.json and factory defaults are restored.
 .PP

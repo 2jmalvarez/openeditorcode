@@ -3,6 +3,7 @@ import { basename } from "node:path"
 import { For, type Accessor } from "solid-js"
 import type { OpenTab } from "./types"
 import { t } from "../localization"
+import { usePointer } from "../ui/usePointer"
 
 export type { OpenTab } from "./types"
 
@@ -15,11 +16,15 @@ type Props = {
 }
 
 export function DocumentTabs(props: Props) {
+  const pointer = usePointer()
   return <box style={{ flexShrink: 0, flexDirection: "row", flexWrap: "wrap", backgroundColor: "#111820" }}>
     <For each={props.tabs()}>{(tab, index) => (
-      <box onMouseDown={() => props.onActivate(index())} style={{ paddingX: 1, flexShrink: 0, flexDirection: "row", backgroundColor: index() === props.activeTab() ? "#263a46" : "#111820" }}>
+      <box id={`document-tab:${index()}`} {...pointer} onMouseDown={(event) => {
+        if (event.button === 1) { event.preventDefault(); event.stopPropagation(); props.onClose(index()) }
+        else if (event.button === 0) props.onActivate(index())
+      }} style={{ paddingX: 1, flexShrink: 0, flexDirection: "row", backgroundColor: index() === props.activeTab() ? "#263a46" : "#111820" }}>
          <text fg={index() === props.activeTab() ? tab.kind === "diff" ? "#70d6a7" : tab.kind === "logs" ? "#e68b8b" : "#f2c66d" : "#8ca0ae"}>{tab.kind === "diff" ? "Δ " : tab.kind === "manual" ? "? " : tab.kind === "image" ? "▣ " : tab.kind === "logs" ? "! " : props.isTabDirty(index()) ? "* " : ""}{tab.kind === "logs" ? t("documents.logTab") : basename(tab.path)}{tab.kind === "diff" && tab.diff.revision ? ` @ ${tab.diff.revision.slice(0, 8)}` : ""}</text>
-        <text onMouseDown={(event) => { event.stopPropagation(); props.onClose(index()) }} style={{ marginLeft: 1 }} fg="#8ca0ae">×</text>
+        <text {...pointer} onMouseDown={(event) => { event.stopPropagation(); if (event.button === 0 || event.button === 1) { event.preventDefault(); props.onClose(index()) } }} style={{ marginLeft: 1 }} fg="#8ca0ae">×</text>
       </box>
     )}</For>
   </box>

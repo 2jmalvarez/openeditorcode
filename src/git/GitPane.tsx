@@ -8,6 +8,8 @@ import type { GitMode } from "./useGit"
 import { virtualRange } from "../explorer/virtual-rows"
 import { t, translateKnown } from "../localization"
 import { ScrollingName } from "../explorer/ScrollingName"
+import { ActionButton } from "../ui/ActionButton"
+import { usePointer } from "../ui/usePointer"
 
 type Props = {
   active: Accessor<boolean>
@@ -25,6 +27,18 @@ type Props = {
   loading?: Accessor<boolean>
   showCommitHashes?: Accessor<boolean>
   showCommitDates?: Accessor<boolean>
+  busy: Accessor<boolean>
+  selectedFiles: Accessor<GitFile[]>
+  onFocusMessage: () => void
+  onCommit: () => void
+  onStage: () => void
+  onUnstage: () => void
+  onDiscard: () => void
+  onPull: () => void
+  onPush: () => void
+  onHistory: () => void
+  onBranches: () => void
+  onBack: () => void
 }
 
 const labels: Record<GitFile["status"], string> = { modified: "M", added: "A", deleted: "D", renamed: "R", untracked: "?" }
@@ -38,6 +52,10 @@ function remoteLabel(state: GitState) {
 
 export function GitPane(props: Props) {
   const renderer = useRenderer()
+  const pointer = usePointer()
+  const blocked = () => props.busy() || Boolean(props.loading?.())
+  const local = () => (!props.mode || props.mode() === "local") && props.state().available
+  const canChange = (area: GitFile["area"]) => local() && !blocked() && props.selectedFiles().some((file) => file.area === area)
   const [range, setRange] = createSignal(virtualRange(props.tree().length, 0, 50))
   const rows = createMemo(() => props.tree().slice(range().start, range().end))
   let scroll: ScrollBoxRenderable | undefined
@@ -76,7 +94,7 @@ export function GitPane(props: Props) {
     <scrollbox ref={(value) => { scroll = value; props.setScroll(value); syncRange() }} scrollY verticalScrollbarOptions={{ showArrows: true }} style={{ flexGrow: 1, minHeight: 0 }}>
       <Show when={range().top}><box style={{ height: range().top }} /></Show>
       <For each={rows()}>{(item, index) => { const logicalIndex = () => range().start + index(); return (
-        <box id={`git-${logicalIndex()}`} onMouseDown={() => props.onActivate(logicalIndex())} style={{ height: 1, flexShrink: 0, overflow: "hidden", paddingLeft: item.depth + 1, paddingRight: 1, flexDirection: "row", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
+        <box id={`git-${logicalIndex()}`} {...pointer} onMouseDown={() => props.onActivate(logicalIndex())} style={{ height: 1, flexShrink: 0, overflow: "hidden", paddingLeft: item.depth + 1, paddingRight: 1, flexDirection: "row", backgroundColor: logicalIndex() === props.selected() ? "#28404a" : undefined }}>
            <Show when={item.file}><text style={{ flexShrink: 0 }} fg="#71808b">{item.fileNumber}.</text></Show>
            <text style={{ marginLeft: item.directory ? 0 : 1, flexShrink: 0 }} fg={item.file ? colors[item.file.status] : "#8ed1ff"}>{item.directory ? item.expanded ? "▾" : "▸" : item.file ? labels[item.file.status] : item.commit ? "#" : item.loadMore ? "+" : ""}</text>
            <Show when={item.commit && props.showCommitHashes?.() !== false}><text style={{ marginLeft: 1, flexShrink: 0 }} fg="#d6e5dc">{item.commit!.revision.slice(0, 8)}</text></Show>
@@ -92,10 +110,27 @@ export function GitPane(props: Props) {
     </scrollbox>
     <box style={{ flexShrink: 0, paddingX: 1, paddingBottom: 1, flexDirection: "column", border: ["top"], borderColor: "#30404d", backgroundColor: "#151c23" }}>
        <Show when={!props.mode || props.mode() === "local"} fallback={<text fg="#71808b">{t("git.backHelp")}</text>}>
-        <input focused={props.active() && props.commitFocused()} value={props.commitMessage()} onInput={props.setCommitMessage} placeholder={t("app.commitMessage")} style={{ backgroundColor: "#101419" }} />
-        <box style={{ flexDirection: "row" }}><text fg="#71808b">{t("app.gitHelp")}</text><text style={{ marginLeft: "auto" }} fg="#71808b">{t("app.gitSyncHelp")}</text></box>
-      </Show>
-       <text fg="#71808b">{t("git.historyHelp")}</text>
+        <box flexDirection="row" minWidth={0} gap={1}>
+          <input id="git-commit-message" onMouseDown={props.onFocusMessage} focused={props.active() && props.commitFocused()} value={props.commitMessage()} onInput={props.setCommitMessage} placeholder={t("app.commitMessage")} style={{ width: 0, flexGrow: 1, minWidth: 0, backgroundColor: "#101419" }} />
+          <ActionButton id="git-commit" label="Commit" disabled={!local() || blocked() || !props.commitMessage().trim() || !props.state().files.some((file) => file.area === "staged")} onPress={props.onCommit} />
+        </box>
+        <box flexDirection="row" flexWrap="wrap" gap={1}>
+          <ActionButton id="git-stage" label={t("git.buttonStage")} disabled={!canChange("changes")} onPress={props.onStage} />
+          <ActionButton id="git-unstage" label={t("git.buttonUnstage")} disabled={!canChange("staged")} onPress={props.onUnstage} />
+          <ActionButton id="git-discard" label={t("git.buttonDiscard")} disabled={!canChange("changes")} onPress={props.onDiscard} />
+        </box>
+        <box flexDirection="row" flexWrap="wrap" gap={1}>
+          <ActionButton id="git-pull" label="↓ Pull F6" disabled={!local() || blocked()} onPress={props.onPull} />
+          <ActionButton id="git-push" label="↑ Push ⇧F6" disabled={!local() || blocked()} onPress={props.onPush} />
+        </box>
+       </Show>
+       <Show when={props.mode && props.mode() !== "local" && props.mode() !== "repositories"}>
+         <ActionButton id="git-back" label={t("git.buttonBack")} disabled={props.busy()} onPress={props.onBack} />
+       </Show>
+       <box flexDirection="row" flexWrap="wrap" gap={1}>
+         <ActionButton id="git-history" label={t("git.buttonHistory")} disabled={blocked() || !props.state().available} onPress={props.onHistory} />
+         <ActionButton id="git-branches" label={t("git.buttonBranches")} disabled={blocked() || !props.state().available} onPress={props.onBranches} />
+       </box>
     </box>
   </box>
 }

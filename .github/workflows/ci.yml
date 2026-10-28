@@ -35,12 +35,12 @@ jobs:
         if: runner.os == 'Windows'
         with:
           name: oec-win32-x64
-          path: packages/oec-win32-x64/bin/oec.exe
+          path: packages/oec-win32-x64/bin/
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: runner.os == 'Linux'
         with:
           name: oec-linux-x64
-          path: packages/oec-linux-x64/bin/oec
+          path: packages/oec-linux-x64/bin/
 
   package:
     needs: test

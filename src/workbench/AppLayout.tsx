@@ -46,7 +46,7 @@ export function AppLayout(props: Props) {
               when={props.documents.activeLogs()}
               fallback={<Show
                 when={props.documents.activeManual() || props.documents.activePreview()}
-                fallback={<><EditorPane filePath={props.documents.filePath} content={props.editor.content} active={props.active} explorerVisible={props.explorerVisible} gitVisible={props.gitVisible} wrapMode={props.editor.wrapMode} lineLabels={props.editor.metrics.lineLabels} scrollbar={props.editor.metrics.scrollbar} setEditor={props.editor.setEditor} onContentChange={props.editor.onContentChange} onCursorChange={props.editor.onCursorChange} onUnmount={props.editor.detachEditor} config={props.config} syntaxTheme={props.syntaxTheme} /><FindPanel open={props.editor.findOpen} query={props.editor.findQuery} results={props.editor.findResults} index={props.editor.findIndex} onQuery={props.editor.updateFindQuery} maxWidth={() => props.config().layout.findPanelMaxWidth} /></>}
+                fallback={<><EditorPane filePath={props.documents.filePath} content={props.editor.content} active={props.active} explorerVisible={props.explorerVisible} gitVisible={props.gitVisible} wrapMode={props.editor.wrapMode} lineLabels={props.editor.metrics.lineLabels} setEditor={props.editor.setEditor} onContentChange={props.editor.onContentChange} onCursorChange={props.editor.onCursorChange} onUnmount={props.editor.detachEditor} config={props.config} syntaxTheme={props.syntaxTheme} /><FindPanel open={props.editor.findOpen} query={props.editor.findQuery} results={props.editor.findResults} index={props.editor.findIndex} onQuery={props.editor.updateFindQuery} maxWidth={() => props.config().layout.findPanelMaxWidth} /></>}
               >
                  <Show when={props.documents.activeImage()} fallback={<Show when={props.documents.activeSvg()} fallback={<MarkdownPreview content={props.documents.activePreviewContent} active={() => props.active() === "editor"} manual={() => Boolean(props.documents.activeManual())} />}>
                    <SvgPreview content={props.documents.activePreviewContent} active={() => props.active() === "editor"} protocol={() => props.config().preview.imageProtocol} />
@@ -63,7 +63,10 @@ export function AppLayout(props: Props) {
         </box>
         </box>
       <Show when={props.gitVisible()}>
-        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} commitMessage={props.git.commitMessage} setCommitMessage={props.git.setCommitMessage} commitFocused={props.git.commitFocused} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} mode={props.git.mode} historyTitle={props.git.historyTitle} loading={props.git.loading} showCommitHashes={props.git.showCommitHashes} showCommitDates={props.git.showCommitDates} />
+        <GitPane active={() => props.active() === "git"} state={props.git.state} tree={props.git.tree} selected={props.git.selected} commitMessage={props.git.commitMessage} setCommitMessage={props.git.setCommitMessage} commitFocused={props.git.commitFocused} setScroll={props.setGitScroll} onActivate={props.activateGitAt} width={() => props.config().layout.changesWidth} mode={props.git.mode} historyTitle={props.git.historyTitle} loading={props.git.loading} showCommitHashes={props.git.showCommitHashes} showCommitDates={props.git.showCommitDates}
+          busy={() => props.activity.busy() || Boolean(props.overlays.overlay())} selectedFiles={props.git.selectedFiles}
+          onFocusMessage={props.focusGitMessage} onCommit={() => void props.commitGitChanges()} onStage={() => void props.stageGitItem()} onUnstage={() => void props.unstageGitItem()} onDiscard={props.requestGitRevert}
+          onPull={() => void props.pullGitChanges()} onPush={() => void props.pushGitChanges()} onHistory={() => void props.showGitHistory()} onBranches={() => void props.showGitBranches()} onBack={props.git.goBack} />
       </Show>
     </box>
     <box style={{ height: 1, paddingX: 1, flexDirection: "column", backgroundColor: "#17202a" }}>

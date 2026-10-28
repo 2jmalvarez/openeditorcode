@@ -48,9 +48,9 @@ test("highlights how to open and move between side panels on the welcome screen"
     await setup.renderOnce()
     const frame = setup.captureCharFrame()
     expect(frame).toContain("ABRIR Y MOVERSE ENTRE PANELES")
-    expect(frame).toContain("Ctrl+B")
+    expect(frame).toContain("F7")
     expect(frame).toContain("MOSTRAR / OCULTAR PANEL IZQUIERDO")
-    expect(frame).toContain("Ctrl+Alt+B")
+    expect(frame).toContain("F8")
     expect(frame).toContain("MOSTRAR / OCULTAR CAMBIOS")
     expect(frame).toContain("Ctrl+Shift+← / →")
     expect(frame).toContain("MOVERSE ENTRE PANELES")
@@ -66,7 +66,7 @@ test("shows only vertical OEC when the welcome area is narrower than the explore
     await setup.renderOnce()
     const frame = setup.captureCharFrame()
     expect(frame).not.toContain("ABRIR Y MOVERSE ENTRE PANELES")
-    expect(frame).not.toContain("Ctrl+B")
+    expect(frame).not.toContain("F7")
     expect(frame).toMatch(/│\s+O\s*$/m)
     expect(frame).toMatch(/│\s+E\s*$/m)
     expect(frame).toMatch(/│\s+C\s*$/m)
@@ -82,10 +82,73 @@ test("shows both side panels initially when the terminal is wide enough", async 
     const frame = setup.captureCharFrame()
     expect(frame).toContain("Explorador")
     expect(frame).toContain("Mensaje de commit...")
-    expect(frame).toContain("F6 pull | F7 push")
+    expect(frame).toContain("[↓ Pull F6]")
+    expect(frame).toContain("[↑ Push ⇧F6]")
   } finally {
     setup.renderer.destroy()
   }
+})
+
+test("F7/F8 toggle panels from Files, editor and Git without invoking push or history", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 160, height: 30 })
+  try {
+    await waitForText(setup, "hello.txt")
+    await waitForText(setup, "Mensaje de commit...")
+    setup.mockInput.pressKey(KeyCodes.F7)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("Explorador [Masivos]")
+    expect(setup.captureCharFrame()).toContain("Mensaje de commit...")
+    setup.mockInput.pressKey(KeyCodes.F7)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("Explorador [Masivos]")
+    setup.mockInput.pressKey(KeyCodes.F8)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("Mensaje de commit...")
+    setup.mockInput.pressKey(KeyCodes.F8)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("Mensaje de commit...")
+    setup.mockInput.pressTab(); setup.mockInput.pressTab() // Git focused
+    setup.mockInput.pressKey(KeyCodes.F7)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("Explorador [Masivos]")
+    expect(setup.captureCharFrame()).toContain("Mensaje de commit...")
+    setup.mockInput.pressKey(KeyCodes.F8)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain("Mensaje de commit...")
+    expect(setup.captureCharFrame()).not.toContain("Historial:")
+    setup.mockInput.pressKey(KeyCodes.F8) // editor focused after hiding Git
+    setup.mockInput.pressKey(KeyCodes.F7)
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("Explorador [Masivos]")
+    expect(setup.captureCharFrame()).toContain("Mensaje de commit...")
+  } finally { setup.renderer.destroy() }
+})
+
+test("middle-click on a dirty document tab still prompts and cancellation preserves contents", async () => {
+  const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
+  try {
+    await waitForText(setup, "hello.txt")
+    setup.mockInput.pressEnter()
+    await waitForText(setup, "contenido de prueba")
+    await setup.mockInput.typeText("unsaved")
+    await setup.renderOnce()
+    const editor = setup.renderer.root.findDescendantById("oec-source-editor") as TextareaRenderable
+    const contents = editor.plainText
+    const tab = setup.renderer.root.findDescendantById("document-tab:0")!
+    await setup.mockMouse.click(tab.screenX + 3, tab.screenY, 1)
+    await waitForText(setup, "Hay cambios sin guardar")
+    setup.mockInput.pressKey(KeyCodes.ESCAPE)
+    await setup.renderOnce()
+    expect(editor.plainText).toBe(contents)
+    expect(setup.renderer.root.findDescendantById("document-tab:0")).toBeDefined()
+    expect(await readFile(join(root, "hello.txt"), "utf8")).toBe("contenido de prueba")
+    await setup.mockMouse.click(tab.screenX, tab.screenY, 1)
+    await waitForText(setup, "Hay cambios sin guardar")
+    setup.mockInput.pressEnter() // Default: discard
+    await waitForText(setup, "Archivo cerrado")
+    expect(setup.renderer.root.findDescendantById("document-tab:0")).toBeUndefined()
+    expect(await readFile(join(root, "hello.txt"), "utf8")).toBe("contenido de prueba")
+  } finally { setup.renderer.destroy() }
 })
 
 test("renders aligned diff rows with removal and addition markers", async () => {
@@ -181,7 +244,8 @@ test("shows English throughout the welcome screen, Git fallback, settings, and p
   try {
     await waitForText(setup, "This folder is not a Git repository.")
     let frame = setup.captureCharFrame()
-    expect(frame).toContain("F8: history | F9: branches")
+    expect(frame).toContain("[History ⇧F9]")
+    expect(frame).toContain("[Branches F9]")
     expect(frame).toContain("OPEN AND MOVE BETWEEN PANELS")
     expect(frame).not.toContain("Esta carpeta")
     setup.mockInput.pressKey("p", { ctrl: true })
@@ -209,7 +273,8 @@ test("retranslates the mounted Git pane when the language changes", async () => 
     configureLanguage("en")
     await waitForText(setup, "This folder is not a Git repository.")
     const frame = setup.captureCharFrame()
-    expect(frame).toContain("F8: history | F9: branches")
+    expect(frame).toContain("[History ⇧F9]")
+    expect(frame).toContain("[Branches F9]")
     expect(frame).not.toContain("SOLO LECTURA")
   } finally { setup.renderer.destroy(); configureLanguage("es") }
 })
@@ -436,7 +501,7 @@ test("shows changed file totals, numbering, and line statistics", async () => {
 
   const setup = await testRender(() => <App root={root} />, { width: 120, height: 30 })
   try {
-    setup.mockInput.pressKey("b", { ctrl: true, meta: true })
+    setup.mockInput.pressKey(KeyCodes.F8)
     let frame = ""
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await Bun.sleep(50)
@@ -454,7 +519,68 @@ test("shows changed file totals, numbering, and line statistics", async () => {
   }
 })
 
-test("navigates Git with F8/F9 and opens the project file with F4 without closing its diff", async () => {
+test("Git footer stages, unstages and commits by mouse, and Shift+F9 opens history", async () => {
+  await git("init", "--quiet")
+  await git("config", "user.name", "OEC Tests")
+  await git("config", "user.email", "oec@example.test")
+  await git("add", ".")
+  await git("commit", "--quiet", "-m", "initial")
+  await git("branch", "-M", "main")
+  await writeFile(join(root, "hello.txt"), "changed from footer\n")
+  const setup = await testRender(() => <App root={root} />, { width: 160, height: 30 })
+  async function click(id: string) {
+    await setup.renderOnce()
+    const control = setup.renderer.root.findDescendantById(id)!
+    await setup.mockMouse.click(control.screenX + 1, control.screenY)
+  }
+  try {
+    await waitForText(setup, "CAMBIOS 1")
+    await click("git-stage")
+    await waitForText(setup, "Cambios preparados")
+    await click("git-unstage")
+    await waitForText(setup, "Cambios retirados")
+    // The selected area now has working changes again.
+    await click("git-stage")
+    await waitForText(setup, "Cambios preparados")
+    await click("git-commit-message")
+    await setup.mockInput.typeText("footer-commit")
+    await click("git-commit")
+    await waitForText(setup, "Commit creado")
+    setup.mockInput.pressKey(KeyCodes.F9, { shift: true })
+    await waitForText(setup, "footer-commit")
+    expect(setup.captureCharFrame()).toContain("Historial: main")
+    expect(setup.captureCharFrame()).not.toContain("Mensaje de commit...")
+  } finally { setup.renderer.destroy() }
+})
+
+test("Shift+F6 pushes to a local remote without replacing F7/F8 panel shortcuts", async () => {
+  const remote = await mkdtemp(join(tmpdir(), "oec-push-remote-"))
+  await git("init", "--quiet")
+  await git("config", "user.name", "OEC Tests")
+  await git("config", "user.email", "oec@example.test")
+  await git("add", ".")
+  await git("commit", "--quiet", "-m", "initial")
+  await git("branch", "-M", "main")
+  const init = Bun.spawn(["git", "init", "--bare", "--quiet", remote], { stdout: "ignore", stderr: "pipe" })
+  expect(await init.exited).toBe(0)
+  await git("remote", "add", "origin", remote)
+  await git("push", "--quiet", "-u", "origin", "main")
+  await git("commit", "--quiet", "--allow-empty", "-m", "push-shortcut")
+  const setup = await testRender(() => <App root={root} />, { width: 160, height: 30 })
+  try {
+    await waitForText(setup, "↑1")
+    const input = setup.renderer.root.findDescendantById("git-commit-message")!
+    await setup.mockMouse.click(input.screenX + 1, input.screenY)
+    setup.mockInput.pressKey(KeyCodes.F6, { shift: true })
+    await waitForText(setup, "Cambios enviados al remoto.")
+    const log = Bun.spawn(["git", "--git-dir", remote, "log", "main", "-1", "--format=%s"], { stdout: "pipe", stderr: "pipe" })
+    expect((await new Response(log.stdout).text()).trim()).toBe("push-shortcut")
+    expect(await log.exited).toBe(0)
+    expect(setup.captureCharFrame()).toContain("Mensaje de commit...")
+  } finally { setup.renderer.destroy(); await rm(remote, { recursive: true, force: true }) }
+})
+
+test("navigates Git with palette history/F9 and opens the project file with F4 without closing its diff", async () => {
   await git("init", "--quiet")
   await git("config", "user.name", "OEC Tests")
   await git("config", "user.email", "oec@example.test")
@@ -478,10 +604,17 @@ test("navigates Git with F8/F9 and opens the project file with F4 without closin
     setup.mockInput.pressKey(KeyCodes.F8)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).not.toContain("Historial:")
+    expect(setup.captureCharFrame()).not.toContain("Mensaje de commit...")
+    setup.mockInput.pressKey(KeyCodes.F8)
+    await setup.renderOnce()
     // Cycle explorer -> editor -> Git without relying on native modifier detection.
     setup.mockInput.pressTab()
     setup.mockInput.pressTab()
-    setup.mockInput.pressKey(KeyCodes.F8)
+    setup.mockInput.pressKey("p", { ctrl: true })
+    await setup.renderOnce()
+    setup.mockInput.typeText("Git: ver historial de commits")
+    await setup.renderOnce()
+    setup.mockInput.pressEnter()
     await waitFrame((frame) => frame.includes("history-entry"))
     expect(setup.captureCharFrame()).toContain("Historial: main")
     expect(setup.captureCharFrame()).not.toContain("Mensaje de commit...")
@@ -522,7 +655,7 @@ test("wraps long branch names in the changes panel", async () => {
 
   const setup = await testRender(() => <App root={root} />, { width: 100, height: 30 })
   try {
-    setup.mockInput.pressKey("b", { ctrl: true, meta: true })
+    setup.mockInput.pressKey(KeyCodes.F8)
     let frame = ""
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await Bun.sleep(50)

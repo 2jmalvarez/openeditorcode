@@ -18,7 +18,6 @@ export function visibleLineLabels(sources: number[], wraps: number[], scrollY: n
 
 export function useEditorMetrics(props: Props) {
   const [lineLabels, setLineLabels] = createSignal("1")
-  const [scrollbar, setScrollbar] = createSignal("")
   let highlightTimer: ReturnType<typeof setTimeout> | undefined
   let lineLabelTimer: ReturnType<typeof setTimeout> | undefined
   let generation = 0
@@ -45,13 +44,6 @@ export function useEditorMetrics(props: Props) {
     lastScrollY = editor.scrollY
     lastWidth = editor.width
     lastHeight = editor.height
-    const totalRows = Math.max(visibleRows, sources.length)
-    const maxScroll = totalRows - visibleRows
-    const thumbRows = Math.max(1, Math.ceil((visibleRows / totalRows) * visibleRows))
-    const maxThumbStart = visibleRows - thumbRows
-    const thumbStart = maxScroll === 0 ? 0 : Math.round((editor.scrollY / maxScroll) * maxThumbStart)
-    const nextScrollbar = Array.from({ length: visibleRows }, (_, index) => index >= thumbStart && index < thumbStart + thumbRows ? "█" : "│").join("\n")
-    setScrollbar((current) => current === nextScrollbar ? current : nextScrollbar)
   }
 
   function schedule() {
@@ -76,7 +68,6 @@ export function useEditorMetrics(props: Props) {
     if (highlightTimer) clearTimeout(highlightTimer)
     if (lineLabelTimer) clearTimeout(lineLabelTimer)
     setLineLabels("1")
-    setScrollbar("")
     lastScrollY = -1
     lastWidth = -1
     lastHeight = -1
@@ -88,5 +79,5 @@ export function useEditorMetrics(props: Props) {
   }
 
   onCleanup(reset)
-  return { lineLabels, scrollbar, refresh, schedule, scheduleHighlight, reset, syncScroll }
+  return { lineLabels, refresh, schedule, scheduleHighlight, reset, syncScroll }
 }

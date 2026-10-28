@@ -208,8 +208,10 @@ export default { id: "oec.sidebar-smoke", setup(context) {
         await until(() => !text(find("oec-changes-pane")).includes("hello.ts"), "Left did not collapse Diff folder")
         key("right")
         await until(() => text(find("oec-changes-pane")).includes("hello.ts"), "Right did not expand Diff folder")
-        key("down")
-       key("return")
+         key("down") // repository branch
+         key("down") // nested folder
+         key("down") // changed file
+        key("return")
         await until(() => find("oec-diff-view") && context.ui.router.current().type === "plugin", "Editor Diff did not open a plugin tab")
         await until(() => text(find("oec-diff-view")).includes("const original = true") && text(find("oec-diff-view")).includes("const changed = true"), "Diff tab did not render both versions")
         context.keymap.dispatch("oec.diff.layout")
@@ -233,9 +235,12 @@ export default { id: "oec.sidebar-smoke", setup(context) {
         if (!find("oec-changes-pane")) throw new Error("F6 must preserve visible Diff when returning to conversation")
        await until(() => text(find("oec-changes-pane")).includes("hello.ts"), "Local Git did not populate")
       key("tab")
-       await until(() => find("oec-changes-pane")?.focused, "Tab did not focus changes")
-       key("down")
-      key("return")
+        await until(() => find("oec-changes-pane")?.focused, "Tab did not focus changes")
+        key("home")
+        key("down") // repository branch
+        key("down") // nested folder
+        key("down") // changed file
+       key("return")
        await until(() => find("oec-diff-view") && context.ui.router.current().type === "plugin", "Sidebar Enter did not open diff tab")
        key("f4")
        await until(() => find("oec-editor-buffer"), "F4 did not restore current file")

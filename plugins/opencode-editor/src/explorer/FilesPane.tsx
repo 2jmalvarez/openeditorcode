@@ -7,9 +7,11 @@ import { ScrollingName } from "../../../../src/explorer/ScrollingName"
 import { OEC_GROUP } from "../integration/reference"
 import { useTreeViewport } from "./useTreeViewport"
 import { paletteCommands } from "../integration/palette"
+import { usePointer } from "../../../../src/ui/usePointer"
 
 export function FilesPane(props: { controller: EditorController; focused: () => boolean; onFocus: () => void; onBlur?: () => void; onSearch?: () => void; onNext?: () => void; onExit?: () => void; sessionID?: string; width?: number; height?: number; keyboardMode?: string }) {
   const { controller } = props
+  const pointer = usePointer(() => !controller.modal)
   const treeRevision = useRevision(controller.tree)
   const searchRevision = useRevision(controller.fileSearch)
   const controllerRevision = useRevision(controller)
@@ -79,7 +81,7 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
       <box height={range().top} flexShrink={0} />
       <For each={rows()}>{(item, index) => {
         const logicalIndex = () => range().start + index()
-        return <box id={`oec-tree-${logicalIndex()}`} height={1} flexShrink={0} paddingLeft={item.depth + 1} flexDirection="row" overflow="hidden"
+        return <box id={`oec-tree-${logicalIndex()}`} {...pointer} height={1} flexShrink={0} paddingLeft={item.depth + 1} flexDirection="row" overflow="hidden"
           backgroundColor={logicalIndex() === tree().selected ? controller.context.theme.background.raised.base : undefined}
           onMouseDown={(event) => { event.stopPropagation(); void controller.run(() => activate(logicalIndex())) }}>
           <text flexShrink={0} fg={controller.context.theme.text.muted}>{item.directory ? item.expanded ? "▾ " : "▸ " : "  "}</text>

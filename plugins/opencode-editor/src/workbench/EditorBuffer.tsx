@@ -3,6 +3,7 @@ import { defaultTextareaKeyBindings, type TextareaRenderable } from "@opentui/co
 import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { createSyntaxTheme } from "../../../../src/editor/syntax"
 import { useEditorMetrics } from "../../../../src/editor/useEditorMetrics"
+import { EditorScrollFrame } from "../../../../src/editor/EditorScrollFrame"
 import { factoryConfig } from "../../../../src/config/defaults"
 import type { EditorController } from "../integration/controller"
 import type { Document } from "../documents/workspace"
@@ -102,12 +103,13 @@ export function EditorBuffer(props: { controller: EditorController; document: Do
     theme.style.destroy()
   })
   return <box flexGrow={1} minHeight={0} minWidth={0} flexDirection="row" onMouseDown={props.onFocus}>
+    <EditorScrollFrame editor={renderable} gutter={6} foreground={controller.context.theme.text.muted} background={controller.context.theme.background.base}>
     <box width={6} paddingRight={1} flexShrink={0}><text fg={controller.context.theme.text.muted}>{metrics.lineLabels()}</text></box>
     <textarea id="oec-editor-buffer" ref={setRenderable} initialValue={document.content} focused={props.focused()} wrapMode={controller.wrapMode} syntaxStyle={theme.style}
       keyBindings={[...defaultTextareaKeyBindings, { name: "z", ctrl: true, action: "undo" }, { name: "z", ctrl: true, shift: true, action: "redo" }]}
       flexGrow={1} minWidth={0} textColor={controller.context.theme.text.base} backgroundColor={controller.context.theme.background.base}
       onContentChange={() => { if (!replacing) { const editor = renderable(); if (editor) controller.workspace.edit(document.path, editor.plainText); metrics.schedule() } }}
       onCursorChange={() => { if (!replacing) rememberPosition() }} />
-    <text width={1} fg={controller.context.theme.text.muted}>{metrics.scrollbar()}</text>
+    </EditorScrollFrame>
   </box>
 }

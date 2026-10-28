@@ -6,9 +6,9 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for **0.2.41**, published and verified on npm for Windows and Linux ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.41)).
+Documentation for **0.2.42** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.42)). Publication checks Windows and Linux before advertising the npm update.
 
-New in **0.2.41**: permanent hierarchical Explorer filtering with `Ctrl+F` to toggle name/path and content; static SVG preview with `F4` XML editing; improved Markdown presentation; safer preview saves and concurrent document operations. Independently published plugin **0.3.4** adds SVG, content filtering, expanded/compact panels, Git colors and contextual `Ctrl+P` actions.
+New in **0.2.42**: draggable vertical/horizontal editor scrollbars, `Shift+wheel` horizontal scrolling, middle-click tab closing, `F7`/`F8` panel toggles, Git action buttons and pointer feedback on clickable controls. Independently released plugin **0.3.5** shares the editor improvements and groups local changes by repository and branch, including nested repositories.
 
 Updates are offered only when the public npm metadata and downloads for both the launcher and your platform are available. Incomplete releases leave the current installation untouched. Publication verifies both platform packages before publishing the launcher.
 
@@ -30,7 +30,7 @@ The Spanish reference manual is available in [docs/manual.md](docs/manual.md); t
 
 ## Main view
 
-When launched with no open documents, OEC shows the Explorer and, with at least 144 columns available, the Changes pane as well. `Ctrl+B` and `Ctrl+Alt+B` show or hide each side pane, while `Ctrl+Shift+Left/Right` moves focus between panes. The remaining shortcuts are organized by capability below. If the center area becomes narrower than the Explorer, the help text is hidden and only vertical `OEC` is shown.
+When launched with no open documents, OEC shows the Explorer and, with at least 144 columns available, the Changes pane as well. `F7` and `F8` show or hide each side pane, matching the plugin, while `Ctrl+Shift+Left/Right` moves focus between panes. Middle-click anywhere on a document tab to close it; unsaved changes still require confirmation. The remaining shortcuts are organized by capability below. If the center area becomes narrower than the Explorer, the help text is hidden and only vertical `OEC` is shown.
 
 ![OpenEditorCode main screen](docs/images/welcome-screen.png)
 
@@ -186,7 +186,7 @@ Without an argument, OEC opens the current directory. After a Windows build, the
 
 ## Basic use
 
-1. Press `Ctrl+B` to show or hide the Explorer.
+1. Press `F7` to show or hide the Explorer.
 2. Use arrow keys to move the selection.
 3. Press `Enter` to expand a folder or open a file.
 4. Use `Tab` to switch between Explorer, Editor, and Changes.
@@ -204,7 +204,9 @@ When an operation fails, OEC keeps the operation, time, and technical details in
 
 Press `Ctrl+P` to open the command palette, then type to filter commands, use arrows to select one, and press `Enter` to run it. It provides access to common actions, including opening global or project settings, the built-in manual, the session error log, project line counting, and refreshing Git remote references. When available, it also offers the npm-based OEC update.
 
-Additional Git commands are **Git: view commit history** (`F8`), **Git: view all branches** (`F9`), and, while a diff is active, **Open project file** (`F4`). Outside diffs, the `F4` command retains its Markdown preview/editing action.
+Additional Git commands in `Ctrl+P` are **Git: view commit history**, **Git: push changes**, **Git: view all branches** (`F9`), and, while a diff is active, **Open project file** (`F4`). Outside diffs, the `F4` command retains its Markdown preview/editing action.
+
+The Changes footer provides buttons for stage, unstage, discard with confirmation, pull, push, history, and branches. **Commit** sits to the right of the message and requires a message and staged changes. With Git focused: `F6` pulls, `Shift+F6` pushes, `F9` lists branches, and `Shift+F9` opens history; `F7`/`F8` still toggle panels. Clickable OEC and plugin controls show a hand pointer when the terminal supports OSC 22.
 
 ## Shortcuts
 
@@ -213,12 +215,12 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 | `Ctrl+P` | Command palette, shortcuts, and configuration |
 | `Ctrl+Shift+Left` | Move focus to the left pane |
 | `Ctrl+Shift+Right` | Move focus to the right pane |
-| `Ctrl+B` | Show or hide the Explorer |
-| `Ctrl+Alt+B` | Show or hide Git Changes |
+| `F7` | Show or hide the Explorer |
+| `F8` | Show or hide Git Changes |
 | `Ctrl+Shift+Enter` | Collapse all folders in the active pane |
 | `F5` | Refresh the active pane; in Git, fetch, reread local status, and refresh the historical view when applicable |
 | `F10` | Open the project folder in a new system file manager window |
-| `F8` | With Git focused, open the current branch's complete paginated history in the right pane |
+| `Ctrl+P` → Git: view commit history | Open the current branch's complete paginated history in the right pane |
 | `F9` | With Git focused, list known local and remote branches in the right pane |
 | `F12` | Open the session error log |
 | `Delete` | Delete the selected file or folder |
@@ -256,14 +258,14 @@ Additional Git commands are **Git: view commit history** (`F8`), **Git: view all
 
 ## Git Changes
 
-- Git is optional. `Ctrl+Alt+B` shows the **CHANGES** pane when the project is a Git repository. Staged files are separated into **STAGED** and the rest into **CHANGES**; use arrows to select entries and `Enter` to expand or collapse folders and open diffs.
+- Git is optional. `F8` shows the **CHANGES** pane when the project is a Git repository. Staged files are separated into **STAGED** and the rest into **CHANGES**; use arrows to select entries and `Enter` to expand or collapse folders and open diffs.
 - The header shows the branch and remote status: `up to date`, `↑N` pending push, or `↓N` pending pull. Each change is numbered and shows green added and red removed lines. A file can appear once in each group; binaries or unavailable statistics show `?`.
 - In the local Changes view, `+` stages a file or all contents of a folder. `-` unstages files in **STAGED** or discards **CHANGES** after confirmation.
-- In the local Changes view, move down from the last change to write the commit message; `Enter` creates the commit. `F6` pulls and `F7` pushes. Git mutations (stage, unstage, discard, commit, pull, and push) are blocked while browsing history or branches.
+- In the local Changes view, move down from the last change to write the commit message; `Enter` creates the commit. `F6` pulls; **Git: push changes** in `Ctrl+P` pushes. Git mutations (stage, unstage, discard, commit, pull, and push) are blocked while browsing history or branches.
 - With Git focused, `F5` runs `git fetch` and rereads local changes and statistics even when fetch fails. It also refreshes the history or branch list when applicable, rather than replacing it with local changes. Set `git.fetchOnRefresh` to `false` to skip fetch while retaining local reads.
 - OEC displays the remote status available locally. The palette includes **Refresh Git remote references** to run `git fetch --quiet` manually.
 - Untracked directories expand into individual files. Opening an entry creates a read-only `Delta` tab for its staged or unstaged diff, so both can coexist for one path. Close a diff tab with `Ctrl+W`. Diffs align changed lines, highlight changed fragments, synchronize scrolling, and show overview markers. `layout.diffOrientation` accepts `auto`, `horizontal`, or `vertical`; in `auto`, `layout.diffStackBelow` selects the terminal width at which the two versions stack vertically.
-- With Git focused, `F8` opens the current branch's complete history in the right pane. Commits load in pages as you navigate, with no total limit. `F9` lists known local and remote branches; remote branches are locally known references, not a live server listing.
+- **Git: view commit history** in `Ctrl+P` opens the current branch's complete history in the right pane. Commits load in pages as you navigate, with no total limit. With Git focused, `F9` lists known local and remote branches; remote branches are locally known references, not a live server listing.
 - In commit history, `H` shows or hides abbreviated commit IDs and `D` shows or hides commit dates, leaving more room for commit subjects.
 - In the right pane, `Enter` on a branch opens its commits without checkout, on a commit opens its changed files, and on a file opens a read-only historical diff in a tab while keeping the right pane open.
 - With Git focused, `Esc` returns from commit files to history, then to branches if history was opened from that list, then to local changes. Already open diff tabs remain open throughout navigation.

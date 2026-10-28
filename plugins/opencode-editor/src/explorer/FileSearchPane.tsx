@@ -5,9 +5,11 @@ import { resolve } from "node:path"
 import type { EditorController } from "../integration/controller"
 import { useRevision } from "../workbench/reactive"
 import { paletteCommands } from "../integration/palette"
+import { usePointer } from "../../../../src/ui/usePointer"
 
 export function FileSearchPane(props: { controller: EditorController; sessionID?: string; keyboardMode?: string; onFocus: () => void; focusTree: () => void; releaseFocus: () => void }) {
   const { controller } = props
+  const pointer = usePointer(() => !controller.modal)
   const search = controller.fileSearch
   const revision = useRevision(search)
   const controllerRevision = useRevision(controller)
@@ -54,7 +56,7 @@ export function FileSearchPane(props: { controller: EditorController; sessionID?
       onMouseDown={(event) => { event.stopPropagation(); props.onFocus(); input?.focus() }}
       on:focused={() => { props.onFocus(); setFocused(true) }} on:blurred={() => setFocused(false)}
       onInput={(value) => void search.search(value)} onSubmit={() => { if (!controller.modal) void open() }} />
-    <text id="oec-search-mode" width={11} flexShrink={0} wrapMode="none" fg={controller.context.theme.text.muted}
+    <text id="oec-search-mode" {...pointer} width={11} flexShrink={0} wrapMode="none" fg={controller.context.theme.text.muted}
       onMouseDown={(event) => { event.stopPropagation(); if (!controller.modal) void controller.run(() => search.toggleTarget()) }}>{state().target === "content" ? " Name ^F" : state().mode === "fuzzy" ? " Fuzzy ^F" : " Literal ^F"}</text>
     </box>
     <Show when={state().query.trim()}>

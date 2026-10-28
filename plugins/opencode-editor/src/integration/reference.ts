@@ -13,6 +13,7 @@ F4: diff → current editable file; Markdown / SVG preview ↔ edit
 F2 in Files: rename selected file/folder
 Ctrl+E in name search: fuzzy/literal; Ctrl+F in search: name/path ↔ content
 Ctrl+S: save · Ctrl+W: close · Shift+Tab: next document
+Middle-click anywhere on a tab: close (confirm unsaved changes)
 Tab: focus Files/Diff/editor · / in Files: focus search
 Ctrl+F: find in editable file · Ctrl+L: line wrap
 Ctrl+A: select all · Ctrl+C/V: clipboard

@@ -1,6 +1,6 @@
 {
   "name": "@2jmalvarez/opencode-editor",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "type": "module",
   "description": "Local OEC editor and project explorer for the OpenCode 2 terminal.",
   "license": "MIT",

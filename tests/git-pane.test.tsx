@@ -1,15 +1,82 @@
 /** @jsxImportSource @opentui/solid */
-import { afterEach, beforeEach, expect, test } from "bun:test"
+import { afterEach, beforeEach, expect, spyOn, test } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
 import { GitPane } from "../src/git/GitPane"
 import type { GitTreeItem } from "../src/git/tree"
 import type { GitMode } from "../src/git/useGit"
+import type { GitFile } from "../src/git/status"
 import { configureLanguage, language, t } from "../src/localization"
+
+const actions = {
+  busy: () => false, selectedFiles: () => [], onFocusMessage: () => {},
+  onCommit: () => {}, onStage: () => {}, onUnstage: () => {}, onDiscard: () => {},
+  onPull: () => {}, onPush: () => {}, onHistory: () => {}, onBranches: () => {}, onBack: () => {},
+}
 
 let previousLanguage = language()
 beforeEach(() => { previousLanguage = language(); configureLanguage("es") })
 afterEach(() => configureLanguage(previousLanguage))
+
+test("Git buttons adapt to selection, busy/read-only state and keep Commit beside its message", async () => {
+  const working: GitFile = { path: "file.txt", area: "changes", status: "modified", additions: 1, deletions: 0 }
+  const staged: GitFile = { ...working, area: "staged" }
+  const [selection, setSelection] = createSignal<GitFile[]>([working])
+  const [files, setFiles] = createSignal<GitFile[]>([working])
+  const [message, setMessage] = createSignal("")
+  const [busy, setBusy] = createSignal(false)
+  const [mode, setMode] = createSignal<GitMode>("local")
+  const calls: string[] = []
+  const setup = await testRender(() => <box height={24} width={36} flexDirection="row"><GitPane {...actions} active={() => true}
+    state={() => ({ available: true, branch: "main", remoteStatus: "", files: files(), message: "" })}
+    tree={() => []} selected={() => 0} width={() => 36} mode={mode}
+    commitMessage={message} setCommitMessage={setMessage} commitFocused={() => false} setScroll={() => {}} onActivate={() => {}}
+    busy={busy} selectedFiles={selection} onFocusMessage={() => calls.push("message")}
+    onCommit={() => calls.push("commit")} onStage={() => calls.push("stage")} onUnstage={() => calls.push("unstage")}
+    onDiscard={() => calls.push("discard")} onPull={() => calls.push("pull")} onPush={() => calls.push("push")}
+    onHistory={() => { calls.push("history"); setMode("history") }} onBranches={() => calls.push("branches")}
+    onBack={() => { calls.push("back"); setMode("local") }}
+  /></box>, { width: 36, height: 24 })
+  const button = (id: string) => setup.renderer.root.findDescendantById(`git-${id}`)!
+  const click = async (id: string) => {
+    await setup.renderOnce()
+    const control = button(id)
+    await setup.mockMouse.click(control.screenX + 1, control.screenY)
+  }
+  const pointer = spyOn(setup.renderer, "setMousePointer")
+  try {
+    await setup.renderOnce()
+    expect(button("commit").screenY).toBe(button("commit-message").screenY)
+    expect(button("commit").screenX).toBeGreaterThan(button("commit-message").screenX)
+    for (const id of ["stage", "unstage", "discard", "pull", "push", "history", "branches"]) {
+      const control = button(id)
+      expect(control.screenX + control.width).toBeLessThanOrEqual(36)
+    }
+    await click("commit"); await click("unstage")
+    expect(calls).toEqual([])
+    await click("stage"); await click("discard")
+    expect(calls, setup.captureCharFrame()).toEqual(["stage", "discard"])
+    setSelection([staged]); setFiles([staged]); setMessage("My commit")
+    await click("stage"); await click("discard"); await click("unstage"); await click("commit")
+    expect(calls).toEqual(["stage", "discard", "unstage", "commit"])
+    await setup.mockMouse.moveTo(0, 0)
+    await setup.mockMouse.moveTo(button("push").screenX + 1, button("push").screenY)
+    expect(pointer).toHaveBeenLastCalledWith("pointer")
+    setBusy(true); await setup.renderOnce()
+    expect(pointer).toHaveBeenLastCalledWith("default")
+    for (const id of ["commit", "unstage", "pull", "push", "history", "branches"]) await click(id)
+    expect(calls).toHaveLength(4)
+    setBusy(false)
+    await click("pull"); await click("push"); await click("branches"); await click("history")
+    await setup.renderOnce()
+    expect(button("commit")).toBeUndefined()
+    expect(calls.slice(-4)).toEqual(["pull", "push", "branches", "history"])
+    await click("back")
+    expect(calls.at(-1)).toBe("back")
+    await setup.renderOnce()
+    expect(button("commit")).toBeDefined()
+  } finally { pointer.mockRestore(); setup.renderer.destroy() }
+})
 
 test("GitPane renders history rows without file metadata and hides the commit input outside local mode", async () => {
   const [mode, setMode] = createSignal<GitMode>("local")
@@ -20,7 +87,7 @@ test("GitPane renders history rows without file metadata and hides the commit in
     { path: "more", name: "Cargar mas commits...", depth: 0, directory: false, expanded: false, loadMore: true },
   ]
   const setup = await testRender(() => <box style={{ height: 20, width: 60, flexDirection: "row" }}><GitPane
-    active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
+    {...actions} active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
     tree={() => mode() === "local" ? [] : rows} selected={() => 0}
     commitMessage={() => "COMMIT_INPUT_VISIBLE"} setCommitMessage={() => {}} commitFocused={() => false}
     setScroll={() => {}} onActivate={() => {}} width={() => 60}
@@ -52,7 +119,7 @@ test("GitPane toggles localized commit IDs and dates independently in history", 
   const [hashes, setHashes] = createSignal(true)
   const [dates, setDates] = createSignal(true)
   const row: GitTreeItem = { path: "abcdef123456", name: "A localized commit (Test)", depth: 0, directory: false, expanded: false, commit: { revision: "abcdef123456", author: "Test", date: "2026-09-27", subject: "A localized commit" } }
-  const setup = await testRender(() => <GitPane active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
+  const setup = await testRender(() => <GitPane {...actions} active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
     tree={() => [row]} selected={() => 0} commitMessage={() => ""} setCommitMessage={() => {}} commitFocused={() => false}
     setScroll={() => {}} onActivate={() => {}} width={() => 60} mode={() => "history"} historyTitle={() => "Historial: main"} loading={() => false}
     showCommitHashes={hashes} showCommitDates={dates}
@@ -80,7 +147,7 @@ test("GitPane preserves file number and changed lines beside a scrolling histori
     { path: "first", name: "long-historical-filename-with-ending.ts", depth: 0, directory: false, expanded: false, fileNumber: 12, file: { path: "first", status: "modified", area: "changes", additions: 123, deletions: 45 } },
     { path: "binary", name: "binary-file.bin", depth: 0, directory: false, expanded: false, fileNumber: 13, file: { path: "binary", status: "modified", area: "changes", additions: null, deletions: null } },
   ]
-  const setup = await testRender(() => <GitPane active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
+  const setup = await testRender(() => <GitPane {...actions} active={() => true} state={() => ({ available: true, branch: "main", remoteStatus: "", files: [], message: "" })}
     tree={() => rows} selected={selected} commitMessage={() => ""} setCommitMessage={() => {}} commitFocused={() => false}
     setScroll={() => {}} onActivate={() => {}} width={() => 32} mode={() => "files"} historyTitle={() => "Commit"} loading={() => false}
   />, { width: 32, height: 14 })

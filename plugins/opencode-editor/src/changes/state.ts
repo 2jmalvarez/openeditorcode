@@ -1,6 +1,6 @@
 import type { Context } from "@opencode/plugin/tui/context"
 import { resolve } from "node:path"
-import { readLocalChanges, type Change, type ChangesReader } from "./git"
+import { readLocalChanges, type Change, type ChangesReader, type LocalRepository } from "./git"
 
 export const CHANGES_POLL_MS = 3000
 export const CHANGES_DEBOUNCE_MS = 150
@@ -8,6 +8,7 @@ export const CHANGES_DEBOUNCE_MS = 150
 /** Local, read-only Git state scoped to the consented project directory. */
 export class ChangesState {
   files: Change[] = []
+  repositories: LocalRepository[] = []
   loading = false
   repository: boolean | undefined
   error = ""
@@ -47,9 +48,10 @@ export class ChangesState {
         if (!this.running || generation !== this.generation) return
         this.repository = result.repository
         this.files = result.files
+        this.repositories = result.repositories ?? []
         this.error = ""
       } catch (error) {
-        if (this.running && generation === this.generation) { this.files = []; this.error = error instanceof Error ? error.message : String(error) }
+        if (this.running && generation === this.generation) { this.files = []; this.repositories = []; this.error = error instanceof Error ? error.message : String(error) }
       } finally {
         if (generation === this.generation) {
           this.loading = false; this.pending = undefined; this.request = undefined; this.changed()

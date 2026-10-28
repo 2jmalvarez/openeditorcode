@@ -262,15 +262,17 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function stageGitItem() {
-    if (await git.stageSelected()) setStatus(t("status.staged"))
+    if (activity.busy()) return
+    if (await activity.run(t("git.buttonStage"), git.stageSelected)) setStatus(t("status.staged"))
   }
 
   async function unstageGitItem() {
-    if (await git.unstageSelected()) setStatus(t("status.unstaged"))
+    if (activity.busy()) return
+    if (await activity.run(t("git.buttonUnstage"), git.unstageSelected)) setStatus(t("status.unstaged"))
   }
 
   function requestGitRevert() {
-    if (git.mode() !== "local") return
+    if (git.mode() !== "local" || activity.busy()) return
     const files = git.selectedFiles()
     if (!files.length) return
     if (files[0].area === "staged") return void unstageGitItem()
@@ -309,19 +311,19 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function commitGitChanges() {
-    if (git.mode() !== "local") return
+    if (git.mode() !== "local" || activity.busy()) return
     if (!git.commitMessage().trim()) return setStatus(t("status.commitMessage"))
     if (!git.state().files.some((file) => file.area === "staged")) return setStatus(t("status.nothingStaged"))
     setStatus(t(await activity.run(t("activity.commit"), git.commit) ? "status.committed" : "status.commitFailed"))
   }
 
   async function pullGitChanges() {
-    if (git.mode() !== "local") return
+    if (git.mode() !== "local" || activity.busy()) return
     setStatus(t(await activity.run(t("activity.pull"), git.pull) ? "status.pulled" : "status.pullFailed"))
   }
 
   async function pushGitChanges() {
-    if (git.mode() !== "local") return
+    if (git.mode() !== "local" || activity.busy()) return
     setStatus(t(await activity.run(t("activity.push"), git.push) ? "status.pushed" : "status.pushFailed"))
   }
 
@@ -361,10 +363,10 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   const commands = (): Command[] => [
     { title: t("command.focusLeft"), shortcut: "Ctrl+Shift+←", run: focusLeft },
     { title: t("command.focusRight"), shortcut: "Ctrl+Shift+→", run: focusRight },
-    { title: t("command.toggleExplorer"), shortcut: "Ctrl+B", run: toggleExplorer },
-    { title: t("command.toggleGit"), shortcut: "Ctrl+Alt+B", run: toggleGit },
+    { title: t("command.toggleExplorer"), shortcut: bindingLabel(config().keyboard.bindings, "panel.toggleExplorer", "F7"), run: toggleExplorer },
+    { title: t("command.toggleGit"), shortcut: bindingLabel(config().keyboard.bindings, "panel.toggleGit", "F8"), run: toggleGit },
     { title: t("command.refreshGit"), shortcut: t("command.palette"), run: () => void git.fetch() },
-    { title: t("command.history"), shortcut: "F8", run: () => void showGitHistory() },
+    { title: t("command.history"), shortcut: "Shift+F9", run: () => void showGitHistory() },
     { title: t("command.branches"), shortcut: "F9", run: () => void showGitBranches() },
     { title: t("command.refresh"), shortcut: "F5", run: () => void refreshActivePanel() },
     { title: t("command.create"), shortcut: "Ctrl+N", run: () => openOverlay("new-file") },
@@ -379,6 +381,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     { title: t("command.logs"), shortcut: "F12", run: openLogs },
     { title: t(documents.activeDiff() ? "command.projectFile" : documents.activePreview() ? "command.editMarkdown" : "command.previewMarkdown"), shortcut: "F4", run: () => documents.activeDiff() ? void documents.openActiveDiffFile() : documents.togglePreview() },
     { title: t("command.save"), shortcut: bindingLabel(config().keyboard.bindings, "file.save", "Ctrl+S"), run: () => void saveDocument() },
+    { title: t("command.push"), shortcut: "Shift+F6", run: () => void pushGitChanges() },
     { title: t("command.close"), shortcut: bindingLabel(config().keyboard.bindings, "file.close", "Ctrl+W"), run: requestClose },
     { title: t("command.nextTab"), shortcut: "Shift+Tab", run: () => documents.changeTab(1) },
     { title: t("command.copy"), shortcut: "Ctrl+C", run: copy },
@@ -542,6 +545,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function showGitHistory() {
+    if (activity.busy()) return
     if (!canShowBothSidePanels(renderer.width, config().layout)) setExplorerVisible(false)
     setGitVisible(true)
     setActive("git")
@@ -549,6 +553,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
 
   async function showGitBranches() {
+    if (activity.busy()) return
     if (!canShowBothSidePanels(renderer.width, config().layout)) setExplorerVisible(false)
     setGitVisible(true)
     setActive("git")
@@ -593,7 +598,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     openFileSearch: openContextSearch, closeFileSearch: search.closeFileSearch,
     openSearchExclusions, closeSearchExclusions, exclusionSuggestionsLength: () => search.exclusionSuggestions().length, exclusionIndex: search.exclusionIndex, setExclusionIndex: search.setExclusionIndex, completeExclusion: search.completeExclusion, toggleExclusion: search.toggleExclusion, removeExclusion: search.removeExclusion, bindings: () => config().keyboard.bindings, formatDocument: formatActiveDocument, handleVimKey: editor.handleVimKey, settingsIndex: overlays.settingsIndex, setSettingsIndex: overlays.setSettingsIndex, settingsScope: overlays.settingsScope, setSettingsScope: overlays.setSettingsScope, toggleSetting, openSettingsJson: () => { const scope = overlays.settingsScope(); overlays.close(); if (scope === "global") void openOecConfig(); else void openProjectConfig() },
     activeDiff: () => Boolean(documents.activeDiff()), openDiffFile: documents.openActiveDiffFile,
-    gitHistoryActive: () => git.mode() !== "repositories", gitCommitHistoryActive: () => git.mode() === "history", toggleCommitHashes: git.toggleCommitHashes, toggleCommitDates: git.toggleCommitDates, showGitHistory, showGitBranches, goBackGit: git.goBack,
+    gitHistoryActive: () => git.mode() !== "local" && git.mode() !== "repositories", gitCommitHistoryActive: () => git.mode() === "history", toggleCommitHashes: git.toggleCommitHashes, toggleCommitDates: git.toggleCommitDates, showGitHistory, showGitBranches, goBackGit: git.goBack,
   })
 
   function revealSelected(scroll: ScrollBoxRenderable | undefined, total: number, selected: number, id: string) {
@@ -624,6 +629,8 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     root, recovery, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, config, syntaxTheme, activity, logs, explorer, git, documents, editor, overlays, search, updates, toggleMassiveFiles,
     title: () => documents.filePath() ? displayPath(root, documents.filePath()!) : documents.activeDiff()?.file.path ? t("app.diffTitle", { path: documents.activeDiff()!.file.path }) : documents.activeLogs() ? t("app.logTitle") : t("app.noFile"), activateExplorerAt, activateGitAt, requestCloseTab,
     paletteResults: () => search.paletteResults(commands()), settingsValues,
+    commitGitChanges, stageGitItem, unstageGitItem, requestGitRevert, pullGitChanges, pushGitChanges, showGitHistory, showGitBranches,
+    focusGitMessage: () => { setActive("git"); git.setCommitFocused(true) },
     setExplorerScroll: (value: ScrollBoxRenderable) => {
       explorerScroll = value
       revealSelected(value, explorer.tree().length, explorer.selected(), `tree-${explorer.selected()}`)
