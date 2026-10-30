@@ -120,7 +120,7 @@ export function ChangesPane(props: { controller: EditorController; view?: DiffVi
     <Show when={changes().error}><text fg={controller.context.theme.text.muted}> {t(changes().error)} · {t("F5 to retry")}</text></Show>
     <Show when={changes().stale}><text fg={controller.context.theme.text.muted}> {t("Changes may be outdated")} · {t("F5 to retry")}</text></Show>
     <Show when={!changes().error && changes().repository === undefined}><text fg={controller.context.theme.text.muted}> {t("Loading changes…")}</text></Show>
-    <Show when={!changes().error && changes().repository === false}><text fg={controller.context.theme.text.muted}> {t("No repository")}</text></Show>
+    <Show when={!changes().error && changes().repository === false}><text fg={controller.context.theme.text.muted}> {t(changes().discoveryPending ? "Searching repositories…" : "No repository")}</text></Show>
     <Show when={!changes().error && !changes().stale && changes().repository && !changes().files.length && !changes().repositories.length}><text fg={controller.context.theme.text.muted}> {t("No changes")}</text></Show>
     </>}><text fg={controller.context.theme.text.muted}> {loadingFrames[loadingFrame()]} {t("Loading changes…")}</text></Show>
     </box></Show>

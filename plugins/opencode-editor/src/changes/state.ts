@@ -12,6 +12,7 @@ export class ChangesState {
   loading = false
   /** Background polling/events retain the current view; only explicit refreshes show progress. */
   loadingVisible = false
+  discoveryPending = false
   repository: boolean | undefined
   error = ""
   stale = false
@@ -55,6 +56,7 @@ export class ChangesState {
         const result = await this.read(this.root, signal, rediscover)
         if (!this.running || generation !== this.generation) return
         this.repository = result.repository
+        this.discoveryPending = result.discoveryPending ?? false
         const failed = new Set(result.repositories?.filter((repo) => repo.error).map((repo) => repo.root))
         this.files = [...result.files, ...this.files.filter((file) => file.repositoryRoot && failed.has(file.repositoryRoot))]
         this.repositories = (result.repositories ?? []).map((repo) => repo.error ? { ...repo, branch: repo.branch || this.repositories.find((previous) => previous.root === repo.root)?.branch || "" } : repo)

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { changePath, changesError, createChangesReader, discoverLocalRepositories, gitCommand, readLocalChanges, readLocalPatch } from "../src/changes/git"
+import { changePath, changesError, createChangesReader, createRepositoryDiscovery, discoverLocalRepositories, gitCommand, readLocalChanges, readLocalPatch } from "../src/changes/git"
 import { EditorController } from "../src/integration/controller"
 import { parseOptions } from "../src/integration/options"
 import { mockHost } from "./host"
@@ -296,6 +296,99 @@ test("workspace discovery respects child repository and nested directory gitigno
     await writeFile(join(nested, ".gitignore"), "generated/\n")
     expect(await discoverLocalRepositories(root, AbortSignal.timeout(10_000))).toEqual([repo, join(nested, "visible")])
   } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test("incremental discovery keeps its cursor and inherited ignores across arbitrarily small slices", async () => {
+  const { root, cleanup } = await fixture()
+  try {
+    await mkdir(join(root, "packages", "generated", "hidden"), { recursive: true })
+    await mkdir(join(root, "packages", "visible"), { recursive: true })
+    await writeFile(join(root, "packages", ".gitignore"), "generated/\n")
+    for (const path of [join(root, "packages", "generated", "hidden"), join(root, "packages", "visible")]) {
+      const child = Bun.spawn(["git", "-C", path, "init", "-q"], { stdout: "ignore", stderr: "pipe" })
+      expect(await child.exited).toBe(0)
+    }
+    const scan = createRepositoryDiscovery(root, 0)
+    const found: string[] = []
+    const step = () => scan.scan(AbortSignal.timeout(10_000), (path) => found.push(path))
+    expect(await step()).toEqual({ roots: [root], complete: false })
+    // Every slice has a fresh deadline; time passing between slices must not
+    // abort/reset a workspace-wide traversal or forget the scoped ignore rules.
+    await Bun.sleep(20)
+    let result = await step()
+    for (let i = 0; !result.complete && i < 20; i++) result = await step()
+    expect(result).toEqual({ roots: [root, join(root, "packages", "visible")], complete: true })
+    expect(found).toEqual(result.roots)
+  } finally { await cleanup() }
+})
+
+test("F5 resumes discovery and publishes healthy Git while embedded repositories are not discovered yet", async () => {
+  const { root, cleanup } = await fixture()
+  try {
+    const nested = join(root, "packages", "nested")
+    await mkdir(nested, { recursive: true })
+    const child = Bun.spawn(["git", "-C", nested, "init", "-q"], { stdout: "ignore", stderr: "pipe" })
+    expect(await child.exited).toBe(0)
+    await writeFile(join(root, "outer.txt"), "outer\n")
+    await writeFile(join(nested, "inner.txt"), "inner\n")
+    const reader = createChangesReader({ discoverySliceMs: 0 })
+    let result = await reader(root, AbortSignal.timeout(10_000), true)
+    expect(result.discoveryPending).toBe(true)
+    expect(result.discoveryError).toBeUndefined()
+    expect(result.repositories?.[0]?.error).toBeUndefined()
+    expect(result.files.map((file) => file.path)).toContain("outer.txt")
+    // Repeated manual retries must continue, not restart from the root.
+    for (let i = 0; result.discoveryPending && i < 20; i++) result = await reader(root, AbortSignal.timeout(10_000), true)
+    expect(result.discoveryPending).toBe(false)
+    expect(result.repositories?.map((repo) => repo.root)).toEqual([root, nested])
+    expect(result.repositories?.every((repo) => !repo.error)).toBe(true)
+    expect(result.files.map((file) => file.path).sort()).toEqual(["inner.txt", "outer.txt"])
+  } finally { await cleanup() }
+})
+
+test("incremental rescans retain known repositories until complete and never mix workspace cursors", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-discovery-cursor-"))
+  try {
+    const a = join(root, "a"), b = join(root, "b")
+    for (const directory of [a, b]) {
+      await mkdir(directory)
+      const child = Bun.spawn(["git", "-C", directory, "init", "-q"], { stdout: "ignore", stderr: "pipe" })
+      expect(await child.exited).toBe(0)
+    }
+    const reader = createChangesReader({ discoverySliceMs: 0,
+      readRepository: async (_root, directory) => ({ repository: true, repositories: [{ id: directory, root: directory, name: directory, branch: "main" }], files: [] }),
+    })
+    const read = (path = root, force = false) => reader(path, AbortSignal.timeout(10_000), force)
+    let result = await read()
+    expect(result.repository).toBe(false)
+    expect(result.discoveryPending).toBe(true)
+    for (let i = 0; result.discoveryPending && i < 20; i++) result = await read()
+    expect(result.repositories?.map((repo) => repo.root)).toEqual([a, b])
+    await rm(join(b, ".git"), { recursive: true, force: true })
+    result = await read(root, true)
+    expect(result.discoveryPending).toBe(true)
+    expect(result.repositories?.map((repo) => repo.root)).toEqual([a, b])
+    for (let i = 0; result.discoveryPending && i < 20; i++) result = await read()
+    expect(result.repositories?.map((repo) => repo.root)).toEqual([a])
+    result = await read(root, true)
+    expect(result.discoveryPending).toBe(true)
+    // Switch to a different authorized root mid-scan: no cached parent/siblings.
+    result = await read(a)
+    expect(result.repositories?.map((repo) => repo.root)).toEqual([a])
+    expect(result.discoveryPending).toBe(false)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test("aborting an incremental slice does not discard its queued directory", async () => {
+  const { root, cleanup } = await fixture()
+  try {
+    await mkdir(join(root, "child"))
+    const scan = createRepositoryDiscovery(root, 0)
+    expect((await scan.scan(AbortSignal.timeout(10_000))).complete).toBe(false)
+    const abort = new AbortController(); abort.abort()
+    await expect(scan.scan(abort.signal)).rejects.toThrow()
+    expect((await scan.scan(AbortSignal.timeout(10_000))).complete).toBe(true)
+  } finally { await cleanup() }
 })
 
 const distro = process.env.OEC_TEST_WSL_DISTRO

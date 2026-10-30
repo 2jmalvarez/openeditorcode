@@ -238,6 +238,37 @@ for (const fail of [false, true]) test(`background Diff refreshes preserve layou
   } finally { finish?.(); setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
+test("incomplete repository discovery is honest without warning or loading rows for known Git", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-diff-discovery-"))
+  const host = mockHost(root)
+  let known = false, pending = true
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root, language: "es" }), async () => ({
+    repository: known, files: [], discoveryPending: pending,
+    repositories: known ? [{ id: ".", root, name: "repo", branch: "main" }] : [],
+  }))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <ChangesPane controller={controller} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
+  }, { width: 80, height: 20 })
+  const refresh = async () => { await controller.changes.refresh(false); await setup.renderOnce(); await setup.renderOnce() }
+  try {
+    await refresh()
+    expect(setup.captureCharFrame()).toContain("Buscando repositorios…")
+    expect(setup.captureCharFrame()).not.toContain("Sin repositorio")
+    known = true; await refresh()
+    const frame = setup.captureCharFrame()
+    expect(frame).toContain("Sin cambios")
+    expect(frame).not.toContain("Buscando")
+    expect(frame).not.toContain("Cargando")
+    expect(frame).not.toContain("desactualizados")
+    expect(setup.renderer.root.findDescendantById("oec-diff-status")).toBeUndefined()
+    pending = false; await refresh()
+    expect(setup.captureCharFrame()).toBe(frame)
+    known = false; await refresh()
+    expect(setup.captureCharFrame()).toContain("Sin repositorio")
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test("long branches wrap completely without squeezing repository labels and respect No wrap", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-repo-branch-width-"))
   const host = mockHost(root)

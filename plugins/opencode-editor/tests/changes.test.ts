@@ -162,3 +162,19 @@ test("discovery warnings publish fresh known repository results and clear on rec
     expect(state.error).toBe("")
   } finally { state.dispose() }
 })
+
+test("unfinished discovery is not an error or stale Git snapshot", async () => {
+  const host = mockHost(root)
+  let pending = true
+  const state = new ChangesState(host.context, root, async () => ({ ...result(), discoveryPending: pending }))
+  try {
+    state.start(); await tick()
+    expect(state.discoveryPending).toBe(true)
+    expect(state.stale).toBe(false)
+    expect(state.error).toBe("")
+    expect(state.files).toHaveLength(1)
+    pending = false; await state.refresh(false)
+    expect(state.discoveryPending).toBe(false)
+    expect(state.stale).toBe(false)
+  } finally { state.dispose() }
+})

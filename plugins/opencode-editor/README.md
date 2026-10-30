@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.8`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.8)**. Publicación mediante GitHub Actions/OIDC con verificaciones de integridad/provenance e instalación real por nombre en Windows y Linux. Los smokes cubren editor, carpeta automática, sidebar, SVG, contenido, Git, paleta, foco, scroll y permisos recordados. Evidencia e historial en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
+Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.9`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.9)**. Publicación mediante GitHub Actions/OIDC con verificaciones de integridad/provenance e instalación real por nombre en Windows y Linux. Los smokes cubren editor, carpeta automática, sidebar, SVG, contenido, Git, paleta, foco, scroll y permisos recordados. Evidencia e historial en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 > Estado de verificación de 0.3.4: paquete npm, integridad/provenance y smokes por nombre confirmados en Windows y Linux por la [verificación independiente de CI](https://github.com/2jmalvarez/openeditorcode/actions/runs/39641519368). El workflow de publicación original conserva su fallo histórico; no se movieron tags ni se republicó el paquete. Ver [evidencia de cierre](RELEASING.md).
@@ -32,6 +32,12 @@ En 0.3.0: **F6** alterna conversación/editor sin reiniciar paneles; **F7** mues
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
 - Interfaz en español e inglés: `language: "auto"` sigue el idioma del sistema (inglés si no es español); `"es"` y `"en"` lo fijan. Incluye paneles, búsqueda, paleta, diálogos, mensajes, ayuda y configuración; no traduce nombres ni contenido del proyecto.
 - Diff ajusta nombres de repositorios y ramas completos y muestra el total de archivos modificados en su encabezado: **Cambios (38) / Diff (38)**. El círculo de un repositorio con cambios es blanco; si está limpio, conserva el azul del tema. Sus botones **Colapsar / Collapse** y **Sin ajuste / No wrap** tienen contraste y resaltado de foco/hover; según el ancho disponible se usan **Sin salto** o iconos compactos. También están disponibles en la paleta.
+
+### Novedades de 0.3.9
+
+- Diff descubre repositorios por tandas y retoma el recorrido entre refrescos, incluido `F5`, para avanzar en carpetas grandes o lentas sin reiniciar toda la búsqueda por un límite global de diez segundos.
+- Los repositorios conocidos siguen actualizándose mientras continúa el descubrimiento; si aún no encontró ninguno, muestra «Buscando repositorios…» en lugar de «Sin repositorio».
+- Mantiene las reglas `.gitignore` heredadas, el aislamiento entre raíces autorizadas y los límites por operación/repositorio. Omite las entradas de directorios Git anidados antes de validar rutas de archivos.
 
 ### Novedades de 0.3.8
 
@@ -144,7 +150,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 {
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
-    "package": "@2jmalvarez/opencode-editor@0.3.8",
+    "package": "@2jmalvarez/opencode-editor@0.3.9",
     "options": { "toggleBinding": "f6", "filesBinding": "f7", "diffBinding": "f8", "explorerWidth": 30, "panelHeight": "expanded" }
   }]
 }
@@ -186,7 +192,7 @@ Si OpenCode oculta su sidebar por falta de ancho, usar **toggle conversation/edi
 - `Esc` limpia la búsqueda y vuelve al árbol; con el input vacío, devuelve el foco a la conversación. `F5` actualiza el índice. Los eventos de archivos invalidan la caché mientras el panel está visible.
 - `Tab` desde el buscador enfoca el árbol sin limpiar los resultados; `/` desde el árbol enfoca el buscador. Desde el árbol, `Tab` enfoca Diff si está visible, o vuelve al editor/chat; `Shift+Tab` desde Diff vuelve a Files. En las cabeceras, `Enter`/espacio alternan el acordeón, `Tab`/`↓` entran a su contenido y `Esc` sale. `Esc` primero limpia una búsqueda activa; sin búsqueda, vuelve al editor o conversación.
 - **Diff** muestra Git del proyecto, no solamente los archivos tocados por la sesión: `●` staged compara HEAD con el índice; `○` cambios compara índice con disco; `?` identifica archivos sin seguimiento. Un archivo puede aparecer en ambas áreas. No incluye ediciones aún no guardadas. Se actualiza con eventos y cada tres segundos mientras está visible y expandido; `F5` fuerza lectura local, sin fetch ni mutaciones. Ocultarlo o contraerlo detiene suscripciones y temporizadores.
-- El descubrimiento de repositorios se reutiliza durante 30 segundos; `F5` lo fuerza de inmediato. Cada repositorio tiene su propio límite de 10 segundos, con hasta tres consultas de repositorios simultáneas. Si una actualización falla, Diff conserva los últimos resultados disponibles y avisa que pueden estar desactualizados; los demás repositorios pueden actualizarse normalmente. El polling no encola consultas mientras hay una en curso.
+- El descubrimiento de repositorios avanza por tandas de aproximadamente 500 ms y conserva el punto alcanzado entre actualizaciones, también al pulsar `F5`; no exige terminar todo un workspace grande o una ruta WSL en 10 segundos. Los repositorios ya encontrados se actualizan mientras continúa la búsqueda, sin avisos falsos de datos desactualizados ni parpadeos. Una búsqueda completa se reutiliza durante 30 segundos; `F5` inicia una nueva o continúa la que está en curso. Cada operación de búsqueda y cada repositorio mantienen límites de 10 segundos, con hasta tres consultas de repositorios simultáneas. Si una operación realmente falla, Diff conserva los últimos resultados disponibles y avisa que pueden estar desactualizados; los demás repositorios pueden actualizarse normalmente. El polling no encola consultas mientras hay una en curso.
 - Diff detecta repositorios dentro de la carpeta autorizada aunque esta no tenga `.git`, incluidos repos anidados, submódulos y worktrees. Cada repo aparece con `●` azul, la cantidad de archivos cambiados junto al nombre (sin `(0)` en repos limpios) y su rama a la derecha en gris, en la misma línea; clic o `Enter` despliega/contrae sus cambios. Un archivo con cambios staged y sin staged cuenta una sola vez. Los repos limpios también aparecen. No sigue enlaces de directorio ni explora `.git`, `node_modules` o carpetas ignoradas; el recorrido es cancelable y tiene un límite de 20.000 directorios. Cada diff y `F4` usan el repo correspondiente, sin mezclar archivos homónimos de repos distintos.
 - Clic o `Enter` abre el diff del archivo/área seleccionado en una pestaña del editor. Reabrir el mismo diff actualiza esa pestaña; staged y working tree tienen pestañas distintas. `F4` abre el archivo actual en edición conservando el diff. Si fue eliminado, avisa sin recrearlo. Diffs e imágenes no se guardan, no quedan modificados ni generan borradores.
 - Diff organiza las carpetas con `Enter`/`→` para expandir y `←` para contraer o volver al padre; en un archivo, `Enter` abre su diff. Las carpetas se mantienen al refrescar y staged/working tree conservan identidades separadas. El plugin no ejecuta mutaciones Git ni consulta un servidor remoto como si fuera disco local.
@@ -295,26 +301,26 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.3.8
+bun run plugin:preflight opencode-editor-v0.3.9
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.8.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.9.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.8.tgz --auto-root
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.9.tgz --auto-root
 
 # Cuatro TUIs aisladas: recordar, reiniciar sin preguntar, olvidar y volver a preguntar.
-bun run plugins/opencode-editor/scripts/smoke-access.ts "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.8.tgz
+bun run plugins/opencode-editor/scripts/smoke-access.ts "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.9.tgz
 # Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
 # En un release, probar también el sidebar del tarball o paquete instalado:
-bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.8"
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.9"
 ```
 
-El pack-check instala el tarball con npm y Arborist, sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa el paquete instalado fuera del checkout y datos temporales con `--standalone`: crea una sesión sin enviar prompts, abre archivos desde el sidebar, edita, comprueba Enter/Tab, duplicación y páginas, guarda y regresa a la misma sesión. Conserva documentos, pestañas y opciones F6/F7/F8. El observer no sustituye la entrada del plugin ni modifica configuración, instalación o portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.8` en lugar del tarball.
+El pack-check instala el tarball con npm y Arborist, sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa el paquete instalado fuera del checkout y datos temporales con `--standalone`: crea una sesión sin enviar prompts, abre archivos desde el sidebar, edita, comprueba Enter/Tab, duplicación y páginas, guarda y regresa a la misma sesión. Conserva documentos, pestañas y opciones F6/F7/F8. El observer no sustituye la entrada del plugin ni modifica configuración, instalación o portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.9` en lugar del tarball.
 
 `smoke-sidebar.ts` valida consentimiento con mouse down/up, chat con Files abierto, acordeones independientes, F6 conservando paneles, F7 para Files, F8 para Diff en árbol, búsqueda masiva acotada, diffs en pestañas con F4, rename F2, preview Markdown e imágenes, paleta/atajos y actualización Git local. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía prompts ni modifica la instalación o configuración del usuario.
 

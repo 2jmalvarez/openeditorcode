@@ -7,7 +7,7 @@ import { parseGitStatus, parseGitNumstat, type GitFile } from "../../../../src/g
 
 export type Change = GitFile & { file: string; repositoryRoot?: string }
 export type LocalRepository = { id: string; root: string; name: string; branch: string; error?: string }
-export type LocalChanges = { repository: boolean; files: Change[]; repositories?: LocalRepository[]; discoveryError?: string }
+export type LocalChanges = { repository: boolean; files: Change[]; repositories?: LocalRepository[]; discoveryError?: string; discoveryPending?: boolean }
 export type ChangesReader = (root: string, signal: AbortSignal, rediscover?: boolean) => Promise<LocalChanges>
 
 export function changesError(error: unknown): string {
@@ -91,6 +91,8 @@ const readRepositoryChanges = async (root: string, signal: AbortSignal, reposito
     }
     // Git reports embedded untracked repositories as directory entries ("repo/").
     // Remove them before validating file paths; their own reader supplies the files.
+    // During incremental discovery the child may not have been reached yet.
+    if (file.status === "untracked" && file.path.endsWith("/")) return []
     if (repositories.some((child) => child !== root && within(root, child) && within(child, resolve(root, file.path)))) return []
     changePath(root, file.path)
     if (file.previousPath) changePath(root, file.previousPath)
@@ -99,41 +101,55 @@ const readRepositoryChanges = async (root: string, signal: AbortSignal, reposito
   return { repository: true, files }
 }
 
-/** Search only real directories inside the authorized workspace, including nested repos. */
-export async function discoverLocalRepositories(root: string, signal: AbortSignal, onRepository?: (directory: string) => void): Promise<string[]> {
-  await ensurePhysicallyInsideRoot(root, root)
-  const found: string[] = []
+/** Keep a bounded traversal cursor, not a deadline for the entire workspace.
+ * Large/slow filesystems (including WSL) must make progress across refreshes
+ * instead of restarting the same ten-second scan forever. */
+export function createRepositoryDiscovery(root: string, sliceMs = 500) {
+  const found = new Set<string>()
   const pending: { directory: string; scopes: GitignoreScope[] }[] = [{ directory: root, scopes: [] }]
   let visited = 0
-  while (pending.length) {
+  return { async scan(signal: AbortSignal, onRepository?: (directory: string) => void) {
+    const started = performance.now()
+    while (pending.length) {
+      signal.throwIfAborted()
+      if (visited >= 20_000) throw new Error("Repository discovery exceeds the 20,000 directory limit")
+      // Leave the current directory queued until all its reads succeed. An
+      // operation timeout/cancellation must not silently skip part of the tree.
+      const { directory, scopes: inherited } = pending.at(-1)!
+      await ensurePhysicallyInsideRoot(root, directory)
+      const entries = await readdir(directory, { withFileTypes: true }).catch((error) => {
+        if (directory === root) throw error
+        return []
+      })
+      // Each repository/directory has its own ignore scope. A workspace container
+      // often has no .gitignore while its child repositories ignore large outputs.
+      let scopes = inherited
+      if (entries.some((entry) => entry.name === ".gitignore")) {
+        await ensurePhysicallyInsideRoot(root, join(directory, ".gitignore"))
+        scopes = [...inherited, { root: directory, rules: await readGitignore(directory) }]
+      }
+      if (directory === root || entries.some((entry) => entry.name === ".git" && (entry.isDirectory() || entry.isFile()))) {
+        const info = await git(directory, ["rev-parse", "--is-inside-work-tree"], signal)
+        if (info.code === 0 && info.stdout.trim() === "true" && !found.has(directory)) { found.add(directory); onRepository?.(directory) }
+        else if (info.code && !/not a git repository/i.test(info.stderr)) throw new Error(info.stderr.trim() || "Could not inspect local Git repository")
+      }
+      signal.throwIfAborted()
+      pending.pop(); visited++
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name === ".git" || entry.name === "node_modules") continue
+        const path = join(directory, entry.name)
+        if (!isIgnoredByScopes(path, true, scopes)) pending.push({ directory: path, scopes })
+      }
+      if (performance.now() - started >= sliceMs) break
+    }
     signal.throwIfAborted()
-    if (++visited > 20_000) throw new Error("Repository discovery exceeds the 20,000 directory limit")
-    const { directory, scopes: inherited } = pending.pop()!
-    await ensurePhysicallyInsideRoot(root, directory)
-    const entries = await readdir(directory, { withFileTypes: true }).catch((error) => {
-      if (directory === root) throw error
-      return []
-    })
-    // Each repository/directory has its own ignore scope. A workspace container
-    // often has no .gitignore while its child repositories ignore large outputs.
-    let scopes = inherited
-    if (entries.some((entry) => entry.name === ".gitignore")) {
-      await ensurePhysicallyInsideRoot(root, join(directory, ".gitignore"))
-      scopes = [...inherited, { root: directory, rules: await readGitignore(directory) }]
-    }
-    if (directory === root || entries.some((entry) => entry.name === ".git" && (entry.isDirectory() || entry.isFile()))) {
-      const info = await git(directory, ["rev-parse", "--is-inside-work-tree"], signal)
-      if (info.code === 0 && info.stdout.trim() === "true") { found.push(directory); onRepository?.(directory) }
-      else if (info.code && !/not a git repository/i.test(info.stderr)) throw new Error(info.stderr.trim() || "Could not inspect local Git repository")
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name === ".git" || entry.name === "node_modules") continue
-      const path = join(directory, entry.name)
-      if (!isIgnoredByScopes(path, true, scopes)) pending.push({ directory: path, scopes })
-    }
-  }
-  signal.throwIfAborted()
-  return found.sort((a, b) => a.localeCompare(b))
+    return { roots: [...found].sort((a, b) => a.localeCompare(b)), complete: pending.length === 0 }
+  } }
+}
+
+/** One-shot callers can still request a complete, externally cancelable scan. */
+export async function discoverLocalRepositories(root: string, signal: AbortSignal, onRepository?: (directory: string) => void): Promise<string[]> {
+  return (await createRepositoryDiscovery(root, Number.POSITIVE_INFINITY).scan(signal, onRepository)).roots
 }
 
 async function readLocalRepository(root: string, directory: string, roots: readonly string[], signal: AbortSignal): Promise<LocalChanges> {
@@ -161,23 +177,33 @@ async function readLocalRepository(root: string, directory: string, roots: reado
 /** One cache per controller/root, never shared across consent boundaries. */
 export function createChangesReader(options: {
   discoveryTTL?: number
+  discoverySliceMs?: number
   timeoutMs?: number
   discover?: typeof discoverLocalRepositories
   readRepository?: typeof readLocalRepository
 } = {}): ChangesReader {
   let cached: { root: string; roots: string[]; at: number } | undefined
   let failure: { root: string; at: number; error: string } | undefined
+  let traversal: { root: string; cursor: ReturnType<typeof createRepositoryDiscovery> } | undefined
   return async (root, signal, rediscover = false) => {
     const timeout = () => AbortSignal.any([signal, AbortSignal.timeout(options.timeoutMs ?? 10_000)])
     const ttl = options.discoveryTTL ?? 30_000
     if (rediscover || failure?.root !== root || Date.now() - failure.at >= ttl) {
-      if (rediscover || !cached || cached.root !== root || Date.now() - cached.at >= ttl) {
+      if (rediscover || traversal?.root === root || !cached || cached.root !== root || Date.now() - cached.at >= ttl) {
         const discoverySignal = timeout()
         const discovered: string[] = []
         try {
-          const roots = await (options.discover ?? discoverLocalRepositories)(root, discoverySignal, (directory) => discovered.push(directory))
+          const onRepository = (directory: string) => { discovered.push(directory) }
+          let roots: string[], complete = true
+          if (options.discover) roots = await options.discover(root, discoverySignal, onRepository)
+          else {
+            if (!traversal || traversal.root !== root) traversal = { root, cursor: createRepositoryDiscovery(root, options.discoverySliceMs) }
+            const result = await traversal.cursor.scan(discoverySignal, onRepository)
+            roots = result.roots; complete = result.complete
+          }
           discoverySignal.throwIfAborted()
-          cached = { root, roots, at: Date.now() }
+          cached = { root, roots: complete ? roots : [...new Set([...(cached?.root === root ? cached.roots : []), ...roots])].sort(), at: Date.now() }
+          if (complete) traversal = undefined
           failure = undefined
         } catch (error) {
           signal.throwIfAborted()
@@ -202,12 +228,12 @@ export function createChangesReader(options: {
       }
     }))
     signal.throwIfAborted()
-    return { repository: roots.length > 0, repositories: results.flatMap((result) => result.repositories ?? []), files: results.flatMap((result) => result.files), discoveryError: failure?.root === root ? failure.error : undefined }
+    return { repository: roots.length > 0, repositories: results.flatMap((result) => result.repositories ?? []), files: results.flatMap((result) => result.files), discoveryError: failure?.root === root ? failure.error : undefined, discoveryPending: traversal?.root === root }
   }
 }
 
 // Direct one-shot callers do not retain a workspace cache.
-export const readLocalChanges: ChangesReader = (root, signal) => createChangesReader()(root, signal)
+export const readLocalChanges: ChangesReader = (root, signal) => createChangesReader({ discoverySliceMs: Number.POSITIVE_INFINITY })(root, signal)
 
 export async function readLocalPatch(root: string, file: Change): Promise<string> {
   const path = changePath(root, file.path)
