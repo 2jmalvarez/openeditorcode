@@ -198,6 +198,46 @@ for (const partial of [false, true]) test(`F5 visibly replaces ${partial ? "repo
   } finally { finish?.(); setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
+for (const fail of [false, true]) test(`background Diff refreshes preserve layout and content ${fail ? "after errors" : "with clean and changed repos"}`, async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-diff-background-"))
+  const host = mockHost(root)
+  let hold = false, finish: (() => void) | undefined
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root, language: "en" }), async () => {
+    if (hold) await new Promise<void>((resolve) => { finish = resolve })
+    return { repository: true, repositories: [
+      { id: "clean", root, name: "clean", branch: "main", error: fail ? "Git refresh timed out" : undefined },
+      { id: "changed", root: join(root, "changed"), name: "changed", branch: "dev" },
+    ], files: [{ path: "retained.txt", file: "retained.txt", area: "changes", status: "modified", repositoryRoot: join(root, "changed"), additions: 1, deletions: 0 }] }
+  })
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <ChangesPane controller={controller} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
+  }, { width: 80, height: 20 })
+  const render = async () => { await setup.renderOnce(); await setup.renderOnce() }
+  try {
+    await controller.changes.refresh(); await render()
+    const before = setup.captureCharFrame()
+    expect(before).toContain(fail ? "Git refresh timed out" : "No changes")
+    expect(before).toContain("retained.txt")
+    const scroller = setup.renderer.root.findDescendantById("oec-diff-scroll")!
+    const geometry = () => [scroller.screenY, scroller.height]
+    const initialGeometry = geometry()
+    for (let i = 0; i < 3; i++) {
+      hold = true
+      const pending = controller.changes.refresh(false)
+      await render()
+      expect(controller.changes.loading).toBe(true)
+      expect(setup.captureCharFrame()).toBe(before)
+      expect(geometry()).toEqual(initialGeometry)
+      await Bun.sleep(130); await render()
+      expect(setup.captureCharFrame()).toBe(before)
+      hold = false; finish!(); await pending; await render()
+      expect(setup.captureCharFrame()).toBe(before)
+      expect(geometry()).toEqual(initialGeometry)
+    }
+  } finally { finish?.(); setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test("long branches wrap completely without squeezing repository labels and respect No wrap", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-repo-branch-width-"))
   const host = mockHost(root)

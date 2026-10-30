@@ -61,7 +61,9 @@ GitHub: revisar el entorno `npm` y sus reglas de tags/aprobación. Si se restrin
 
 ## Futuras versiones normales
 
-Release **`0.3.7` en preparación**, autorizada junto con OEC `0.2.43`: localización español/inglés independiente del editor autónomo, controles Diff adaptables, ajuste de nombres de repositorios y ramas, estado conservado entre vistas y búsqueda con `.gitignore` anidados. Publicación por los dos workflows de tags existentes, sin publicación npm local.
+Release **`0.3.8` en preparación**, autorizada solo para el plugin: carga inicial y `F5` con indicador animado, actualizaciones automáticas silenciosas sin parpadeos, recuperación ante errores de descubrimiento, `.gitignore` anidados y estados vacíos/desactualizados coherentes. Publicación por `opencode-editor-v0.3.8` y el workflow existente, sin publicación npm local ni cambio de versión de OEC autónomo.
+
+Release **`0.3.7` confirmada** junto con OEC `0.2.43`, commit `6b7c02a1e84f23e58f6ee9caf9912e2baa5f1933`: localización español/inglés independiente del editor autónomo, controles Diff adaptables, ajuste de nombres de repositorios y ramas, estado conservado entre vistas y búsqueda con `.gitignore` anidados. [Workflow del plugin exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/41039304318), con integridad/provenance e instalación por nombre verificadas.
 
 Release **`0.3.6` publicada por OIDC**, commit `84771271cf807238fee9e6c3ebb3fa0631f7c49e`, [workflow exitoso](https://github.com/2jmalvarez/openeditorcode/actions/runs/40747467319): corrección de timeouts en Diff, conservación de resultados previos con aviso de datos desactualizados, caché de descubrimiento durante 30 segundos y plazos independientes de 10 segundos por repositorio con concurrencia acotada. `F5` fuerza redescubrimiento; el polling no acumula consultas pendientes. Publicación exclusiva del plugin; OEC autónomo permanece en `0.2.42`.
 

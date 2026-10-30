@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.7`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.7)**. Publicación mediante GitHub Actions/OIDC con verificaciones de integridad/provenance e instalación real por nombre en Windows y Linux. Los smokes cubren editor, carpeta automática, sidebar, SVG, contenido, Git, paleta, foco, scroll y permisos recordados. Evidencia e historial en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
+Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.8`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.8)**. Publicación mediante GitHub Actions/OIDC con verificaciones de integridad/provenance e instalación real por nombre en Windows y Linux. Los smokes cubren editor, carpeta automática, sidebar, SVG, contenido, Git, paleta, foco, scroll y permisos recordados. Evidencia e historial en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 > Estado de verificación de 0.3.4: paquete npm, integridad/provenance y smokes por nombre confirmados en Windows y Linux por la [verificación independiente de CI](https://github.com/2jmalvarez/openeditorcode/actions/runs/39641519368). El workflow de publicación original conserva su fallo histórico; no se movieron tags ni se republicó el paquete. Ver [evidencia de cierre](RELEASING.md).
@@ -32,6 +32,12 @@ En 0.3.0: **F6** alterna conversación/editor sin reiniciar paneles; **F7** mues
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
 - Interfaz en español e inglés: `language: "auto"` sigue el idioma del sistema (inglés si no es español); `"es"` y `"en"` lo fijan. Incluye paneles, búsqueda, paleta, diálogos, mensajes, ayuda y configuración; no traduce nombres ni contenido del proyecto.
 - Diff ajusta nombres de repositorios y ramas completos y muestra el total de archivos modificados en su encabezado: **Cambios (38) / Diff (38)**. El círculo de un repositorio con cambios es blanco; si está limpio, conserva el azul del tema. Sus botones **Colapsar / Collapse** y **Sin ajuste / No wrap** tienen contraste y resaltado de foco/hover; según el ancho disponible se usan **Sin salto** o iconos compactos. También están disponibles en la paleta.
+
+### Novedades de 0.3.8
+
+- `F5` muestra «Cargando cambios…» con animación y oculta temporalmente los errores anteriores; las actualizaciones automáticas son silenciosas y conservan la distribución del panel, sin parpadeos.
+- La búsqueda de repositorios respeta `.gitignore` anidados y conserva los repositorios ya encontrados si falla o vence su tiempo. Los repositorios conocidos siguen actualizándose, con espera entre reintentos automáticos y reintento inmediato mediante `F5`.
+- No se muestra «Sin cambios» para resultados desactualizados. Los timeouts de comandos identifican la operación Git y su carpeta, y se vuelve a comprobar el acceso local de repositorios en caché.
 
 ### Novedades de 0.3.7
 
@@ -138,7 +144,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 {
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
-    "package": "@2jmalvarez/opencode-editor@0.3.7",
+    "package": "@2jmalvarez/opencode-editor@0.3.8",
     "options": { "toggleBinding": "f6", "filesBinding": "f7", "diffBinding": "f8", "explorerWidth": 30, "panelHeight": "expanded" }
   }]
 }
@@ -289,26 +295,26 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.3.7
+bun run plugin:preflight opencode-editor-v0.3.8
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.7.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.8.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.7.tgz --auto-root
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.8.tgz --auto-root
 
 # Cuatro TUIs aisladas: recordar, reiniciar sin preguntar, olvidar y volver a preguntar.
-bun run plugins/opencode-editor/scripts/smoke-access.ts "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.7.tgz
+bun run plugins/opencode-editor/scripts/smoke-access.ts "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.8.tgz
 # Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
 # En un release, probar también el sidebar del tarball o paquete instalado:
-bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.7"
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.8"
 ```
 
-El pack-check instala el tarball con npm y Arborist, sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa el paquete instalado fuera del checkout y datos temporales con `--standalone`: crea una sesión sin enviar prompts, abre archivos desde el sidebar, edita, comprueba Enter/Tab, duplicación y páginas, guarda y regresa a la misma sesión. Conserva documentos, pestañas y opciones F6/F7/F8. El observer no sustituye la entrada del plugin ni modifica configuración, instalación o portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.7` en lugar del tarball.
+El pack-check instala el tarball con npm y Arborist, sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa el paquete instalado fuera del checkout y datos temporales con `--standalone`: crea una sesión sin enviar prompts, abre archivos desde el sidebar, edita, comprueba Enter/Tab, duplicación y páginas, guarda y regresa a la misma sesión. Conserva documentos, pestañas y opciones F6/F7/F8. El observer no sustituye la entrada del plugin ni modifica configuración, instalación o portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.8` en lugar del tarball.
 
 `smoke-sidebar.ts` valida consentimiento con mouse down/up, chat con Files abierto, acordeones independientes, F6 conservando paneles, F7 para Files, F8 para Diff en árbol, búsqueda masiva acotada, diffs en pestañas con F4, rename F2, preview Markdown e imágenes, paleta/atajos y actualización Git local. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía prompts ni modifica la instalación o configuración del usuario.
 

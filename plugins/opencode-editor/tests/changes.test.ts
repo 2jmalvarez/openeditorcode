@@ -67,6 +67,36 @@ test("coalesces refreshes and aborts generations that can no longer publish", as
   } finally { state.dispose() }
 })
 
+test("background reads are silent but F5 promotes an in-flight read to visible loading", async () => {
+  const host = mockHost(root)
+  let hold = false, finish: (() => void) | undefined
+  const state = new ChangesState(host.context, root, async () => {
+    if (hold) await new Promise<void>((resolve) => { finish = resolve })
+    return result()
+  })
+  try {
+    state.start()
+    expect(state.loadingVisible).toBe(true)
+    await tick()
+    expect(state.loadingVisible).toBe(false)
+    hold = true
+    const background = state.refresh(false)
+    expect(state.loading).toBe(true)
+    expect(state.loadingVisible).toBe(false)
+    expect(state.refresh()).toBe(background)
+    expect(state.loadingVisible).toBe(true)
+    hold = false; finish!(); await background; await tick()
+    expect(state.loading).toBe(false)
+    expect(state.loadingVisible).toBe(false)
+    hold = true
+    const stopped = state.refresh()
+    expect(state.loadingVisible).toBe(true)
+    state.stop()
+    expect(state.loadingVisible).toBe(false)
+    finish!(); await stopped
+  } finally { finish?.(); state.dispose() }
+})
+
 test("local Git errors retain stale rows and recover; mapped remote workspaces never query server VCS", async () => {
   const host = mockHost(root)
   let fail = false

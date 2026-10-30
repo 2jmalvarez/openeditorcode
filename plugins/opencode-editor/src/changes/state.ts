@@ -10,6 +10,8 @@ export class ChangesState {
   files: Change[] = []
   repositories: LocalRepository[] = []
   loading = false
+  /** Background polling/events retain the current view; only explicit refreshes show progress. */
+  loadingVisible = false
   repository: boolean | undefined
   error = ""
   stale = false
@@ -39,11 +41,15 @@ export class ChangesState {
   }
   refresh(rediscover = true): Promise<void> {
     if (!this.running) return Promise.resolve()
-    if (this.pending) { this.rerun = true; this.rediscover ||= rediscover; return this.pending }
+    if (this.pending) {
+      this.rerun = true; this.rediscover ||= rediscover
+      if (rediscover && !this.loadingVisible) { this.loadingVisible = true; this.changed() }
+      return this.pending
+    }
     const generation = this.generation
     const request = this.request = new AbortController()
     const signal = request.signal
-    this.loading = true; this.changed()
+    this.loading = true; this.loadingVisible = rediscover; this.changed()
     this.pending = (async () => {
       try {
         const result = await this.read(this.root, signal, rediscover)
@@ -58,7 +64,7 @@ export class ChangesState {
         if (this.running && generation === this.generation) { this.stale = true; this.error = changesError(error) }
       } finally {
         if (generation === this.generation) {
-          this.loading = false; this.pending = undefined; this.request = undefined; this.changed()
+          this.loading = false; this.loadingVisible = false; this.pending = undefined; this.request = undefined; this.changed()
           if (this.rerun) { const rediscover = this.rediscover; this.rerun = false; this.rediscover = false; void this.refresh(rediscover) }
         }
       }
@@ -67,7 +73,7 @@ export class ChangesState {
   }
   stop() {
     this.running = false; this.generation++; this.rerun = false; this.rediscover = false
-    this.request?.abort(); this.request = undefined; this.pending = undefined; this.loading = false
+    this.request?.abort(); this.request = undefined; this.pending = undefined; this.loading = false; this.loadingVisible = false
     clearInterval(this.timer); clearTimeout(this.debounce); this.timer = undefined; this.debounce = undefined
     for (const stop of this.stops) stop()
     this.stops = []
