@@ -1,6 +1,6 @@
 # Manual de OpenEditorCode
 
-Referencia para la release **0.2.42**.
+Referencia para la release **0.2.43**.
 
 ## Propósito y uso
 

@@ -2,7 +2,7 @@
 
 Plugin opcional dentro de este repositorio. No modifica OpenCode y no sustituye el ejecutable autónomo de OEC.
 
-Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.6`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.6)**. Publicación mediante GitHub Actions/OIDC con verificaciones de integridad/provenance e instalación real por nombre en Windows y Linux. Los smokes cubren editor, carpeta automática, sidebar, SVG, contenido, Git, paleta, foco, scroll y permisos recordados. Evidencia e historial en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
+Paquete independiente: **[`@2jmalvarez/opencode-editor@0.3.7`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.7)**. Publicación mediante GitHub Actions/OIDC con verificaciones de integridad/provenance e instalación real por nombre en Windows y Linux. Los smokes cubren editor, carpeta automática, sidebar, SVG, contenido, Git, paleta, foco, scroll y permisos recordados. Evidencia e historial en [RELEASING.md](RELEASING.md). `0.1.0` tuvo un conflicto de peers.
 `npm install -g openeditorcode` instala solamente OEC autónomo, no este plugin.
 
 > Estado de verificación de 0.3.4: paquete npm, integridad/provenance y smokes por nombre confirmados en Windows y Linux por la [verificación independiente de CI](https://github.com/2jmalvarez/openeditorcode/actions/runs/39641519368). El workflow de publicación original conserva su fallo histórico; no se movieron tags ni se republicó el paquete. Ver [evidencia de cierre](RELEASING.md).
@@ -30,6 +30,14 @@ En 0.3.0: **F6** alterna conversación/editor sin reiniciar paneles; **F7** mues
 - `Ctrl+A` selecciona todo el contenido del archivo activo; también está en la paleta como **select all file contents**. Solo actúa con foco en el editor, sin búsqueda ni modal; no captura `Ctrl+A` del chat.
 - Confirmación al cerrar documentos modificados; detección de modificaciones externas y archivos eliminados.
 - Recuperación de borradores después de reiniciar o recargar el plugin, siempre con selección explícita.
+- Interfaz en español e inglés: `language: "auto"` sigue el idioma del sistema (inglés si no es español); `"es"` y `"en"` lo fijan. Incluye paneles, búsqueda, paleta, diálogos, mensajes, ayuda y configuración; no traduce nombres ni contenido del proyecto.
+- Diff ajusta nombres de repositorios y ramas completos y muestra el total de archivos modificados en su encabezado: **Cambios (38) / Diff (38)**. El círculo de un repositorio con cambios es blanco; si está limpio, conserva el azul del tema. Sus botones **Colapsar / Collapse** y **Sin ajuste / No wrap** tienen contraste y resaltado de foco/hover; según el ancho disponible se usan **Sin salto** o iconos compactos. También están disponibles en la paleta.
+
+### Novedades de 0.3.7
+
+- Idioma automático, español o inglés, configurable por proyecto sin alterar el idioma de OEC autónomo.
+- Diff ajusta nombres largos de repositorios y ramas, permite colapsar todos y conserva su estado entre vistas; controles adaptables y contador en la cabecera.
+- Búsqueda de archivos con reglas `.gitignore` anidadas y regresiones de scroll, foco y distribución de paneles.
 
 ### Novedades de 0.3.6
 
@@ -130,7 +138,7 @@ Añadir esta entrada al array `plugins` del **`cli.json` global** de OpenCode, p
 {
   "$schema": "https://opencode.ai/v2/cli.json",
   "plugins": [{
-    "package": "@2jmalvarez/opencode-editor@0.3.6",
+    "package": "@2jmalvarez/opencode-editor@0.3.7",
     "options": { "toggleBinding": "f6", "filesBinding": "f7", "diffBinding": "f8", "explorerWidth": 30, "panelHeight": "expanded" }
   }]
 }
@@ -229,6 +237,7 @@ Dentro de `plugins[].options` del **`cli.json` global** de OpenCode (no `opencod
 
 ```json
 {
+  "language": "auto",
   "toggleBinding": "f6",
   "filesBinding": "f7",
   "diffBinding": "f8",
@@ -239,6 +248,7 @@ Dentro de `plugins[].options` del **`cli.json` global** de OpenCode (no `opencod
 }
 ```
 
+- `language`: `auto` (idioma del sistema, español o inglés), `es` o `en`. Se puede cambiar para el proyecto actual desde **Configuración del plugin → Idioma / Plugin configuration → Language**, sin cambiar el idioma de OEC autónomo. OpenCode no expone un idioma propio en la API pública del plugin; para fijarlo de forma persistente, usar esta opción en `cli.json`.
 - `searchMode`: `fuzzy` o `literal`.
 - `markdownPreview`: `true` abre nuevos `.md`/`.markdown`/`.mdown` con formato; `false` en edición. Desde un diff, F4 siempre abre la fuente para editar.
 - `diffView`: `split` o `unified`. No incrusta la pantalla privada de OpenCode: usa el componente público `diff` de OpenTUI en las pestañas OEC.
@@ -279,26 +289,26 @@ bun run plugin:test
 bun run test
 bun run build
 bun run plugin:build
-bun run plugin:preflight opencode-editor-v0.3.6
+bun run plugin:preflight opencode-editor-v0.3.7
 bun run plugin:pack:check
 ```
 
 Smoke opcional contra un ejecutable real de OpenCode 2, después de compilar el plugin:
 
 ```powershell
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.6.tgz
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.7.tgz
 # Además, comprobar detección automática y confirmación del acceso local:
-bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.6.tgz --auto-root
+bun run plugin:smoke "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.7.tgz --auto-root
 
 # Cuatro TUIs aisladas: recordar, reiniciar sin preguntar, olvidar y volver a preguntar.
-bun run plugins/opencode-editor/scripts/smoke-access.ts "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.6.tgz
+bun run plugins/opencode-editor/scripts/smoke-access.ts "C:/ruta/opencode.exe" plugins/opencode-editor/dist/release/2jmalvarez-opencode-editor-0.3.7.tgz
 # Smoke de desarrollo del checkout compilado (no certifica el paquete publicado):
 bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe"
 # En un release, probar también el sidebar del tarball o paquete instalado:
-bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.6"
+bun run plugins/opencode-editor/scripts/smoke-sidebar.ts "C:/ruta/opencode.exe" "@2jmalvarez/opencode-editor@0.3.7"
 ```
 
-El pack-check instala el tarball con npm y Arborist, sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa el paquete instalado fuera del checkout y datos temporales con `--standalone`: crea una sesión sin enviar prompts, abre archivos desde el sidebar, edita, comprueba Enter/Tab, duplicación y páginas, guarda y regresa a la misma sesión. Conserva documentos, pestañas y opciones F6/F7/F8. El observer no sustituye la entrada del plugin ni modifica configuración, instalación o portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.6` en lugar del tarball.
+El pack-check instala el tarball con npm y Arborist, sin omitir peers, y comprueba que solo se instaló el plugin. El smoke usa el paquete instalado fuera del checkout y datos temporales con `--standalone`: crea una sesión sin enviar prompts, abre archivos desde el sidebar, edita, comprueba Enter/Tab, duplicación y páginas, guarda y regresa a la misma sesión. Conserva documentos, pestañas y opciones F6/F7/F8. El observer no sustituye la entrada del plugin ni modifica configuración, instalación o portapapeles del usuario. Tras publicar, el mismo smoke acepta `@2jmalvarez/opencode-editor@0.3.7` en lugar del tarball.
 
 `smoke-sidebar.ts` valida consentimiento con mouse down/up, chat con Files abierto, acordeones independientes, F6 conservando paneles, F7 para Files, F8 para Diff en árbol, búsqueda masiva acotada, diffs en pestañas con F4, rename F2, preview Markdown e imágenes, paleta/atajos y actualización Git local. Sin segundo argumento usa el bundle del checkout; con un tarball lo instala mediante Arborist y con un nombre exacto lo carga desde npm mediante el anfitrión. Siempre usa una instancia privada con repositorio/sesión/configuración temporales; no envía prompts ni modifica la instalación o configuración del usuario.
 

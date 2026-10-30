@@ -55,7 +55,7 @@ export function FilesPane(props: { controller: EditorController; focused: () => 
     ].map((command) => ({ ...command, run: (_input?: string, event?: KeyEvent) => {
       event?.preventDefault(); event?.stopPropagation()
       return command.run()
-    } })).map((command) => paletteCommands("files.tree", [command])[0]!) }
+    } })).map((command) => paletteCommands("files.tree", [command], controller.t)[0]!) }
   })
   const measure = () => {
     // Only the editor route owns persistent focus. A sidebar must never reclaim

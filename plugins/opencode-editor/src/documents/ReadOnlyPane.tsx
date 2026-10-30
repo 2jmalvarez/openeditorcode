@@ -7,6 +7,7 @@ import { useRevision } from "../workbench/reactive"
 import { isSvg, type Document } from "./workspace"
 import { renderSvg } from "../../../../src/documents/svg"
 import { MarkdownContent, markdownStyles, type MarkdownColors } from "../../../../src/documents/MarkdownContent"
+import { useTranslation } from "../localization"
 
 // Highlight jobs may outlive a disposed pane. Share the host-theme style instead
 // of destroying native style memory while an asynchronous parser still uses it.
@@ -37,6 +38,7 @@ function themeStyle(controller: EditorController) {
 
 export function ReadOnlyPane(props: { controller: EditorController; document: Document; focused: () => boolean; onFocus: () => void }) {
   const { controller, document } = props
+  const t = useTranslation(controller)
   const revision = useRevision(controller.workspace)
   const status = useRevision(controller)
   const content = () => { revision(); return document.content }
@@ -67,18 +69,18 @@ export function ReadOnlyPane(props: { controller: EditorController; document: Do
   const filetype = () => ({ ".ts": "typescript", ".tsx": "tsx", ".js": "javascript", ".json": "json", ".md": "markdown", ".py": "python" })[extname(document.targetPath ?? document.path)]
   return <box id="oec-readonly-pane" ref={(value) => { panel = value }} focusable flexGrow={1} minHeight={0} minWidth={0} overflow="hidden" flexDirection="column"
     onMouseDown={props.onFocus}>
-    <text height={1} flexShrink={0} fg={controller.context.theme.text.muted}>{document.kind === "diff" ? " Git diff · F4 edit current file · read-only" : svg() ? " SVG preview · F4 edit XML" : document.kind === "image" ? " Image · read-only · OEC settings: image protocol" : document.kind === "help" ? " OEC · reference · read-only" : " Markdown preview · F4 edit"}</text>
+    <text height={1} flexShrink={0} fg={controller.context.theme.text.muted}>{t(document.kind === "diff" ? " Git diff · F4 edit current file · read-only" : svg() ? " SVG preview · F4 edit XML" : document.kind === "image" ? " Image · read-only · OEC settings: image protocol" : document.kind === "help" ? " OEC · reference · read-only" : " Markdown preview · F4 edit")}</text>
     <Show when={document.kind === "image" || svg()} fallback={
       <scrollbox ref={(value) => { scroll = value; value.scrollTop = document.position.scrollY; value.scrollLeft = document.position.scrollX }} flexGrow={1} minHeight={0} minWidth={0} scrollY scrollX={!markdown()} viewportOptions={{ overflow: "hidden" }}
         contentOptions={{ paddingLeft: markdown() ? 2 : 0, paddingRight: markdown() ? 2 : 0, paddingTop: markdown() ? 1 : 0, paddingBottom: markdown() ? 1 : 0 }}>
         <Show when={document.kind === "diff"} fallback={<MarkdownContent id="oec-markdown-preview" content={content()} syntaxStyle={style.markdown} colors={markdownColors(controller)} />}>
-          <Show when={/^@@ /m.test(content())} fallback={<text fg={controller.context.theme.text.muted}>{content().trim() || "No textual changes (empty file or change already resolved)."}</text>}>
+          <Show when={/^@@ /m.test(content())} fallback={<text fg={controller.context.theme.text.muted}>{content().trim() || t("No textual changes (empty file or change already resolved).")}</text>}>
             <diff id="oec-diff-view" diff={content()} view={options().diffView} syncScroll showLineNumbers filetype={filetype()} syntaxStyle={style.plain} wrapMode="word" />
           </Show>
         </Show>
       </scrollbox>
     }>
-      <Show when={!imageError() && (!svg() || raster())} fallback={<text fg={controller.context.theme.text.muted}>{svg() ? raster.loading ? " Rendering SVG…" : " Cannot display SVG. F4 to edit XML." : ` Cannot display image: ${imageError()}. Supported: PNG, JPEG, GIF, WebP.`}</text>}>
+      <Show when={!imageError() && (!svg() || raster())} fallback={<text fg={controller.context.theme.text.muted}> {svg() ? t(raster.loading ? "Rendering SVG…" : "Cannot display SVG. F4 to edit XML.") : t("Cannot display image: {error}. Supported: PNG, JPEG, GIF, WebP.", { error: imageError() })}</text>}>
         <image id="oec-image-preview" source={svg() ? raster() : document.bytes} fit="fit" protocol={options().imageProtocol} flexGrow={1} minWidth={0} minHeight={0} onError={(error) => setImageError(error instanceof Error ? error.message : String(error))} />
       </Show>
     </Show>

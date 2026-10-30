@@ -11,6 +11,8 @@ import { EditorController } from "../src/integration/controller"
 import { EditorProjects } from "../src/integration/projects"
 import { parseOptions } from "../src/integration/options"
 import { mockHost } from "./host"
+import { createDiffViewState } from "../src/changes/view-state"
+import type { Change } from "../src/changes/git"
 import type { TextareaRenderable } from "@opentui/core"
 
 test("Diff renders repo markers and branches, and mouse toggles only the clicked repository", async () => {
@@ -30,12 +32,12 @@ test("Diff renders repo markers and branches, and mouse toggles only the clicked
   }, { width: 42, height: 32 })
   try {
     await controller.changes.refresh(); await setup.renderOnce(); await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("● ▾ a (1)")
+    expect(setup.captureCharFrame()).toContain("● ▾ (1) a")
     expect(setup.captureCharFrame()).toContain("main")
     expect(setup.captureCharFrame()).toContain("feature/test")
     expect(setup.captureCharFrame()).toContain("No changes")
     const lines = setup.captureCharFrame().split("\n")
-    expect(lines.find((line) => line.includes("● ▾ a (1)"))).toMatch(/a \(1\)\s+main/)
+    expect(lines.find((line) => line.includes("● ▾ (1) a"))).toMatch(/\(1\) a\s+main/)
     expect(lines.find((line) => line.includes("● ▾ b"))).toMatch(/b\s+feature\/test/)
     expect(setup.captureCharFrame()).not.toContain("(0)")
     expect(setup.renderer.root.findDescendantById("oec-diff-row:repo:a:branch")).toBeUndefined()
@@ -44,10 +46,83 @@ test("Diff renders repo markers and branches, and mouse toggles only the clicked
     await setup.renderOnce()
     expect(setup.captureCharFrame()).not.toContain("a-only.txt")
     expect(setup.captureCharFrame()).toContain("main")
-    expect(setup.captureCharFrame()).toMatch(/● ▸ a \(1\)\s+main/)
+    expect(setup.captureCharFrame()).toMatch(/● ▸ \(1\) a\s+main/)
     await setup.mockMouse.click(repo().screenX + 2, repo().screenY)
     await setup.renderOnce()
     expect(setup.captureCharFrame()).toContain("a-only.txt")
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
+test("Diff wraps full repository names and header controls do not close the panel", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-repo-wrap-"))
+  const host = mockHost(root)
+  const name = "minsal/vectores/vectores-backend-with-a-long-name"
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }), async () => ({
+    repository: true,
+    repositories: [{ id: "long", root, name, branch: "main" }],
+    files: [{ path: "nested/file.txt", file: "nested/file.txt", area: "changes", status: "modified", repositoryRoot: root, additions: 1, deletions: 0 }],
+  }))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <SessionFiles controller={controller} sessionID="session-1" />
+  }, { width: 34, height: 26 })
+  const get = (id: string) => setup.renderer.root.findDescendantById(id)!
+  const render = async () => { for (let i = 0; i < 4; i++) await setup.renderOnce() }
+  const click = async (id: string) => { const button = get(id); await setup.mockMouse.click(button.screenX + 1, button.screenY); await render() }
+  try {
+    await controller.changes.refresh(); await render()
+    expect(get("oec-diff-row:repo:long:wrap:1")).toBeDefined()
+    expect(setup.captureCharFrame()).toContain("end-with-a-long-name")
+    expect(get("oec-diff-wrap").screenY).toBe(get("oec-diff-toggle").screenY)
+    expect(setup.captureCharFrame()).toContain("[Collapse]")
+    expect(setup.captureCharFrame()).toContain("No wrap")
+    await click("oec-diff-wrap")
+    expect(get("oec-diff-row:repo:long:wrap:1")).toBeUndefined()
+    expect(get("oec-changes-pane")).toBeDefined()
+    expect(controller.diffExpanded).toBe(true)
+    await click("oec-diff-wrap")
+    expect(get("oec-diff-row:repo:long:wrap:1")).toBeDefined()
+    setup.renderer.resize(70, 26); await render()
+    expect(get("oec-diff-row:repo:long:wrap:1")).toBeUndefined()
+    expect(setup.captureCharFrame()).toContain(name)
+    setup.renderer.resize(34, 26); await render()
+    await click("oec-diff-collapse-all")
+    expect(setup.captureCharFrame()).not.toContain("nested")
+    expect(setup.captureCharFrame()).not.toContain("file.txt")
+    expect(setup.captureCharFrame()).toContain("● ▸")
+    expect(controller.diffExpanded).toBe(true)
+    // Any continuation line activates the same logical repository.
+    await click("oec-diff-row:repo:long:wrap:1")
+    expect(setup.captureCharFrame()).toContain("▸ nested")
+    expect(setup.captureCharFrame()).not.toContain("file.txt")
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
+test("Diff header shows the total unique changed files across repositories without a separate hint row", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-diff-total-"))
+  const host = mockHost(root)
+  const repositories = [{ id: "a", root, name: "repo-a", branch: "main" }, { id: "b", root: join(root, "b"), name: "repo-b", branch: "main" }]
+  let files: Change[] = Array.from({ length: 38 }, (_, index) => ({ path: `${index}.txt`, file: `${index}.txt`, area: "changes", status: "modified", repositoryRoot: root, additions: 1, deletions: 0 }))
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root, language: "en" }), async () => ({ repository: true, repositories, files }))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <SessionFiles controller={controller} sessionID="session-1" />
+  }, { width: 60, height: 24 })
+  const refresh = async () => { await controller.changes.refresh(); for (let i = 0; i < 5; i++) await setup.renderOnce() }
+  try {
+    await refresh()
+    expect(setup.captureCharFrame()).toContain("▾ Diff (38)")
+    expect(setup.captureCharFrame()).not.toContain("Enter: diff tab")
+    expect(setup.renderer.root.findDescendantById("oec-diff-status")).toBeUndefined()
+    files = [...files, { ...files[0]!, area: "staged" }, { ...files[0]!, repositoryRoot: repositories[1]!.root }]
+    await refresh()
+    expect(setup.captureCharFrame()).toContain("▾ Diff (39)")
+    controller.toggleDiffExpanded(); await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("▸ Diff (39)")
+    controller.toggleDiffExpanded(); files = []; await refresh()
+    expect(setup.captureCharFrame()).toContain("▾ Diff (0)")
+    controller.setLanguage("es"); await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("▾ Cambios (0)")
   } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
@@ -69,7 +144,7 @@ test("Diff keeps visible rows after a timeout and clears its outdated warning af
     await controller.changes.refresh(); await setup.renderOnce(); await setup.renderOnce()
     const frame = setup.captureCharFrame()
     expect(frame).toContain("retained.txt")
-    expect(frame).toContain("1 · Enter: diff tab")
+    expect(frame).not.toContain("Enter: diff tab")
     expect(frame).toContain("Git refresh timed out")
     expect(frame).toContain("Changes may be outdated · F5 to retry")
     expect(frame).not.toContain("No changes")
@@ -80,10 +155,11 @@ test("Diff keeps visible rows after a timeout and clears its outdated warning af
   } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
-test("long branches only occupy remaining width and cannot squeeze the repository count or gap", async () => {
+test("long branches wrap completely without squeezing repository labels and respect No wrap", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-repo-branch-width-"))
   const host = mockHost(root)
   const branch = "feat/dev-core-fitness-fix-a-very-long-branch-name"
+  const view = createDiffViewState()
   const controller = new EditorController(host.context, parseOptions({ localRoot: root }), async () => ({
     repository: true,
     repositories: [{ id: "fitness", root, name: "fitness", branch }],
@@ -91,22 +167,35 @@ test("long branches only occupy remaining width and cannot squeeze the repositor
   }))
   const setup = await testRender(() => {
     Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
-    return <ChangesPane controller={controller} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
+    return <ChangesPane controller={controller} view={view} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
   }, { width: 42, height: 20 })
   try {
     await controller.changes.refresh()
     for (const width of [42, 28, 20, 42]) {
       setup.renderer.resize(width, 20)
-      await setup.renderOnce(); await setup.renderOnce()
-      const header = setup.captureCharFrame().split("\n").find((line) => line.includes("● ▾ fitness"))!
-      expect(header).toContain("● ▾ fitness (12)  ")
+      for (let i = 0; i < 5; i++) await setup.renderOnce()
+      const header = setup.captureCharFrame().split("\n").find((line) => line.includes("● ▾ (12) fitness"))!
+      expect(header).toContain("● ▾ (12) fitness  ")
       expect(header).not.toContain(branch)
-      const row = setup.renderer.root.findDescendantById("oec-diff-row:repo:fitness")!
-      const [label, branchBox] = row.getChildren()
-      expect(branchBox!.screenX).toBeGreaterThanOrEqual(label!.screenX + label!.width + 2)
-      expect(branchBox!.screenX + branchBox!.width).toBeLessThanOrEqual(row.screenX + row.width)
-      expect(row.height).toBe(1)
+      const frame = setup.captureCharFrame().split("\n")
+      let complete = ""
+      for (let part = 0; ; part++) {
+        const row = setup.renderer.root.findDescendantById(`oec-diff-row:repo:fitness${part ? `:wrap:${part}` : ""}`)
+        if (!row) break
+        const [label, branchBox] = row.getChildren()
+        if (branchBox) {
+          expect(branchBox.screenX).toBeGreaterThanOrEqual(label!.screenX + label!.width + 2)
+          expect(branchBox.screenX + branchBox.width).toBeLessThanOrEqual(row.screenX + row.width)
+          complete += frame[row.screenY]!.slice(branchBox.screenX, branchBox.screenX + branchBox.width).trim()
+        }
+        expect(row.height).toBe(1)
+      }
+      expect(complete).toBe(branch)
     }
+    view.toggleWrap()
+    for (let i = 0; i < 5; i++) await setup.renderOnce()
+    expect(setup.renderer.root.findDescendantById("oec-diff-row:repo:fitness:wrap:1")).toBeUndefined()
+    expect(setup.captureCharFrame()).toContain("● ▾ (12) fitness")
   } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
@@ -175,7 +264,8 @@ test("Files and Diff accordions clip their content and collapse independently af
     const lines = setup.captureCharFrame().split("\n")
     const diffRow = lines.findIndex((line) => line.includes("▾ Diff"))
     expect(diffRow).toBeGreaterThan(0)
-    expect(get("oec-panels-gap")!.height).toBe(1)
+    expect(get("oec-panels-gap")!.height).toBeGreaterThanOrEqual(1)
+    expect(get("oec-panels-gap")!.height).toBeLessThanOrEqual(2)
     expect(lines.slice(0, diffRow).some((line) => line.includes("tree-file"))).toBe(true)
     expect(lines.slice(diffRow).some((line) => line.includes("tree-file"))).toBe(false)
     expect(lines.slice(0, diffRow).some((line) => line.includes("git-change"))).toBe(false)

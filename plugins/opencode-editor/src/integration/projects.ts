@@ -1,6 +1,7 @@
 import type { Context } from "@opencode/plugin/tui/context"
 import { EditorController, EDITOR_ROUTE } from "./controller"
-import { parseOptions } from "./options"
+import { parseOptions, parsePreferences } from "./options"
+import { createTranslator, type Translator } from "../localization"
 import { createLocalAccess } from "./local-access"
 
 /** One document/recovery/undo state per directory, independent of JSX lifetimes. */
@@ -13,7 +14,9 @@ export class EditorProjects {
   private disposed = false
   private confirming = false
   private access: ReturnType<typeof createLocalAccess> | undefined
-  constructor(readonly context: Context) {}
+  private text: Translator
+  constructor(readonly context: Context) { this.text = createTranslator(parsePreferences(context.options).language) }
+  get t() { return this.current()?.t ?? this.text }
 
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
@@ -50,12 +53,12 @@ export class EditorProjects {
       this.confirming = true; this.changed()
       try {
         const choice = await this.context.ui.dialog.select({
-          title: `OEC · Local access: ${options.localRoot}`,
+          title: this.t("OEC · Local access: {path}", { path: options.localRoot }),
           current: "once",
           options: [
-            { title: "Allow for this TUI only", value: "once", description: options.localRoot, footer: "Access on THIS computer only. OEC does not read the remote server's filesystem." },
-            { title: "Allow and remember this folder", value: "remember", description: options.localRoot, footer: "Remember on this computer across restarts. Other folders still require permission." },
-            { title: "Deny access", value: "deny", footer: "Do not open local project files." },
+            { title: this.t("Allow for this TUI only"), value: "once", description: options.localRoot, footer: this.t("Access on THIS computer only. OEC does not read the remote server's filesystem.") },
+            { title: this.t("Allow and remember this folder"), value: "remember", description: options.localRoot, footer: this.t("Remember on this computer across restarts. Other folders still require permission.") },
+            { title: this.t("Deny access"), value: "deny", footer: this.t("Do not open local project files.") },
           ],
         })
         if (this.disposed || (choice !== "once" && choice !== "remember")) return
@@ -122,20 +125,20 @@ export class EditorProjects {
       const access = this.localAccess()
       const folders = access.folders()
       if (!folders.length) {
-        await this.context.ui.dialog.alert({ title: "OEC · Remembered local access", message: "No folders have remembered access on this computer. An explicit localRoot override is controlled in cli.json." })
+        await this.context.ui.dialog.alert({ title: this.t("OEC · Remembered local access"), message: this.t("No folders have remembered access on this computer. An explicit localRoot override is controlled in cli.json.") })
         return
       }
-      const folder = await this.context.ui.dialog.select({ title: "OEC · Forget remembered local access", options: folders.map((folder) => ({ title: folder, value: folder })) })
+      const folder = await this.context.ui.dialog.select({ title: this.t("OEC · Forget remembered local access"), options: folders.map((folder) => ({ title: folder, value: folder })) })
       if (!folder || this.disposed || !folders.includes(folder)) return
-      const confirmed = await this.context.ui.dialog.confirm({ title: "OEC · Forget this folder?", message: `Forget remembered access to ${folder}? Open documents stay available in this TUI. After restarting, OEC will ask again. An explicit localRoot override in cli.json still grants access.` })
+      const confirmed = await this.context.ui.dialog.confirm({ title: this.t("OEC · Forget this folder?"), message: this.t("Forget remembered access to {path}? Open documents stay available in this TUI. After restarting, OEC will ask again. An explicit localRoot override in cli.json still grants access.", { path: folder }) })
       if (!confirmed || this.disposed) return
       await access.forget(folder)
-      this.context.ui.toast.show({ title: "OEC", message: "Remembered access removed. OEC will ask again after restarting.", variant: "success" })
+      this.context.ui.toast.show({ title: "OEC", message: this.t("Remembered access removed. OEC will ask again after restarting."), variant: "success" })
     } finally { this.confirming = false; this.changed() }
   }
   async run(action: () => Promise<unknown>) {
     try { await action() } catch (error) {
-      if (!this.disposed) this.context.ui.toast.show({ title: "OEC", message: error instanceof Error ? error.message : String(error), variant: "error" })
+      if (!this.disposed) this.context.ui.toast.show({ title: "OEC", message: this.t(error instanceof Error ? error.message : String(error)), variant: "error" })
     }
   }
   async dispose() {

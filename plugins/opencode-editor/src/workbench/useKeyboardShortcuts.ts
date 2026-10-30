@@ -111,12 +111,12 @@ export function editorCommands(props: Props): KeymapCommand[] {
       event?.preventDefault(); event?.stopPropagation()
       return original.run(input, event)
     } }
-    if (command.id) return { ...command, title: command.title?.replace(/^OEC: /, ""), group: OEC_GROUP }
+    if (command.id) return { ...command, title: command.title && controller.t(command.title.replace(/^OEC: /, "")), group: OEC_GROUP }
     const binding = String(command.bind)
     if (!labels[binding] || seen.has(binding)) return command
     seen.add(binding)
     return {
-    ...command, id: `oec.editor.${String(command.bind).replace(/\+/g, ".")}`, title: labels[String(command.bind)], group: OEC_GROUP, palette: true,
+    ...command, id: `oec.editor.${String(command.bind).replace(/\+/g, ".")}`, title: controller.t(labels[String(command.bind)]!), group: OEC_GROUP, palette: true,
     }
   })
 }

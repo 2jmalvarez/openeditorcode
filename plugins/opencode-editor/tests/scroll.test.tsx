@@ -10,11 +10,58 @@ import { parseOptions } from "../src/integration/options"
 import { SessionFiles } from "../src/explorer/SessionFiles"
 import { EditorRoute } from "../src/workbench/EditorRoute"
 import { mockHost } from "./host"
+import { ChangesPane } from "../src/changes/ChangesPane"
+import { diffVisualRows } from "../src/changes/visual-rows"
+import { changeTree } from "../src/changes/tree"
 
 function scrollbox(node: Renderable): ScrollBoxRenderable | undefined {
   if (node instanceof ScrollBoxRenderable) return node
   return node.getChildren().map(scrollbox).find(Boolean)
 }
+
+test("wrapped Diff repositories preserve manual scrolling and reveal complete keyboard selections", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-wrapped-scroll-"))
+  const host = mockHost(root)
+  const repositories = Array.from({ length: 35 }, (_, index) => ({
+    id: String(index), root: join(root, String(index)), name: `team/repository-with-a-long-name-${index}`, branch: "main",
+  }))
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }), async () => ({ repository: true, repositories, files: [] }))
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <ChangesPane controller={controller} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
+  }, { width: 24, height: 9 })
+  const frames = async () => { for (let i = 0; i < 5; i++) { await setup.renderOnce(); setup.renderer.emit("frame") } }
+  try {
+    await controller.changes.refresh(); await frames()
+    const node = setup.renderer.root.findDescendantById("oec-changes-pane")!
+    const view = scrollbox(node)!
+    const visual = diffVisualRows(changeTree([], new Set(), repositories), view.viewport.width, true)
+    expect(view.scrollHeight).toBe(visual.length)
+    view.scrollTop = 40; await frames()
+    await controller.changes.refresh(); await frames()
+    expect(view.scrollTop).toBe(40)
+    node.focus(); await frames()
+    const press = async (bind: string) => {
+      const layer = [...host.layers].map((factory) => factory()).find((layer) => layer.target?.()?.id === node.id && layer.enabled !== false)
+      await layer!.commands!.find((command) => command.bind === bind)!.run(); await frames()
+    }
+    await press("home")
+    expect(view.scrollTop).toBe(0)
+    // Logical rows alternate a two-line repository and a one-line status.
+    await press("down"); await press("down"); await press("down"); await press("down"); await press("down"); await press("down")
+    const first = setup.renderer.root.findDescendantById("oec-diff-row:repo:3")!
+    const lastPart = visual.filter((entry) => entry.row.id === "repo:3").at(-1)!.part
+    const last = setup.renderer.root.findDescendantById(`oec-diff-row:repo:3:wrap:${lastPart}`)!
+    expect(first.screenY).toBeGreaterThanOrEqual(view.viewport.screenY)
+    expect(last.screenY).toBeLessThan(view.viewport.screenY + view.viewport.height)
+    await press("end")
+    expect(view.scrollTop + view.viewport.height).toBeGreaterThanOrEqual(visual.length)
+    await press("home"); await press("pagedown")
+    expect(view.scrollTop).toBeGreaterThan(0)
+    await press("pageup")
+    expect(view.scrollTop).toBe(0)
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
 
 for (const editor of [false, true]) for (const panel of ["files", "changes"]) {
   test(`${editor ? "editor" : "conversation"} ${panel}: manual scrolling survives virtualization and refresh`, async () => {

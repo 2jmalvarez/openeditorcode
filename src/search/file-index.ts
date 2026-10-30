@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises"
 import { join, relative } from "node:path"
-import { isIgnoredPath, readGitignore } from "../explorer/gitignore"
+import { isIgnoredByScopes, readGitignore, type GitignoreScope } from "../explorer/gitignore"
 import type { Ignore } from "ignore"
 
 export const SEARCH_LIMIT = 50_000
@@ -38,23 +38,28 @@ export async function buildFileIndex(root: string, options: BuildFileIndexOption
   const limit = options.limit ?? SEARCH_LIMIT
   const output: IndexedItem[] = []
   const rules = options.rules ?? await readGitignore(root)
-  const pending = [{ path: root, depth: 0 }]
+  const pending: { path: string; scopes: GitignoreScope[] }[] = [{ path: root, scopes: [{ root, rules }] }]
 
   while (pending.length && output.length < limit) {
     const directories = pending.splice(0, 16)
-    const batches = await Promise.all(directories.map(async (directory) => ({
-      directory,
-      entries: await readdir(directory.path, { withFileTypes: true }).catch(() => []),
-    })))
-    for (const { directory, entries } of batches) {
+    const batches = await Promise.all(directories.map(async (directory) => {
+      // Explicit rules replace disk exclusions, preserving session overrides.
+      const [entries, localRules] = await Promise.all([
+        readdir(directory.path, { withFileTypes: true }).catch(() => []),
+        directory.path !== root && options.rules === undefined ? readGitignore(directory.path) : undefined,
+      ])
+      const scopes = localRules ? [...directory.scopes, { root: directory.path, rules: localRules }] : directory.scopes
+      return { scopes, directory, entries }
+    }))
+    for (const { directory, entries, scopes } of batches) {
       entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
       for (const entry of entries) {
         if (output.length >= limit || entry.name === ".git") continue
         const path = join(directory.path, entry.name)
         const directoryEntry = entry.isDirectory()
-        if (isIgnoredPath(root, path, directoryEntry, rules)) continue
+        if (isIgnoredByScopes(path, directoryEntry, scopes)) continue
         output.push({ path, name: entry.name, directory: directoryEntry })
-        if (directoryEntry) pending.push({ path, depth: directory.depth + 1 })
+        if (directoryEntry) pending.push({ path, scopes })
       }
     }
   }

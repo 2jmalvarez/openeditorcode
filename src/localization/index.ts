@@ -805,8 +805,8 @@ export function configureLanguage(preference: LanguagePreference | undefined, sy
   setLanguage(resolveLanguage(preference, systemLocale))
 }
 
-export function t(key: MessageKey, values: Record<string, string | number | undefined> = {}): string {
-  return catalogs[language()][key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? `{${name}}`))
+export function t(key: MessageKey, values: Record<string, string | number | undefined> = {}, target: SupportedLanguage = language()): string {
+  return catalogs[target][key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? `{${name}}`))
 }
 
 export function formatNumber(value: number): string { return new Intl.NumberFormat(language()).format(value) }
@@ -827,18 +827,18 @@ for (const source of Object.values(messages)) {
   }
 }
 
-export function translateKnown(message: string): string {
+export function translateKnown(message: string, target: SupportedLanguage = language()): string {
   const key = knownMessages.get(message)
-  if (key) return t(key)
+  if (key) return t(key, {}, target)
   for (const dynamic of dynamicMessages) {
     if (!message.startsWith(dynamic.prefix)) continue
     const match = dynamic.pattern.exec(message)
     if (match) return t(dynamic.key, Object.fromEntries(dynamic.names.map((name, index) => {
       const value = match[index + 1] ?? ""
-      if (name === "partial" || name === "lineUnit" || name === "fileUnit" || name === "heading" || name === "state") return [name, translateKnown(value)]
-      if (["count", "lines", "files", "index"].includes(name) && /^\d[\d.,]*$/.test(value)) return [name, formatNumber(Number(value.replace(/[.,]/g, "")))]
+      if (name === "partial" || name === "lineUnit" || name === "fileUnit" || name === "heading" || name === "state") return [name, translateKnown(value, target)]
+      if (["count", "lines", "files", "index"].includes(name) && /^\d[\d.,]*$/.test(value)) return [name, new Intl.NumberFormat(target).format(Number(value.replace(/[.,]/g, "")))]
       return [name, value]
-    })))
+    })), target)
   }
   return message
 }

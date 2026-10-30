@@ -5,6 +5,7 @@ import { scrollTopForSelected, virtualRange } from "../../../../src/explorer/vir
 /** A manual viewport is independent of selection until the user navigates again. */
 export function useTreeViewport(props: {
   owner: () => object; navigation: () => number; total: () => number; selected: () => number
+  selectedEnd?: () => number
   savedTop?: () => number; remember?: (top: number) => void
 }) {
   let scroll: ScrollBoxRenderable | undefined
@@ -46,7 +47,13 @@ export function useTreeViewport(props: {
     if (ready) {
       const maximum = Math.max(0, total - Math.floor(height))
       if (restore !== undefined) { scroll.scrollTop = Math.min(restore, maximum); restore = undefined }
-      if (reveal) { scroll.scrollTop = scrollTopForSelected(total, selected, scroll.scrollTop, height); reveal = false }
+      if (reveal) {
+        const end = props.selectedEnd?.() ?? selected
+        // Reveal the full logical row when it fits, otherwise prioritize its start.
+        const bottom = scrollTopForSelected(total, end, scroll.scrollTop, height)
+        scroll.scrollTop = scrollTopForSelected(total, selected, bottom, height)
+        reveal = false
+      }
       else if (scroll.scrollTop > maximum) scroll.scrollTop = maximum
       props.remember?.(scroll.scrollTop)
     }

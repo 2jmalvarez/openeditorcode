@@ -8,9 +8,9 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for **0.2.42** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.42)). Publication checks Windows and Linux before advertising the npm update.
+Documentation for **0.2.43** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.43)). Publication checks Windows and Linux before advertising the npm update.
 
-New in **0.2.42**: draggable vertical/horizontal editor scrollbars, `Shift+wheel` horizontal scrolling, middle-click tab closing, `F7`/`F8` panel toggles, Git action buttons and pointer feedback on clickable controls. Independently released plugin **0.3.5** shares the editor improvements and groups local changes by repository and branch, including nested repositories.
+New in **0.2.43**: file search respects nested `.gitignore` rules. Independently released plugin **0.3.7** adds Spanish/English localization, responsive Diff controls and repository/branch name wrapping, while preserving panel state and scrolling.
 
 Updates are offered only when the public npm metadata and downloads for both the launcher and your platform are available. Incomplete releases leave the current installation untouched. Publication verifies both platform packages before publishing the launcher.
 
@@ -19,6 +19,12 @@ An open-source project editor for the terminal. It is a standalone TypeScript ap
 The optional local editor plugin for **OpenCode 2**, [`@2jmalvarez/opencode-editor@0.3.4`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.4), adds Files/Diff trees and document tabs without modifying OpenCode. `F6` switches conversation/editor, `F7` hides/shows Files, and `F8` toggles Diff. It reads local Git, including WSL, and opens read-only diff tabs; `F4` opens the current editable file or toggles Markdown/SVG preview. It also supports images, `F2` rename, name/content filtering, stable mouse scrolling, expanded/compact panels and contextual `Ctrl+P` actions in **OEC: opencode-editor**. See the [plugin configuration guide](plugins/opencode-editor/README.md). Installing `openeditorcode` does not install this plugin. The standalone application remains independent; both editors support `Ctrl+A` to select the entire active file.
 
 Plugin 0.3.4 passed the Windows/Linux matrix with OpenCode 2.0.26, 2.0.27, 2.1.0 and 2.1.1. Use 0.3.1 or later for OpenCode 2.1.x; older plugin releases are not compatible with its OpenTUI resource ownership requirements.
+
+### Plugin demo
+
+![Plugin demo: open a file from Files, edit and save, inspect its Git diff, then switch conversation/editor with F6](docs/images/plugin-demo.gif)
+
+Recorded with plugin **0.3.4** and OpenCode **2.1.1**, in an empty example session without model requests. [Watch with playback controls](https://openeditorcode.dev/en/#plugin-demo).
 
 <details>
 <summary>OpenCode plugin screenshots</summary>
@@ -35,6 +41,10 @@ The Spanish reference manual is available in [docs/manual.md](docs/manual.md); t
 If OEC or its OpenCode plugin is useful to you, you can support their development and maintenance with a [one-time or monthly contribution through GitHub Sponsors](https://github.com/sponsors/2jmalvarez). Contributions go to the maintainer's personal account, **@2jmalvarez**. Sponsorship is optional; OEC and the plugin remain open source.
 
 ## Main view
+
+![OEC demo: explore files, edit and save a greeting, review its Git diff and switch Markdown preview/source with F4](docs/images/oec-demo.gif)
+
+Recorded with standalone OEC **0.2.41**. [Watch with playback controls](https://openeditorcode.dev/en/#standalone-demo).
 
 When launched with no open documents, OEC shows the Explorer and, with at least 144 columns available, the Changes pane as well. `F7` and `F8` show or hide each side pane, matching the plugin, while `Ctrl+Shift+Left/Right` moves focus between panes. Middle-click anywhere on a document tab to close it; unsaved changes still require confirmation. The remaining shortcuts are organized by capability below. If the center area becomes narrower than the Explorer, the help text is hidden and only vertical `OEC` is shown.
 

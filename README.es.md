@@ -6,6 +6,12 @@ El plugin opcional [`@2jmalvarez/opencode-editor@0.3.4`](https://www.npmjs.com/p
 
 El plugin 0.3.4 pasó la matriz Windows/Linux con OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1. Para OpenCode 2.1.x usar 0.3.1 o posterior; versiones anteriores del plugin no son compatibles con sus requisitos de propietario de recursos OpenTUI.
 
+### Demo del plugin
+
+![Demo del plugin: abrir un archivo desde Files, editar y guardar, revisar su diff Git y alternar conversación/editor con F6](docs/images/plugin-demo.gif)
+
+Grabado con el plugin **0.3.4** y OpenCode **2.1.1**, en una sesión vacía de ejemplo y sin consultas a modelos. [Ver con controles de reproducción](https://openeditorcode.dev/es/#plugin-demo).
+
 <details>
 <summary>Capturas del plugin OpenCode</summary>
 
@@ -20,9 +26,9 @@ Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
 ♥ [Apoya OEC en GitHub Sponsors](https://github.com/sponsors/2jmalvarez)
 
-Documentación para **0.2.42** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.42)). La publicación verifica Windows y Linux antes de anunciar la actualización npm.
+Documentación para **0.2.43** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.43)). La publicación verifica Windows y Linux antes de anunciar la actualización npm.
 
-Novedades de **0.2.42**: barras de scroll vertical/horizontal arrastrables, desplazamiento horizontal con `Shift+rueda`, cierre de pestañas con clic central, paneles con `F7`/`F8`, botones de acciones Git y manito en controles cliqueables. El plugin **0.3.5**, con publicación independiente, comparte las mejoras del editor y agrupa los cambios locales por repositorio y rama, incluidos repositorios anidados.
+Novedades de **0.2.43**: la búsqueda de archivos respeta reglas `.gitignore` anidadas. El plugin **0.3.7**, con publicación independiente, añade interfaz en español/inglés, controles Diff adaptables y ajuste de nombres de repositorios y ramas, conservando el estado y scroll de los paneles.
 
 Las actualizaciones solo se ofrecen cuando están disponibles en npm los metadatos y las descargas del launcher y de tu plataforma. Una release incompleta conserva la instalación actual sin modificarla. La publicación verifica ambos paquetes de plataforma antes de publicar el launcher.
 
@@ -35,6 +41,10 @@ La referencia completa está en [docs/manual.md](docs/manual.md); la instalació
 Si OEC o su plugin de OpenCode te resultan útiles, puedes apoyar su desarrollo y mantenimiento con un [aporte único o mensual a través de GitHub Sponsors](https://github.com/sponsors/2jmalvarez). Los aportes van a la cuenta personal del mantenedor, **@2jmalvarez**. El apoyo es opcional; OEC y el plugin siguen siendo de código abierto.
 
 ## Vista principal
+
+![Demo de OEC: explorar archivos, editar y guardar un saludo, revisar su diff Git y alternar preview/código Markdown con F4](docs/images/oec-demo.gif)
+
+Grabado con OEC autónomo **0.2.41**. [Ver con controles de reproducción](https://openeditorcode.dev/es/#standalone-demo).
 
 Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al menos 144 columnas disponibles, tambien el panel de Cambios. `F7` y `F8` muestran u ocultan cada lateral, igual que en el plugin, mientras que `Ctrl+Shift+Izquierda/Derecha` mueve el foco entre paneles. El botón medio cierra desde cualquier parte de la pestaña; los cambios sin guardar siguen pidiendo confirmación. Debajo se muestran los demas atajos organizados por capacidad. Si el area central queda mas angosta que el Explorador, la ayuda se oculta y solo se muestra `OEC` en vertical.
 

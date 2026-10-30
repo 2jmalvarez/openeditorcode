@@ -62,6 +62,42 @@ test("compact panels retain bounded sizes and outer overflow remains available",
   } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
+test("Diff accordion never squeezes an open Files tree out during intermediate frames", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-sidebar-diff-layout-"))
+  await writeFile(join(root, "visible.ts"), "text")
+  const host = mockHost(root)
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root }), async () => ({ repository: true,
+    repositories: [{ id: "repo", root, name: "team/repository-with-a-long-name", branch: "feature/a-very-long-branch-name" }], files: [],
+  }))
+  await controller.toggleFiles()
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <box height="100%" flexDirection="column"><scrollbox id="host-sidebar" flexGrow={1} flexBasis={0} minHeight={0} scrollY>
+      <box height={28} flexShrink={0} />
+      <SessionFiles controller={controller} sessionID="session-1" />
+    </scrollbox><box height={2} flexShrink={0} /></box>
+  }, { width: 34, height: 32 })
+  const get = (id: string) => setup.renderer.root.findDescendantById(id)!
+  try {
+    for (let i = 0; i < 5; i++) await setup.renderOnce()
+    const filesPane = get("oec-files-pane")
+    for (let click = 0; click < 6; click++) {
+      // Dispatch the exact header action, even if a short terminal needs outer scrolling.
+      const layer = [...host.layers].map((factory) => factory()).find((layer) => layer.target?.()?.id === "oec-diff-toggle")!
+      await layer.commands!.find((command) => command.bind === "return,space")!.run()
+      for (let frame = 0; frame < 5; frame++) {
+        await setup.renderOnce()
+        expect(controller.filesVisible).toBe(true)
+        expect(controller.filesExpanded).toBe(true)
+        expect(get("oec-files-pane")).toBe(filesPane)
+        expect(get("oec-files-pane").height).toBeGreaterThanOrEqual(1)
+        expect(get("oec-files-toggle").height).toBe(1)
+        expect(get("oec-files-section").screenY + get("oec-files-section").height).toBeLessThanOrEqual(get("oec-diff-toggle").screenY)
+      }
+    }
+  } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test("the initial mouse press/release does not dismiss the local access confirmation", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-consent-click-"))
   const host = mockHost(root)

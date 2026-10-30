@@ -5,9 +5,11 @@ import type { EditorController } from "../integration/controller"
 import { useRevision } from "../workbench/reactive"
 import { isDirty } from "./workspace"
 import { usePointer } from "../../../../src/ui/usePointer"
+import { useTranslation } from "../localization"
 
 export function DocumentTabs(props: { controller: EditorController; onFocus: () => void }) {
   const { controller } = props
+  const t = useTranslation(controller)
   const pointer = usePointer(() => !controller.modal)
   const revision = useRevision(controller.workspace)
   return <box flexShrink={0} flexDirection="row" flexWrap="wrap" backgroundColor={controller.context.theme.background.raised.base}>
@@ -18,7 +20,7 @@ export function DocumentTabs(props: { controller: EditorController; onFocus: () 
         else if (event.button === 0) { controller.activate(document.path); props.onFocus() }
       }}>
         <text fg={(() => { revision(); return controller.workspace.activePath === document.path ? controller.context.theme.text.base : controller.context.theme.text.muted })()}>
-          {(() => { revision(); return `${document.kind === "diff" ? `Δ ${document.area === "staged" ? "staged: " : ""}` : document.kind === "image" ? "▣ " : isDirty(document) ? "* " : ""}${basename(document.targetPath ?? document.path)}` })()}
+          {(() => { revision(); return `${document.kind === "diff" ? `Δ ${document.area === "staged" ? `${t("staged:")} ` : ""}` : document.kind === "image" ? "▣ " : isDirty(document) ? "* " : ""}${basename(document.targetPath ?? document.path)}` })()}
         </text>
         <text {...pointer} fg={controller.context.theme.text.muted} onMouseDown={(event) => { event.stopPropagation(); if (!controller.modal && (event.button === 0 || event.button === 1)) { event.preventDefault(); void controller.run(() => controller.close(document.path)) } }}> ×</text>
       </box>

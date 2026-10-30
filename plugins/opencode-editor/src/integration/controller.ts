@@ -9,9 +9,11 @@ import { FileSearch } from "../explorer/file-search"
 import { ChangesState } from "../changes/state"
 import type { EditorOptions } from "./options"
 import { changePath, readLocalPatch, type Change, type ChangesReader } from "../changes/git"
+import { createTranslator, type Translator } from "../localization"
 
 export const EDITOR_ROUTE = "oec.editor"
 export class EditorController {
+  t: Translator
   readonly workspace: Workspace
   readonly tree: TreeState
   readonly fileSearch: FileSearch
@@ -45,6 +47,7 @@ export class EditorController {
   }
 
   constructor(readonly context: Context, readonly options: EditorOptions, changesReader?: ChangesReader) {
+    this.t = createTranslator(options.language)
     this.workspace = new Workspace(options.localRoot, undefined, options.markdownPreview)
     this.tree = new TreeState(this.workspace.root)
     this.fileSearch = new FileSearch(this.workspace.root, options.searchMode)
@@ -67,8 +70,8 @@ export class EditorController {
       })
       if (!candidates.length) return
       const selected = await this.dialog(() => context.ui.dialog.select({
-        title: "OEC · Recover unsaved files",
-        options: candidates.map(([id, snapshot]) => ({ title: `${snapshot.documents.length} unsaved file(s) · ${id.slice(0, 8)}`, value: id })),
+        title: this.t("OEC · Recover unsaved files"),
+        options: candidates.map(([id, snapshot]) => ({ title: this.t("{count} unsaved file(s) · {id}", { count: snapshot.documents.length, id: id.slice(0, 8) }), value: id })),
       }))
       if (!selected || this.disposed) return
       const snapshot = validateSnapshot(this.workspace.root, archive.instances[selected])
@@ -95,7 +98,7 @@ export class EditorController {
 
   private recover: () => Promise<void>
   async clearStoredDrafts() {
-    if (!await this.dialog(() => this.context.ui.dialog.confirm({ title: "OEC · Delete stored drafts?", message: "Delete recovery copies for this project, including other terminal generations? Open documents and project files are not changed. Unsaved open documents may generate new drafts." }))) return
+    if (!await this.dialog(() => this.context.ui.dialog.confirm({ title: this.t("OEC · Delete stored drafts?"), message: this.t("Delete recovery copies for this project, including other terminal generations? Open documents and project files are not changed. Unsaved open documents may generate new drafts.") }))) return
     await this.drafts.flush()
     await this.clearArchive()
     this.setStatus("Stored drafts deleted. Open documents were not changed.")
@@ -105,6 +108,7 @@ export class EditorController {
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private changed() { if (!this.disposed) for (const listener of this.listeners) listener() }
   setStatus(message: string) { this.status = message; this.changed() }
+  setLanguage(language: EditorOptions["language"]) { this.options.language = language; this.t = createTranslator(language); this.changed() }
   toggleWrap() { this.capture?.(); this.wrapMode = this.wrapMode === "none" ? "word" : "none"; this.setStatus(this.wrapMode === "word" ? "Line wrap on" : "Line wrap off") }
   toggleSearchMode() { this.fileSearch.setMode(this.fileSearch.mode === "fuzzy" ? "literal" : "fuzzy"); this.setStatus(`Search: ${this.fileSearch.mode}`) }
   toggleDiffView() { this.options.diffView = this.options.diffView === "split" ? "unified" : "split"; this.setStatus(`Diff: ${this.options.diffView}`) }
@@ -142,7 +146,7 @@ export class EditorController {
     const search = this.fileSearch
     const item = search.query.trim() ? search.rows[search.selected] : this.tree.items[this.tree.selected]
     if (!item) return
-    const name = await this.dialog(() => this.context.ui.dialog.prompt({ title: `OEC · Rename ${basename(item.path)}`, placeholder: basename(item.path) }))
+    const name = await this.dialog(() => this.context.ui.dialog.prompt({ title: this.t("OEC · Rename {name}", { name: basename(item.path) }), placeholder: basename(item.path) }))
     if (!name || this.disposed) return
     this.capture?.()
     const next = await this.dialog(() => this.workspace.rename(item.path, name))
@@ -154,7 +158,7 @@ export class EditorController {
   }
   report(error: unknown) {
     this.setStatus(error instanceof Error ? error.message : String(error))
-    if (!this.disposed) this.context.ui.toast.show({ title: "OEC", message: this.status, variant: "error" })
+    if (!this.disposed) this.context.ui.toast.show({ title: "OEC", message: this.t(this.status), variant: "error" })
   }
   async run(action: () => Promise<unknown>) { try { await action() } catch (error) { this.report(error) } }
   async dialog<T>(action: () => Promise<T>): Promise<T> {
@@ -249,8 +253,8 @@ export class EditorController {
     if (!document) return
     const version = document.version
     if (isDirty(document)) {
-      const choice = await this.dialog(() => this.context.ui.dialog.select({ title: "OEC · Unsaved changes", options: [
-        { title: "Cancel", value: "cancel" }, { title: "Save and close", value: "save" }, { title: "Close without saving", value: "discard" },
+      const choice = await this.dialog(() => this.context.ui.dialog.select({ title: this.t("OEC · Unsaved changes"), options: [
+        { title: this.t("Cancel"), value: "cancel" }, { title: this.t("Save and close"), value: "save" }, { title: this.t("Close without saving"), value: "discard" },
       ] }))
       if (this.disposed || !choice || choice === "cancel") return
       if (choice === "save" && !await this.save(path)) return
@@ -264,7 +268,7 @@ export class EditorController {
     const document = this.workspace.active
     if (!document) return
     const { path, version } = document
-    if (isDirty(document) && !await this.dialog(() => this.context.ui.dialog.confirm({ title: "OEC · Reload from disk?", message: "Discard local edits? A deleted file will not be recreated." }))) return
+    if (isDirty(document) && !await this.dialog(() => this.context.ui.dialog.confirm({ title: this.t("OEC · Reload from disk?"), message: this.t("Discard local edits? A deleted file will not be recreated.") }))) return
     if (await this.workspace.reload(path, version)) { this.setStatus("Reloaded from disk"); await this.drafts.flush() }
   }
 

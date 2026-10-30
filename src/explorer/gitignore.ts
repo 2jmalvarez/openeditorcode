@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises"
 import { join, relative, sep } from "node:path"
 import ignore, { type Ignore } from "ignore"
 
+export type GitignoreScope = { root: string; rules: Ignore }
+
 export async function readGitignore(root: string): Promise<Ignore> {
   return createGitignore(parseGitignore(await readGitignoreText(root)))
 }
@@ -21,4 +23,14 @@ export function createGitignore(patterns: string[]): Ignore {
 export function isIgnoredPath(root: string, path: string, directory: boolean, rules: Ignore): boolean {
   const projectPath = relative(root, path).split(sep).join("/")
   return rules.ignores(projectPath) || (directory && rules.ignores(`${projectPath}/`))
+}
+
+export function isIgnoredByScopes(path: string, directory: boolean, scopes: readonly GitignoreScope[]): boolean {
+  let ignored = false
+  for (const scope of scopes) {
+    const localPath = relative(scope.root, path).split(sep).join("/")
+    const result = scope.rules.test(directory ? `${localPath}/` : localPath)
+    if (result.ignored || result.unignored) ignored = result.ignored
+  }
+  return ignored
 }

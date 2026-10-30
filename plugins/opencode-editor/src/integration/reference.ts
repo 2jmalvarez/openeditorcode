@@ -2,6 +2,7 @@ import type { Context } from "@opencode/plugin/tui/context"
 import type { EditorController } from "./controller"
 import type { EditorPreferences } from "./options"
 import { nativeShortcuts } from "../workbench/native-shortcuts"
+import { createTranslator } from "../localization"
 
 export const OEC_GROUP = "OEC: opencode-editor"
 
@@ -43,7 +44,7 @@ Additional textarea shortcuts (editable source only):
 ${nativeShortcuts.filter(({ bind }) => !["ctrl+a", "ctrl+f", "ctrl+w", "ctrl+d", "home", "end", "shift+home", "shift+end", "return", "ctrl+right", "ctrl+left", "ctrl+shift+right", "ctrl+shift+left"].includes(bind)).map(({ bind, title }) => `${bind}: ${title}`).join("\n")}`
 
 export function configurationText(options: EditorPreferences): string {
-  return `Set plugin options in global cli.json → plugins[].options (not opencode.json).
+  return createTranslator(options.language)(`Set plugin options in global cli.json → plugins[].options (not opencode.json).
 Current defaults:
 ${JSON.stringify(options, null, 2)}
 localRoot: optional absolute local directory override; otherwise confirm active session directory.
@@ -52,6 +53,7 @@ Palette: "Forget remembered folder access" removes saved permission; current doc
 toggleBinding: conversation/editor (default f6)
 filesBinding: Files (default f7)
 diffBinding: Diff (default f8), independent of filesBinding
+language: auto (system) | es | en
 explorerWidth: 18–60 columns
 panelHeight: expanded (default, share remaining height) | compact (bounded panels)
 searchMode: fuzzy (whole path, ordered letters) | literal (name contains text; paths if query contains /)
@@ -60,23 +62,31 @@ diffView: split | unified
 imageProtocol: auto | blocks (portable colored-cell fallback)
 drafts: { enabled: boolean, exclude: non-negated gitignore patterns }
 Menu changes affect this project's current controller only. Edit cli.json for defaults after restart.
-No personal configuration is written automatically.`
+No personal configuration is written automatically.`)
 }
 
 export async function showSettings(context: Context, defaults: EditorPreferences, controller?: EditorController) {
-  const choose = () => context.ui.dialog.select({ title: "OEC · Configuration", options: [
-    { title: "View all options and current values", value: "reference" },
-    { title: `Search: ${controller?.fileSearch.mode ?? defaults.searchMode}`, value: "search", disabled: !controller },
-    { title: `Markdown default: ${(controller?.options ?? defaults).markdownPreview ? "preview" : "source"}`, value: "markdown", disabled: !controller },
-    { title: `Diff layout: ${(controller?.options ?? defaults).diffView}`, value: "diff", disabled: !controller },
-    { title: `Panel height: ${(controller?.options ?? defaults).panelHeight}`, value: "panels", disabled: !controller },
-    { title: `Image protocol: ${(controller?.options ?? defaults).imageProtocol}`, value: "image", disabled: !controller },
+  const t = controller?.t ?? createTranslator(defaults.language)
+  const choose = () => context.ui.dialog.select({ title: t("OEC · Configuration"), options: [
+    { title: t("View all options and current values"), value: "reference" },
+    { title: t(`Language: ${(controller?.options ?? defaults).language}`), value: "language", disabled: !controller },
+    { title: t(`Search: ${controller?.fileSearch.mode ?? defaults.searchMode}`), value: "search", disabled: !controller },
+    { title: t(`Markdown default: ${(controller?.options ?? defaults).markdownPreview ? "preview" : "source"}`), value: "markdown", disabled: !controller },
+    { title: t(`Diff layout: ${(controller?.options ?? defaults).diffView}`), value: "diff", disabled: !controller },
+    { title: t(`Panel height: ${(controller?.options ?? defaults).panelHeight}`), value: "panels", disabled: !controller },
+    { title: t(`Image protocol: ${(controller?.options ?? defaults).imageProtocol}`), value: "image", disabled: !controller },
   ] })
   const choice = controller ? await controller.dialog(choose) : await choose()
   if (choice === "reference") {
-    const show = () => context.ui.dialog.alert({ title: "OEC · Plugin options", message: configurationText(controller ? { ...controller.options, searchMode: controller.fileSearch.mode } : defaults) })
+    const show = () => context.ui.dialog.alert({ title: t("OEC · Plugin options"), message: configurationText(controller ? { ...controller.options, searchMode: controller.fileSearch.mode } : defaults) })
     if (controller) await controller.dialog(show); else await show()
   } else if (controller) {
+    if (choice === "language") {
+      const language = await controller.dialog(() => context.ui.dialog.select({ title: t("OEC · Language"), current: controller.options.language, options: [
+        { title: t("Automatic (system)"), value: "auto" }, { title: t("English"), value: "en" }, { title: t("Spanish"), value: "es" },
+      ] }))
+      if (language === "auto" || language === "en" || language === "es") controller.setLanguage(language)
+    }
     if (choice === "search") controller.toggleSearchMode()
     if (choice === "markdown") controller.toggleMarkdownDefault()
     if (choice === "diff") controller.toggleDiffView()

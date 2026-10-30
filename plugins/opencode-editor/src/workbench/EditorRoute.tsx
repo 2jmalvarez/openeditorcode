@@ -11,9 +11,11 @@ import { EditorBuffer, type BufferHandle } from "./EditorBuffer"
 import { useRevision } from "./reactive"
 import { editorCommands } from "./useKeyboardShortcuts"
 import { usePointer } from "../../../../src/ui/usePointer"
+import { useTranslation } from "../localization"
 
 export function EditorRoute(props: { controller: EditorController }) {
   const { controller } = props
+  const t = useTranslation(controller)
   const pointer = usePointer(() => !controller.modal)
   const revision = useRevision(controller.workspace)
   const statusRevision = useRevision(controller)
@@ -64,21 +66,21 @@ export function EditorRoute(props: { controller: EditorController }) {
   onCleanup(() => { clearInterval(poll); handle()?.capture(); void controller.drafts.flush() })
   return <box id="oec-editor-route" height="100%" flexGrow={1} minHeight={0} flexDirection="column" backgroundColor={controller.context.theme.background.base}>
     <box height={1} flexShrink={0} flexDirection="row" backgroundColor={controller.context.theme.background.raised.base}>
-      <text {...pointer} fg={controller.context.theme.text.base} onMouseDown={() => void controller.run(() => controller.back())}> ← Conversation </text>
+      <text {...pointer} fg={controller.context.theme.text.base} onMouseDown={() => void controller.run(() => controller.back())}> ← {t("Conversation")} </text>
       <text fg={controller.context.theme.text.muted}>│ OEC · {controller.workspace.root}</text>
     </box>
     <box flexGrow={1} minHeight={0} flexDirection="row">
       <box flexGrow={1} minWidth={0} minHeight={0} flexDirection="column">
          <DocumentTabs controller={controller} onFocus={focusEditor} />
-        <Show when={active()?.conflict}><text fg="#f2c66d"> File changed or deleted on disk. Local edits retained. Use OEC: reload file from disk.</text></Show>
+        <Show when={active()?.conflict}><text fg="#f2c66d"> {t("File changed or deleted on disk. Local edits retained. Use OEC: reload file from disk.")}</text></Show>
         <box flexGrow={1} minHeight={0} position="relative">
-          <Show when={active()?.path} keyed fallback={<box flexGrow={1} justifyContent="center" alignItems="center"><text fg={controller.context.theme.text.muted}>OEC · Select a file on the right</text></box>}>
+          <Show when={active()?.path} keyed fallback={<box flexGrow={1} justifyContent="center" alignItems="center"><text fg={controller.context.theme.text.muted}>{t("OEC · Select a file on the right")}</text></box>}>
              {(path) => <Show when={source()} fallback={<ReadOnlyPane controller={controller} document={controller.workspace.documents.find((document) => document.path === path)!} focused={() => focus() === "editor" && !modal()} onFocus={focusEditor} />}>
                <EditorBuffer controller={controller} document={controller.workspace.documents.find((document) => document.path === path)!}
                  focused={() => focus() === "editor" && !findOpen() && !modal()} onFocus={focusEditor} onHandle={(value) => setHandle(() => value)} />
              </Show>}
           </Show>
-          <FindPanel open={() => findOpen() && !modal()} query={query} results={results} index={findIndex}
+          <FindPanel translate={t.shared} open={() => findOpen() && !modal()} query={query} results={results} index={findIndex}
             onQuery={(value) => { setQuery(value); setFindIndex(0) }} maxWidth={() => 70} />
         </box>
       </box>
@@ -86,6 +88,6 @@ export function EditorRoute(props: { controller: EditorController }) {
         onFocus={focusExplorer} onSearchFocus={() => { setFindOpen(false); setFocus("search") }}
         onOtherFocus={() => { setFindOpen(false); setFocus("panels") }} onExit={focusEditor} />
     </box>
-    <text height={1} fg={controller.context.theme.text.muted}>{(() => { statusRevision(); revision(); const document = active(); return `${controller.status}  ·  ${focus()}  ·  ${document ? `${document.position.row + 1}:${document.position.column + 1}` : ""}  · Ctrl+S save / Ctrl+F find / Ctrl+L wrap / Tab focus` })()}</text>
+    <text height={1} fg={controller.context.theme.text.muted}>{(() => { statusRevision(); revision(); const document = active(); return `${t(controller.status)}  ·  ${t(focus())}  ·  ${document ? `${document.position.row + 1}:${document.position.column + 1}` : ""}  · ${t("Ctrl+S save / Ctrl+F find / Ctrl+L wrap / Tab focus")}` })()}</text>
   </box>
 }

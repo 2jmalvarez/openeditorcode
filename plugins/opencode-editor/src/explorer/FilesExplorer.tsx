@@ -15,7 +15,7 @@ export function FilesExplorer(props: {
   const focusSearch = () => { props.onSearchFocus(); container?.findDescendantById("oec-files-search")?.focus() }
   const focusTree = () => { props.onFocus(); container?.findDescendantById("oec-files-pane")?.focus() }
   return <box ref={(value) => { container = value }} width={props.width ?? "100%"} height={props.height}
-    flexGrow={props.height === undefined ? 1 : 0} flexBasis={props.height === undefined ? 0 : undefined}
+    flexGrow={props.height === undefined ? 1 : 0} flexBasis={props.height === undefined ? 0 : "auto"}
     minHeight={0} minWidth={0} flexShrink={props.height === undefined ? 1 : 0}
     flexDirection="column" overflow="hidden">
     <FileSearchPane controller={props.controller} sessionID={props.sessionID} keyboardMode={props.keyboardMode}

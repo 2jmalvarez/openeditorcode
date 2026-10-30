@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import type { TextareaRenderable } from "@opentui/core"
 import type { EditorController } from "../src/integration/controller"
 import { editorCommands } from "../src/workbench/useKeyboardShortcuts"
+import { createTranslator } from "../src/localization"
 
 test("editor commands own Enter, copy only selected text, and leave explorer/search keys alone", () => {
   let focus: "editor" | "explorer" = "editor"
@@ -10,7 +11,7 @@ test("editor commands own Enter, copy only selected text, and leave explorer/sea
   let newlines = 0
   let accepted = 0
   let copied = ""
-  const controller = { workspace: { active: {} }, context: { renderer: { copyToClipboardOSC52: (text: string) => { copied = text } } } } as unknown as EditorController
+  const controller = { t: createTranslator("en"), workspace: { active: {} }, context: { renderer: { copyToClipboardOSC52: (text: string) => { copied = text } } } } as unknown as EditorController
   const editor = { newLine: () => { newlines++ }, getSelectedText: () => selected } as unknown as TextareaRenderable
   const commands = editorCommands({ controller, focused: () => focus, editor: () => editor, findOpen: () => searching,
     openFind: () => {}, closeFind: () => {}, moveFind: () => {}, acceptFind: () => { accepted++ }, cycleFocus: () => {}, focusEditor: () => {}, focusExplorer: () => {},

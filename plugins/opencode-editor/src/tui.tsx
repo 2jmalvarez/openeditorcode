@@ -25,7 +25,7 @@ export default Plugin.define({
       { id: "oec.diff", title: "OEC: show/hide Diff", group: "OEC", palette: true, bind: preferences.diffBinding, run: () => projects.run(() => projects.toggleDiff()) },
       { id: "oec.clearDrafts", title: "OEC: delete stored drafts for this project", group: "OEC", palette: true, run: () => projects.run(async () => { await projects.current()?.clearStoredDrafts() }) },
       { id: "oec.access.forget", title: "OEC: forget remembered folder access", group: "OEC", palette: true, run: () => projects.run(() => projects.forgetLocalAccess()) },
-      { id: "oec.help", title: "All keyboard shortcuts", group: "OEC", palette: true, bind: false, run: () => projects.run(async () => { const current = projects.current(); const show = () => context.ui.dialog.alert({ title: "OEC · Shortcuts", message: SHORTCUTS.replace("F6 (toggleBinding)", `${preferences.toggleBinding} (toggleBinding)`).replace("F7 (filesBinding)", `${preferences.filesBinding} (filesBinding)`).replace("F8 (diffBinding)", `${preferences.diffBinding} (diffBinding)`) }); if (current) await current.dialog(show); else await show() }) },
+      { id: "oec.help", title: "All keyboard shortcuts", group: "OEC", palette: true, bind: false, run: () => projects.run(async () => { const current = projects.current(); const show = () => context.ui.dialog.alert({ title: projects.t("OEC · Shortcuts"), message: projects.t(SHORTCUTS).replace("F6 (toggleBinding)", `${preferences.toggleBinding} (toggleBinding)`).replace("F7 (filesBinding)", `${preferences.filesBinding} (filesBinding)`).replace("F8 (diffBinding)", `${preferences.diffBinding} (diffBinding)`) }); if (current) await current.dialog(show); else await show() }) },
       { id: "oec.settings", title: "OEC: plugin configuration", group: "OEC", palette: true, bind: false, run: () => projects.run(() => showSettings(context, preferences, projects.current())) },
       { id: "oec.search.mode", title: "OEC: toggle fuzzy/literal file search", group: "OEC", palette: true, bind: false, enabled: () => Boolean(projects.current()), run: () => projects.current()?.toggleSearchMode() },
       { id: "oec.search.target", title: "OEC: toggle file name/content search", group: "OEC", palette: true, bind: false, enabled: () => Boolean(projects.current()), run: () => projects.run(async () => { await projects.current()?.fileSearch.toggleTarget() }) },
@@ -38,7 +38,7 @@ export default Plugin.define({
       { id: "oec.markdown.default", title: "OEC: toggle default Markdown preview", group: "OEC", palette: true, bind: false, enabled: () => Boolean(projects.current()), run: () => projects.current()?.toggleMarkdownDefault() },
       { id: "oec.image.protocol", title: "OEC: toggle image auto/blocks protocol", group: "OEC", palette: true, bind: false, enabled: () => Boolean(projects.current()), run: () => projects.current()?.toggleImageProtocol() },
       ...(context.ui.router.current().type === "plugin" ? [] : conversationCommands(projects)),
-    ] satisfies KeymapCommand[]).map((command) => ({ ...command, title: command.title?.replace(/^OEC: /, ""), group: OEC_GROUP })) } })
+    ] satisfies KeymapCommand[]).map((command) => ({ ...command, title: command.title && projects.t(command.title.replace(/^OEC: /, "")), group: OEC_GROUP })) } })
     return async () => { unregisterFiles(); unregisterRoute(); stop(); await projects.dispose() }
   },
 })
