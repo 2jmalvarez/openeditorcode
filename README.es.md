@@ -2,21 +2,31 @@
 
 Seguridad y privacidad: [protecciones, borradores y limitaciones](docs/security.md).
 
-El plugin opcional [`@2jmalvarez/opencode-editor@0.3.4`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.4) integra el editor local en **OpenCode 2**, con árboles Files/Diff y pestañas propias. `F6` alterna conversación/editor, `F7` muestra/oculta Files y `F8` alterna Diff. Lee Git local, incluido WSL, y abre diffs de solo lectura; `F4` abre el archivo actual o alterna preview Markdown/SVG. Incluye imágenes, renombrado `F2`, filtro por nombre/contenido, scroll estable, paneles expanded/compact y acciones contextuales en `Ctrl+P`, grupo **OEC: opencode-editor**. Consultar la [guía del plugin](plugins/opencode-editor/README.md). Instalar `openeditorcode` no instala este plugin. OEC autónomo permanece independiente; ambos editores admiten `Ctrl+A` para seleccionar todo el archivo activo.
+El plugin opcional [`@2jmalvarez/opencode-editor@0.3.7`](https://www.npmjs.com/package/@2jmalvarez/opencode-editor/v/0.3.7) integra el editor local en **OpenCode 2**, con árboles Files/Diff y pestañas propias. `F6` alterna conversación/editor, `F7` alterna Files y `F8` Diff. `F4` abre el archivo actual del diff o alterna fuente/preview Markdown y SVG. Incluye interfaz español/inglés, controles Diff adaptables por repositorio/rama, reglas `.gitignore` anidadas, imágenes, renombrado `F2` y filtro por nombre/contenido. Consultar la [guía del plugin](plugins/opencode-editor/README.md). Instalar OEC autónomo no instala el plugin; ambos editores admiten `Ctrl+A` para seleccionar todo.
 
-El plugin 0.3.4 pasó la matriz Windows/Linux con OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1. Para OpenCode 2.1.x usar 0.3.1 o posterior; versiones anteriores del plugin no son compatibles con sus requisitos de propietario de recursos OpenTUI.
+El plugin 0.3.7 pasó la matriz de publicación Windows/Linux con OpenCode 2.0.26, 2.0.27, 2.1.0 y 2.1.1. Para OpenCode 2.1.x usar 0.3.1 o posterior; versiones anteriores no satisfacen sus requisitos de propietario de recursos OpenTUI.
 
 ### Demo del plugin
 
 ![Demo del plugin: abrir un archivo desde Files, editar y guardar, revisar su diff Git y alternar conversación/editor con F6](docs/images/plugin-demo.gif)
 
-Grabado con el plugin **0.3.4** y OpenCode **2.1.1**, en una sesión vacía de ejemplo y sin consultas a modelos. [Ver con controles de reproducción](https://openeditorcode.dev/es/#plugin-demo).
+Grabado con el plugin **0.3.7** y OpenCode **2.1.1**, con atajos visibles, en una sesión vacía de ejemplo y sin consultas a modelos. [Ver con controles de reproducción](https://openeditorcode.dev/es/#plugin-demo).
+
+### Varios repositorios dentro de una carpeta
+
+![Plugin 0.3.7: ramas, contadores y diffs separados por repositorio, incluido uno limpio](docs/images/plugin-multirepo-demo.gif)
+
+Abre la carpeta padre en OpenCode y autoriza el acceso local. No necesita `.git` propio: `apps/api` (`feature/auth`), `apps/web` (`feature/header`) y `packages/shared` (`main`, limpio) siguen siendo repositorios independientes, no un único monorepo Git.
+
+**Diff (2)** suma dos pares únicos repositorio/archivo; API y web muestran **(1)** cada uno. Sus rutas homónimas `src/config.ts` abren diffs separados y `F4` abre el archivo actual del repositorio elegido. Los cambios staged y sin staged de una misma ruta cuentan una vez en su repositorio. El círculo blanco indica cambios; el azul, repositorio limpio. **Collapse** oculta archivos, no repositorios ni ramas; `F7` oculta Files para dar espacio a Diff. El plugin lee Git sin preparar cambios, crear commits ni descartar contenido.
+
+Grabado con plugin **0.3.7** / OpenCode **2.1.1**, con atajos visibles y **Getting started** cerrado en la sesión aislada, también eliminado de la demo básica. [Ver con controles y explicación completa](https://openeditorcode.dev/es/#multirepo-demo).
 
 <details>
 <summary>Capturas del plugin OpenCode</summary>
 
-![Files y Diff en la conversación de OpenCode](docs/images/plugin-screen-1.png)
-![Editor OEC dentro de OpenCode](docs/images/plugin-screen-2.png)
+![Plugin 0.3.7: Files y Diff junto a una sesión vacía de ejemplo en OpenCode](docs/images/plugin-0.3.7-conversation.png)
+![Plugin 0.3.7: editor OEC dentro de OpenCode](docs/images/plugin-0.3.7-editor.png)
 
 </details>
 
@@ -44,11 +54,17 @@ Si OEC o su plugin de OpenCode te resultan útiles, puedes apoyar su desarrollo 
 
 ![Demo de OEC: explorar archivos, editar y guardar un saludo, revisar su diff Git y alternar preview/código Markdown con F4](docs/images/oec-demo.gif)
 
-Grabado con OEC autónomo **0.2.41**. [Ver con controles de reproducción](https://openeditorcode.dev/es/#standalone-demo).
+Grabado con OEC autónomo **0.2.43**, con atajos visibles y ranking de archivos masivos. [Ver con controles de reproducción](https://openeditorcode.dev/es/#standalone-demo).
 
 Al iniciar sin documentos abiertos, OEC muestra el Explorador y, cuando hay al menos 144 columnas disponibles, tambien el panel de Cambios. `F7` y `F8` muestran u ocultan cada lateral, igual que en el plugin, mientras que `Ctrl+Shift+Izquierda/Derecha` mueve el foco entre paneles. El botón medio cierra desde cualquier parte de la pestaña; los cambios sin guardar siguen pidiendo confirmación. Debajo se muestran los demas atajos organizados por capacidad. Si el area central queda mas angosta que el Explorador, la ayuda se oculta y solo se muestra `OEC` en vertical.
 
-![Pantalla principal de OpenEditorCode](docs/images/welcome-screen.png)
+![Pantalla principal de OpenEditorCode 0.2.43](docs/images/oec-0.2.43-welcome.png)
+
+### Encuentra archivos masivos
+
+Usa `Ctrl+P` → **Explorador: ordenar archivos masivos**, o haz clic en **[Masivos]**, para ordenar textos legibles por cantidad de líneas descendente. Se excluyen archivos y carpetas ignorados por `.gitignore` de raíz y anidados. Omite binarios, archivos ilegibles y textos mayores de 2 MiB; el índice tiene un límite de 50.000 entradas. Es un ranking de líneas, no de complejidad ni tamaño en bytes. **[Arbol]** vuelve al árbol normal.
+
+![Ranking de archivos masivos de OEC 0.2.43: 420 y 180 líneas, excluyendo dependencias y caché ignoradas](docs/images/oec-0.2.43-massive.png)
 
 ## Caracteristicas
 
@@ -124,7 +140,7 @@ El instalador descarga la ultima release estable, verifica SHA-256 y la version,
 Para elegir una version o no modificar PATH:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.40 -NoModifyPath
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.43 -NoModifyPath
 & "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
 ```
 
