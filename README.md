@@ -4,6 +4,8 @@ English | [Español](README.es.md)
 
 Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
+♥ [Sponsor OEC on GitHub](https://github.com/sponsors/2jmalvarez)
+
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
 Documentation for **0.2.42** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.42)). Publication checks Windows and Linux before advertising the npm update.
@@ -27,6 +29,10 @@ Plugin 0.3.4 passed the Windows/Linux matrix with OpenCode 2.0.26, 2.0.27, 2.1.0
 </details>
 
 The Spanish reference manual is available in [docs/manual.md](docs/manual.md); the npm installation also provides `man oec` on Unix. In OEC, `Ctrl+P` includes **Open settings** and **Open OEC manual**.
+
+## Support the project
+
+If OEC or its OpenCode plugin is useful to you, you can support their development and maintenance with a [one-time or monthly contribution through GitHub Sponsors](https://github.com/sponsors/2jmalvarez). Contributions go to the maintainer's personal account, **@2jmalvarez**. Sponsorship is optional; OEC and the plugin remain open source.
 
 ## Main view
 

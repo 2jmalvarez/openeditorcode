@@ -18,6 +18,8 @@ El plugin 0.3.4 pasó la matriz Windows/Linux con OpenCode 2.0.26, 2.0.27, 2.1.0
 
 Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
+♥ [Apoya OEC en GitHub Sponsors](https://github.com/sponsors/2jmalvarez)
+
 Documentación para **0.2.42** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.42)). La publicación verifica Windows y Linux antes de anunciar la actualización npm.
 
 Novedades de **0.2.42**: barras de scroll vertical/horizontal arrastrables, desplazamiento horizontal con `Shift+rueda`, cierre de pestañas con clic central, paneles con `F7`/`F8`, botones de acciones Git y manito en controles cliqueables. El plugin **0.3.5**, con publicación independiente, comparte las mejoras del editor y agrupa los cambios locales por repositorio y rama, incluidos repositorios anidados.
@@ -27,6 +29,10 @@ Las actualizaciones solo se ofrecen cuando están disponibles en npm los metadat
 Editor de proyectos de código abierto para terminal. Es una aplicación autónoma escrita en TypeScript con Bun y OpenTUI; no necesita OpenCode, servidor ni conexión externa.
 
 La referencia completa está en [docs/manual.md](docs/manual.md); la instalación npm también ofrece `man oec` en Unix. Desde OEC, `Ctrl+P` incluye **Abrir configuración de OEC** y **Abrir manual de OEC**.
+
+## Apoya el proyecto
+
+Si OEC o su plugin de OpenCode te resultan útiles, puedes apoyar su desarrollo y mantenimiento con un [aporte único o mensual a través de GitHub Sponsors](https://github.com/sponsors/2jmalvarez). Los aportes van a la cuenta personal del mantenedor, **@2jmalvarez**. El apoyo es opcional; OEC y el plugin siguen siendo de código abierto.
 
 ## Vista principal
 
