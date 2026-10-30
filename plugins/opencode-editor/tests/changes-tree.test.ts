@@ -45,3 +45,10 @@ test("repository counts include unique paths, not staged/working duplicates, eve
   expect(rows.find((row) => row.id === "repo:a")?.changedFiles).toBe(2)
   expect(rows.find((row) => row.id === "repo:b")?.changedFiles).toBe(0)
 })
+
+test("cached empty repositories never claim no changes while loading or stale", () => {
+  const repositories = [{ id: "a", root: "/a", name: "a", branch: "main" }]
+  expect(changeTree([], new Set(), repositories, { stale: true }).map((row) => row.name)).toEqual(["a", "Changes may be outdated"])
+  expect(changeTree([], new Set(), [{ ...repositories[0]!, error: "Git refresh timed out" }], { loading: true }).map((row) => row.name)).toEqual(["a"])
+  expect(changeTree([], new Set(), repositories).map((row) => row.name)).toEqual(["a", "No changes"])
+})

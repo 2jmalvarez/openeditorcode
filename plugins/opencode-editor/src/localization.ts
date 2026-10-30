@@ -45,6 +45,7 @@ export const spanish = {
   "Searching…": "Buscando…", "No matching files": "No se encontraron archivos", "{count} results": "{count} resultados", "first 80": "primeros 80", "index limited": "índice limitado",
   "Enter: diff tab": "Enter: pestaña de cambios", "F5 to retry": "F5 para reintentar", "Changes may be outdated": "Los cambios pueden estar desactualizados",
   "Loading changes…": "Cargando cambios…", "No repository": "Sin repositorio", "No changes": "Sin cambios", "Branch unavailable": "Rama no disponible", "Git refresh timed out": "Se agotó el tiempo de actualización de Git",
+  "Repository discovery failed": "Falló la búsqueda de repositorios",
   "staged:": "preparados:", "Line wrap on": "Ajuste de líneas activado", "Line wrap off": "Ajuste de líneas desactivado",
   "Saved": "Guardado", "Reloaded from disk": "Recargado desde el disco", "Opened {path}": "Abierto {path}", "Renamed to {name}": "Renombrado a {name}",
   "Recovered {count} file(s). Review and save explicitly.": "Se recuperaron {count} archivo(s). Revisá y guardá explícitamente.",

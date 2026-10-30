@@ -1,13 +1,13 @@
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { readdir } from "node:fs/promises"
-import { isIgnoredPath, readGitignore } from "../../../../src/explorer/gitignore"
+import { isIgnoredByScopes, readGitignore, type GitignoreScope } from "../../../../src/explorer/gitignore"
 import { ensureInsideRoot, ensurePhysicallyInsideRoot, MAX_FILE_BYTES, readTextFile } from "../../../../src/documents/files"
 import { parseWslPath } from "../../../../src/documents/wsl-save"
 import { parseGitStatus, parseGitNumstat, type GitFile } from "../../../../src/git/status"
 
 export type Change = GitFile & { file: string; repositoryRoot?: string }
 export type LocalRepository = { id: string; root: string; name: string; branch: string; error?: string }
-export type LocalChanges = { repository: boolean; files: Change[]; repositories?: LocalRepository[] }
+export type LocalChanges = { repository: boolean; files: Change[]; repositories?: LocalRepository[]; discoveryError?: string }
 export type ChangesReader = (root: string, signal: AbortSignal, rediscover?: boolean) => Promise<LocalChanges>
 
 export function changesError(error: unknown): string {
@@ -43,10 +43,17 @@ async function limited(stream: ReadableStream<Uint8Array>, limit: number, abort:
 }
 
 async function git(root: string, args: string[], signal?: AbortSignal) {
-  const child = Bun.spawn(gitCommand(root, args), { stdin: "ignore", stdout: "pipe", stderr: "pipe", windowsHide: true, env: { ...process.env, LC_ALL: "C", LANG: "C" },
-    signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(10_000)]) })
-  const [stdout, stderr, code] = await Promise.all([limited(child.stdout, MAX_FILE_BYTES, () => child.kill()), limited(child.stderr, 64 * 1024, () => child.kill()), child.exited])
-  return { stdout, stderr, code }
+  const abort = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(10_000)])
+  try {
+    const child = Bun.spawn(gitCommand(root, args), { stdin: "ignore", stdout: "pipe", stderr: "pipe", windowsHide: true, env: { ...process.env, LC_ALL: "C", LANG: "C" },
+      signal: abort })
+    const [stdout, stderr, code] = await Promise.all([limited(child.stdout, MAX_FILE_BYTES, () => child.kill()), limited(child.stderr, 64 * 1024, () => child.kill()), child.exited])
+    abort.throwIfAborted()
+    return { stdout, stderr, code }
+  } catch (error) {
+    if (abort.aborted && abort.reason?.name === "TimeoutError") throw new Error(`Git refresh timed out · git ${args[0]} · ${root}`)
+    throw error
+  }
 }
 
 export function changePath(root: string, path: string): string {
@@ -93,33 +100,39 @@ const readRepositoryChanges = async (root: string, signal: AbortSignal, reposito
 }
 
 /** Search only real directories inside the authorized workspace, including nested repos. */
-export async function discoverLocalRepositories(root: string, signal: AbortSignal): Promise<string[]> {
+export async function discoverLocalRepositories(root: string, signal: AbortSignal, onRepository?: (directory: string) => void): Promise<string[]> {
   await ensurePhysicallyInsideRoot(root, root)
   const found: string[] = []
-  const pending = [root]
-  await ensurePhysicallyInsideRoot(root, join(root, ".gitignore"))
-  const rules = await readGitignore(root)
+  const pending: { directory: string; scopes: GitignoreScope[] }[] = [{ directory: root, scopes: [] }]
   let visited = 0
   while (pending.length) {
     signal.throwIfAborted()
     if (++visited > 20_000) throw new Error("Repository discovery exceeds the 20,000 directory limit")
-    const directory = pending.pop()!
+    const { directory, scopes: inherited } = pending.pop()!
     await ensurePhysicallyInsideRoot(root, directory)
     const entries = await readdir(directory, { withFileTypes: true }).catch((error) => {
       if (directory === root) throw error
       return []
     })
+    // Each repository/directory has its own ignore scope. A workspace container
+    // often has no .gitignore while its child repositories ignore large outputs.
+    let scopes = inherited
+    if (entries.some((entry) => entry.name === ".gitignore")) {
+      await ensurePhysicallyInsideRoot(root, join(directory, ".gitignore"))
+      scopes = [...inherited, { root: directory, rules: await readGitignore(directory) }]
+    }
     if (directory === root || entries.some((entry) => entry.name === ".git" && (entry.isDirectory() || entry.isFile()))) {
       const info = await git(directory, ["rev-parse", "--is-inside-work-tree"], signal)
-      if (info.code === 0 && info.stdout.trim() === "true") found.push(directory)
+      if (info.code === 0 && info.stdout.trim() === "true") { found.push(directory); onRepository?.(directory) }
       else if (info.code && !/not a git repository/i.test(info.stderr)) throw new Error(info.stderr.trim() || "Could not inspect local Git repository")
     }
     for (const entry of entries) {
       if (!entry.isDirectory() || entry.name === ".git" || entry.name === "node_modules") continue
       const path = join(directory, entry.name)
-      if (!isIgnoredPath(root, path, true, rules)) pending.push(path)
+      if (!isIgnoredByScopes(path, true, scopes)) pending.push({ directory: path, scopes })
     }
   }
+  signal.throwIfAborted()
   return found.sort((a, b) => a.localeCompare(b))
 }
 
@@ -127,6 +140,7 @@ async function readLocalRepository(root: string, directory: string, roots: reado
   const id = relative(root, directory).replace(/\\/g, "/") || "."
   const repository: LocalRepository = { id, root: directory, name: id === "." ? basename(root) : id, branch: "" }
   try {
+    await ensurePhysicallyInsideRoot(root, directory)
     const [state, branch] = await Promise.all([
       readRepositoryChanges(directory, signal, roots),
       git(directory, ["symbolic-ref", "--quiet", "--short", "HEAD"], signal),
@@ -139,7 +153,7 @@ async function readLocalRepository(root: string, directory: string, roots: reado
     }
     return { repository: true, repositories: [repository], files: state.files.map((file) => ({ ...file, repositoryRoot: directory })) }
   } catch (error) {
-    repository.error = changesError(signal.aborted ? signal.reason : error)
+    repository.error = changesError(signal.aborted && signal.reason?.name !== "TimeoutError" ? signal.reason : error)
   }
   return { repository: true, repositories: [repository], files: [] }
 }
@@ -152,13 +166,29 @@ export function createChangesReader(options: {
   readRepository?: typeof readLocalRepository
 } = {}): ChangesReader {
   let cached: { root: string; roots: string[]; at: number } | undefined
+  let failure: { root: string; at: number; error: string } | undefined
   return async (root, signal, rediscover = false) => {
     const timeout = () => AbortSignal.any([signal, AbortSignal.timeout(options.timeoutMs ?? 10_000)])
-    if (rediscover || !cached || cached.root !== root || Date.now() - cached.at >= (options.discoveryTTL ?? 30_000)) {
-      const roots = await (options.discover ?? discoverLocalRepositories)(root, timeout())
-      signal.throwIfAborted()
-      cached = { root, roots, at: Date.now() }
+    const ttl = options.discoveryTTL ?? 30_000
+    if (rediscover || failure?.root !== root || Date.now() - failure.at >= ttl) {
+      if (rediscover || !cached || cached.root !== root || Date.now() - cached.at >= ttl) {
+        const discoverySignal = timeout()
+        const discovered: string[] = []
+        try {
+          const roots = await (options.discover ?? discoverLocalRepositories)(root, discoverySignal, (directory) => discovered.push(directory))
+          discoverySignal.throwIfAborted()
+          cached = { root, roots, at: Date.now() }
+          failure = undefined
+        } catch (error) {
+          signal.throwIfAborted()
+          failure = { root, at: Date.now(), error: `Repository discovery failed · ${changesError(discoverySignal.aborted ? discoverySignal.reason : error)}` }
+          if (discovered.length) cached = { root, roots: [...new Set([...(cached?.root === root ? cached.roots : []), ...discovered])].sort(), at: Date.now() }
+        }
+      }
     }
+    // A failed rescan must not prevent known repositories from refreshing or
+    // trigger another expensive scan on every three-second poll.
+    if (!cached || cached.root !== root) throw new Error(failure?.error ?? "Repository discovery failed")
     const roots = cached.roots
     const results: LocalChanges[] = new Array(roots.length)
     let next = 0
@@ -172,7 +202,7 @@ export function createChangesReader(options: {
       }
     }))
     signal.throwIfAborted()
-    return { repository: roots.length > 0, repositories: results.flatMap((result) => result.repositories ?? []), files: results.flatMap((result) => result.files) }
+    return { repository: roots.length > 0, repositories: results.flatMap((result) => result.repositories ?? []), files: results.flatMap((result) => result.files), discoveryError: failure?.root === root ? failure.error : undefined }
   }
 }
 

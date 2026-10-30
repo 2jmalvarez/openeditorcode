@@ -114,3 +114,21 @@ test("partial repository failures retain only failed repositories' previous rows
     expect(state.files).toEqual([])
   } finally { state.dispose() }
 })
+
+test("discovery warnings publish fresh known repository results and clear on recovery", async () => {
+  const host = mockHost(root)
+  let value: LocalChanges = result("old.txt")
+  const state = new ChangesState(host.context, root, async () => value)
+  try {
+    state.start(); await tick()
+    value = { ...result("fresh.txt"), discoveryError: "Repository discovery failed · Git refresh timed out" }
+    await state.refresh()
+    expect(state.files.map((file) => file.file)).toEqual(["fresh.txt"])
+    expect(state.stale).toBe(true)
+    expect(state.error).toContain("Repository discovery failed")
+    value = result("recovered.txt")
+    await state.refresh()
+    expect(state.stale).toBe(false)
+    expect(state.error).toBe("")
+  } finally { state.dispose() }
+})

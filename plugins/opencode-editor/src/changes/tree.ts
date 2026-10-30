@@ -3,7 +3,7 @@ import type { Change, LocalRepository } from "./git"
 export type ChangeRow = { id: string; name: string; depth: number; directory: boolean; expanded?: boolean; parent?: string; change?: Change; repository?: LocalRepository; changedFiles?: number; detail?: boolean }
 
 /** Stable IDs include the area: a staged file may also have working-tree changes. */
-export function changeTree(files: readonly Change[], collapsed: ReadonlySet<string> = new Set(), repositories: readonly LocalRepository[] = []): ChangeRow[] {
+export function changeTree(files: readonly Change[], collapsed: ReadonlySet<string> = new Set(), repositories: readonly LocalRepository[] = [], status: { loading?: boolean; stale?: boolean } = {}): ChangeRow[] {
   if (repositories.length) return repositories.flatMap((repository): ChangeRow[] => {
     const id = `repo:${encodeURIComponent(repository.id)}`
     const expanded = !collapsed.has(id)
@@ -14,7 +14,7 @@ export function changeTree(files: readonly Change[], collapsed: ReadonlySet<stri
     const prefix = `${id}:`
     const localCollapsed = new Set([...collapsed].filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)))
     const children = changeTree(localFiles, localCollapsed)
-    if (repository.error || !children.length) rows.push({ id: `${id}:status`, name: repository.error || "No changes", depth: 1, directory: false, parent: id, detail: true })
+    if (!status.loading && (repository.error || !children.length)) rows.push({ id: `${id}:status`, name: repository.error || (status.stale ? "Changes may be outdated" : "No changes"), depth: 1, directory: false, parent: id, detail: true })
     rows.push(...children.map((row) => ({ ...row, id: prefix + row.id, depth: row.depth + 1, parent: row.parent ? prefix + row.parent : id })))
     return rows
   })

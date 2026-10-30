@@ -52,8 +52,8 @@ export class ChangesState {
         const failed = new Set(result.repositories?.filter((repo) => repo.error).map((repo) => repo.root))
         this.files = [...result.files, ...this.files.filter((file) => file.repositoryRoot && failed.has(file.repositoryRoot))]
         this.repositories = (result.repositories ?? []).map((repo) => repo.error ? { ...repo, branch: repo.branch || this.repositories.find((previous) => previous.root === repo.root)?.branch || "" } : repo)
-        this.stale = failed.size > 0
-        this.error = ""
+        this.stale = failed.size > 0 || !!result.discoveryError
+        this.error = result.discoveryError ?? ""
       } catch (error) {
         if (this.running && generation === this.generation) { this.stale = true; this.error = changesError(error) }
       } finally {

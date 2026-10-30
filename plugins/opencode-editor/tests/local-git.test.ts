@@ -200,6 +200,104 @@ test("repository workers have independent deadlines, bounded concurrency and pre
   expect(result.repositories?.map((repo) => repo.error)).toEqual(["Git refresh timed out", "Git refresh timed out", "Git refresh timed out", undefined])
 })
 
+test("failed discovery refreshes known repos, backs off polls, and explicit retry recovers", async () => {
+  let scans = 0, reads = 0, fail = false
+  const reader = createChangesReader({
+    discover: async (root) => { scans++; if (fail) throw new DOMException("slow scan", "TimeoutError"); return [root] },
+    readRepository: async () => { reads++; return { repository: true, files: [] } },
+  })
+  const signal = new AbortController().signal
+  await reader("/a", signal)
+  fail = true
+  const failed = await reader("/a", signal, true)
+  expect(failed.discoveryError).toBe("Repository discovery failed · Git refresh timed out")
+  expect(reads).toBe(2)
+  await reader("/a", signal)
+  expect(scans).toBe(2)
+  expect(reads).toBe(3)
+  // A failed scan must never leak another workspace's cached repositories.
+  await expect(reader("/b", signal)).rejects.toThrow("Repository discovery failed")
+  fail = false
+  expect((await reader("/a", signal, true)).discoveryError).toBeUndefined()
+  expect(scans).toBe(4)
+})
+
+test("initial discovery failure keeps already discovered repositories and abort never falls back", async () => {
+  const reader = createChangesReader({
+    discover: async (root, _signal, found) => { found?.(root); throw new DOMException("slow scan", "TimeoutError") },
+    readRepository: async (_root, directory) => ({ repository: true, repositories: [{ id: ".", root: directory, name: "repo", branch: "main" }], files: [] }),
+  })
+  const result = await reader("/a", new AbortController().signal)
+  expect(result.repositories?.[0]?.root).toBe("/a")
+  expect(result.discoveryError).toContain("Repository discovery failed")
+  const abort = new AbortController(); abort.abort()
+  await expect(reader("/a", abort.signal, true)).rejects.toThrow()
+})
+
+test("failed initial scans back off until explicit retry and late discoveries cannot publish", async () => {
+  let scans = 0
+  const reader = createChangesReader({
+    timeoutMs: 5,
+    discover: async () => { scans++; await Bun.sleep(15); return ["/a"] },
+  })
+  const signal = new AbortController().signal
+  await expect(reader("/a", signal)).rejects.toThrow("Repository discovery failed · Git refresh timed out")
+  await expect(reader("/a", signal)).rejects.toThrow("Repository discovery failed")
+  expect(scans).toBe(1)
+  await expect(reader("/a", signal, true)).rejects.toThrow("Repository discovery failed")
+  expect(scans).toBe(2)
+})
+
+test("expired discovery failures retry automatically after the backoff", async () => {
+  let fail = true, scans = 0
+  const reader = createChangesReader({
+    discoveryTTL: 20,
+    discover: async () => { scans++; if (fail) throw new Error("scan failed"); return [] },
+  })
+  const signal = new AbortController().signal
+  await expect(reader("/a", signal)).rejects.toThrow("scan failed")
+  await expect(reader("/a", signal)).rejects.toThrow("scan failed")
+  expect(scans).toBe(1)
+  fail = false; await Bun.sleep(30)
+  expect((await reader("/a", signal)).repository).toBe(false)
+  expect(scans).toBe(2)
+})
+
+test.skipIf(process.platform === "win32")("cached repository paths are rechecked against the authorized workspace", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-cached-consent-"))
+  const external = await fixture()
+  const directory = join(root, "repo")
+  const reader = createChangesReader({ discover: async () => [directory] })
+  try {
+    await mkdir(directory)
+    const child = Bun.spawn(["git", "-C", directory, "init", "-q"], { stdout: "ignore", stderr: "pipe" })
+    expect(await child.exited).toBe(0)
+    const signal = new AbortController().signal
+    expect((await reader(root, signal)).repositories?.[0]?.error).toBeUndefined()
+    await writeFile(join(external.root, "outside.txt"), "must not be read")
+    await rm(directory, { recursive: true, force: true })
+    await symlink(external.root, directory, "dir")
+    const result = await reader(root, signal)
+    expect(result.repositories?.[0]?.error).toBeTruthy()
+    expect(result.files).toEqual([])
+  } finally { await rm(root, { recursive: true, force: true }); await external.cleanup() }
+})
+
+test("workspace discovery respects child repository and nested directory gitignores", async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-nested-ignore-"))
+  try {
+    const repo = join(root, "repo"), nested = join(repo, "packages")
+    for (const directory of [repo, join(repo, "build", "hidden"), join(nested, "generated", "hidden"), join(nested, "visible")]) {
+      await mkdir(directory, { recursive: true })
+      const child = Bun.spawn(["git", "-C", directory, "init", "-q"], { stdout: "ignore", stderr: "pipe" })
+      expect(await child.exited).toBe(0)
+    }
+    await writeFile(join(repo, ".gitignore"), "build/\n")
+    await writeFile(join(nested, ".gitignore"), "generated/\n")
+    expect(await discoverLocalRepositories(root, AbortSignal.timeout(10_000))).toEqual([repo, join(nested, "visible")])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 const distro = process.env.OEC_TEST_WSL_DISTRO
 test.skipIf(process.platform !== "win32" || !distro)("reads real ext4 Git through Windows WSL mapping", async () => {
   const native = async (...args: string[]) => {

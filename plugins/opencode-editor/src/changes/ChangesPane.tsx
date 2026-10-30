@@ -35,7 +35,15 @@ export function ChangesPane(props: { controller: EditorController; view?: DiffVi
   const { collapsed, setCollapsed } = view
   // Until layout is measured, avoid creating artificial one-character lines.
   const [width, setWidth] = createSignal(Number.POSITIVE_INFINITY)
-  const tree = createMemo(() => { revision(); return changeTree(state.files, collapsed(), state.repositories) })
+  const tree = createMemo(() => { revision(); return changeTree(state.files, collapsed(), state.repositories, { loading: state.loading, stale: state.stale }) })
+  const [loadingFrame, setLoadingFrame] = createSignal(0)
+  const loadingFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+  createEffect(() => {
+    if (!changes().loading) return
+    setLoadingFrame(0)
+    const timer = setInterval(() => setLoadingFrame((frame) => (frame + 1) % loadingFrames.length), 100)
+    onCleanup(() => clearInterval(timer))
+  })
   const visual = createMemo(() => diffVisualRows(tree(), width(), view.wrap(), t("Branch unavailable")), undefined, {
     equals: (previous, next) => previous.length === next.length && previous.every((entry, index) => {
       const other = next[index]!
@@ -107,12 +115,14 @@ export function ChangesPane(props: { controller: EditorController; view?: DiffVi
     minHeight={0} flexShrink={props.fill || props.keyboardMode ? 1 : 0} paddingRight={1} overflow="hidden"
     on:focused={() => { props.onFocus(); setFocused(true) }} on:blurred={() => setFocused(false)}
     onMouseDown={(event) => { event.stopPropagation(); props.onFocus(); panel?.focus() }}>
-    <Show when={changes().error || changes().stale || changes().repository !== true || (!changes().files.length && !changes().repositories.length)}><box id="oec-diff-status" flexDirection="column" flexShrink={0}>
+    <Show when={changes().loading || changes().error || changes().stale || changes().repository !== true || (!changes().files.length && !changes().repositories.length)}><box id="oec-diff-status" flexDirection="column" flexShrink={0}>
+    <Show when={changes().loading} fallback={<>
     <Show when={changes().error}><text fg={controller.context.theme.text.muted}> {t(changes().error)} · {t("F5 to retry")}</text></Show>
     <Show when={changes().stale}><text fg={controller.context.theme.text.muted}> {t("Changes may be outdated")} · {t("F5 to retry")}</text></Show>
     <Show when={!changes().error && changes().repository === undefined}><text fg={controller.context.theme.text.muted}> {t("Loading changes…")}</text></Show>
     <Show when={!changes().error && changes().repository === false}><text fg={controller.context.theme.text.muted}> {t("No repository")}</text></Show>
     <Show when={!changes().error && !changes().stale && changes().repository && !changes().files.length && !changes().repositories.length}><text fg={controller.context.theme.text.muted}> {t("No changes")}</text></Show>
+    </>}><text fg={controller.context.theme.text.muted}> {loadingFrames[loadingFrame()]} {t("Loading changes…")}</text></Show>
     </box></Show>
     <Show when={changes().files.length || changes().repositories.length}>
         <scrollbox id="oec-diff-scroll" ref={(value) => { scroll = value; viewport.attach(value) }} flexGrow={1} flexBasis={0} minHeight={0} scrollY onSizeChange={measure} viewportOptions={{ overflow: "hidden" }}>

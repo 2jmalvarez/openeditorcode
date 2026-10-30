@@ -155,6 +155,49 @@ test("Diff keeps visible rows after a timeout and clears its outdated warning af
   } finally { setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
 })
 
+for (const partial of [false, true]) test(`F5 visibly replaces ${partial ? "repository" : "global"} errors with animated loading and recovers`, async () => {
+  const root = await mkdtemp(join(tmpdir(), "oec-diff-retry-"))
+  const host = mockHost(root)
+  let fail = false, hold = false
+  let finish: (() => void) | undefined
+  const controller = new EditorController(host.context, parseOptions({ localRoot: root, language: "es" }), async () => {
+    if (hold) await new Promise<void>((resolve) => { finish = resolve })
+    if (fail && !partial) throw new DOMException("slow Git", "TimeoutError")
+    return { repository: true, files: [], repositories: [{ id: ".", root, name: "repo", branch: "main", error: fail ? "Git refresh timed out" : undefined }] }
+  })
+  const setup = await testRender(() => {
+    Object.defineProperty(host.context, "renderer", { value: useRenderer(), configurable: true })
+    return <ChangesPane controller={controller} fill onFocus={() => {}} focusTree={() => {}} releaseFocus={() => {}} />
+  }, { width: 80, height: 20 })
+  const render = async () => { await setup.renderOnce(); await setup.renderOnce() }
+  try {
+    await controller.changes.refresh(); await render()
+    expect(setup.captureCharFrame()).toContain("Sin cambios")
+    fail = true
+    await controller.changes.refresh(); await render()
+    expect(setup.captureCharFrame()).toContain("Se agotó el tiempo")
+    expect(setup.captureCharFrame()).not.toContain("Sin cambios")
+    const pane = setup.renderer.root.findDescendantById("oec-changes-pane")!
+    pane.focus(); await render()
+    const layer = [...host.layers].map((factory) => factory()).find((entry) => entry.target?.()?.id === pane.id && entry.enabled !== false)!
+    fail = false; hold = true
+    const pending = layer.commands!.find((command) => command.bind === "f5")!.run()
+    await render()
+    const loading = setup.captureCharFrame()
+    expect(loading).toContain("Cargando cambios…")
+    expect(loading).not.toContain("Se agotó el tiempo")
+    expect(loading).not.toContain("F5 para reintentar")
+    expect(loading).not.toContain("Sin cambios")
+    expect(loading).toContain("repo")
+    await Bun.sleep(130); await render()
+    expect(setup.captureCharFrame()).not.toBe(loading)
+    hold = false; finish!(); await pending; await render()
+    expect(setup.captureCharFrame()).toContain("Sin cambios")
+    expect(setup.captureCharFrame()).not.toContain("Cargando")
+    expect(setup.captureCharFrame()).not.toContain("desactualizados")
+  } finally { finish?.(); setup.renderer.destroy(); await controller.dispose(); await rm(root, { recursive: true, force: true }) }
+})
+
 test("long branches wrap completely without squeezing repository labels and respect No wrap", async () => {
   const root = await mkdtemp(join(tmpdir(), "oec-repo-branch-width-"))
   const host = mockHost(root)
