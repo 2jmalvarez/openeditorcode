@@ -8,9 +8,9 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for **0.2.44** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.44)). Publication checks Windows and Linux before advertising the npm update.
+Documentation for **0.2.45** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.45)). Publication checks Windows and Linux before advertising the npm update.
 
-New in **0.2.44**: `oec <file>` opens a file directly with both side panels hidden. Explorer scanning and Git discovery/watching start only when the corresponding panel is opened with `F7`/`F8`. Directory startup is unchanged. Transitive `glob` and `minimatch` dependencies include security fixes.
+New in **0.2.45**: `oec <file>` opens a file directly with both side panels hidden. Explorer scanning and Git discovery/watching start only when the corresponding panel is opened with `F7`/`F8`. Directory startup is unchanged. Transitive `glob` and `minimatch` dependencies include security fixes.
 
 Updates are offered only when the public npm metadata and downloads for both the launcher and your platform are available. Incomplete releases leave the current installation untouched. Publication verifies both platform packages before publishing the launcher.
 
@@ -140,7 +140,7 @@ The installer downloads the latest stable release, verifies SHA-256 and the repo
 To select a version or leave PATH unchanged:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.44 -NoModifyPath
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.45 -NoModifyPath
 & "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
 ```
 

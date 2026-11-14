@@ -1,6 +1,6 @@
 {
   "name": "openeditorcode",
-  "version": "0.2.44",
+  "version": "0.2.45",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/2jmalvarez/openeditorcode.git"
@@ -25,8 +25,8 @@
     "minimatch": "11.0.8"
   },
   "optionalDependencies": {
-    "@2jmalvarez/oec-linux-x64": "0.2.44",
-    "@2jmalvarez/oec-win32-x64": "0.2.44"
+    "@2jmalvarez/oec-linux-x64": "0.2.45",
+    "@2jmalvarez/oec-win32-x64": "0.2.45"
   },
   "bin": {
     "oec": "bin/oec.js",

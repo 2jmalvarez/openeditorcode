@@ -36,9 +36,9 @@ Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
 ♥ [Apoya OEC en GitHub Sponsors](https://github.com/sponsors/2jmalvarez)
 
-Documentación para **0.2.44** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.44)). La publicación verifica Windows y Linux antes de anunciar la actualización npm.
+Documentación para **0.2.45** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.45)). La publicación verifica Windows y Linux antes de anunciar la actualización npm.
 
-Novedades de **0.2.44**: `oec <archivo>` abre un archivo directamente con ambos paneles laterales cerrados. El escaneo del Explorador y el descubrimiento/observación Git empiezan solo al abrir el panel correspondiente con `F7`/`F8`. El inicio con carpetas no cambia. Las dependencias transitivas `glob` y `minimatch` incluyen correcciones de seguridad.
+Novedades de **0.2.45**: `oec <archivo>` abre un archivo directamente con ambos paneles laterales cerrados. El escaneo del Explorador y el descubrimiento/observación Git empiezan solo al abrir el panel correspondiente con `F7`/`F8`. El inicio con carpetas no cambia. Las dependencias transitivas `glob` y `minimatch` incluyen correcciones de seguridad.
 
 Las actualizaciones solo se ofrecen cuando están disponibles en npm los metadatos y las descargas del launcher y de tu plataforma. Una release incompleta conserva la instalación actual sin modificarla. La publicación verifica ambos paquetes de plataforma antes de publicar el launcher.
 
@@ -140,7 +140,7 @@ El instalador descarga la ultima release estable, verifica SHA-256 y la version,
 Para elegir una version o no modificar PATH:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.44 -NoModifyPath
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.45 -NoModifyPath
 & "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
 ```
 

@@ -44,7 +44,11 @@ test("resolves directories and existing files, including spaces and relative pat
     const physicalFile = await realpath(file)
     expect(resolveLaunchTarget()).toEqual({ root: process.cwd() })
     expect(resolveLaunchTarget(directory)).toEqual({ root: directory })
-    expect(resolveLaunchTarget(file)).toEqual({ root: dirname(physicalFile), initialFile: physicalFile })
+    const target = resolveLaunchTarget(file)
+    // Bun on Windows can return an 8.3 name from realpathSync and a long name
+    // from async realpath. Compare physical identity, not their spelling.
+    expect(await realpath(target.root)).toBe(dirname(physicalFile))
+    expect(await realpath(target.initialFile!)).toBe(physicalFile)
     expect(resolveLaunchTarget(relative(process.cwd(), file))).toEqual(resolveLaunchTarget(file))
     expect(resolveCli(["--", file])).toEqual(resolveLaunchTarget(file))
     expect(resolveCli([join(root, "missing.txt")])).toMatchObject({ exitCode: 1 })
