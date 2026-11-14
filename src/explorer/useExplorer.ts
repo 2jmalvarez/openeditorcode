@@ -7,6 +7,7 @@ import { t } from "../localization"
 
 type Props = {
   root: string
+  enabled?: Accessor<boolean>
   setStatus: (status: string) => void
   openFile: (path: string) => Promise<unknown>
   massiveFiles: Accessor<MassiveFile[]>
@@ -41,6 +42,7 @@ export function useExplorer(props: Props) {
   }
 
   async function refreshTree() {
+    if (props.enabled?.() === false) return false
     try {
       const nextTree = await createTree(props.root, expanded())
       setTree(nextTree)
@@ -150,7 +152,8 @@ export function useExplorer(props: Props) {
     setSelected(0)
   }
 
-  onMount(() => void refreshTree())
+  if (props.enabled) createEffect(on(props.enabled, (enabled) => { if (enabled) void refreshTree() }))
+  else onMount(() => void refreshTree())
 
   return { tree: visibleItems, selected, setSelected, selectedItem, newFileDirectory, refreshTree, refreshExplorer, renameItem, collapseAllFolders, collapseSelectedFolder, activateItem, activateAt, moveSelection, showMassiveFiles, showMassiveFilesView, showTreeView }
 }

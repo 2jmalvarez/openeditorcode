@@ -5,8 +5,8 @@ export type LanguagePreference = "auto" | SupportedLanguage
 
 export const messages = {
   es: {
-    "cli.usage": "Uso: oec [OPCIONES] [PROYECTO]",
-    "cli.help": "Uso: oec [OPCIONES] [PROYECTO]\n\n  -h, --help         Mostrar esta ayuda\n  -v, -V, --version  Mostrar versión\n\nConsulte man oec o docs/manual.md para la referencia completa.",
+    "cli.usage": "Uso: oec [OPCIONES] [CARPETA|ARCHIVO]",
+    "cli.help": "Uso: oec [OPCIONES] [CARPETA|ARCHIVO]\n\nSin ruta abre el directorio actual. Un archivo se abre directamente con los paneles cerrados;\nF7 carga el explorador y F8 carga los cambios Git, solo al abrir cada panel.\nUse -- antes de una ruta que empiece por guion.\n\n  -h, --help         Mostrar esta ayuda\n  -v, -V, --version  Mostrar versión\n\nConsulte man oec o docs/manual.md para la referencia completa.",
     "config.invalidJson": "El archivo no contiene JSON válido.",
     "config.invalid": "La configuración no es compatible.",
     "config.keys": "La configuración tiene claves desconocidas o faltantes.",
@@ -395,8 +395,8 @@ export const messages = {
     "platform.openFolderUnsupported": "Abrir la carpeta del proyecto no está disponible en esta plataforma.",
   },
   en: {
-    "cli.usage": "Usage: oec [OPTIONS] [PROJECT]",
-    "cli.help": "Usage: oec [OPTIONS] [PROJECT]\n\n  -h, --help         Show this help\n  -v, -V, --version  Show version\n\nSee man oec or docs/manual.md for the full reference.",
+    "cli.usage": "Usage: oec [OPTIONS] [FOLDER|FILE]",
+    "cli.help": "Usage: oec [OPTIONS] [FOLDER|FILE]\n\nWithout a path, opens the current directory. A file opens directly with both panels hidden;\nF7 loads the explorer and F8 loads Git changes, only when each panel is opened.\nUse -- before a path starting with a hyphen.\n\n  -h, --help         Show this help\n  -v, -V, --version  Show version\n\nSee man oec or docs/manual.md for the full reference.",
     "config.invalidJson": "The file does not contain valid JSON.",
     "config.invalid": "The configuration is not compatible.",
     "config.keys": "The configuration has unknown or missing keys.",

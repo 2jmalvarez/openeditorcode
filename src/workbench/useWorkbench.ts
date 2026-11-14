@@ -31,13 +31,13 @@ import { bindingLabel } from "./keybindings"
 import { openProjectFolder } from "./openProjectFolder"
 import { scrollTopForSelected } from "../explorer/virtual-rows"
 
-export function useWorkbench(root: string, initialConfig: OecConfig, configPaths: ConfigPaths, recovery?: ConfigRecovery, initialGlobalConfig = initialConfig, initialProjectConfig?: ProjectConfig, initialProjectConfigPath = projectConfigPath(root)) {
+export function useWorkbench(root: string, initialConfig: OecConfig, configPaths: ConfigPaths, recovery?: ConfigRecovery, initialGlobalConfig = initialConfig, initialProjectConfig?: ProjectConfig, initialProjectConfigPath = projectConfigPath(root), initialFile?: string) {
   const renderer = useRenderer()
   const [globalConfig, setGlobalConfig] = createSignal(initialGlobalConfig)
   const [projectConfig, setProjectConfig] = createSignal(initialProjectConfig)
   const config = createMemo(() => resolveConfig(globalConfig(), projectConfig()))
   const syntaxTheme = createMemo(() => createSyntaxTheme(config().editor.syntax.styles, renderer.nativeScene))
-  const initialPanels = initialSidePanels(renderer.width, initialConfig)
+  const initialPanels = initialFile ? { explorer: false, changes: false } : initialSidePanels(renderer.width, initialConfig)
   const [active, setActive] = createSignal<FocusTarget>(initialPanels.explorer ? "explorer" : "editor")
   const [explorerVisible, setExplorerVisible] = createSignal(initialPanels.explorer)
   const [gitVisible, setGitVisible] = createSignal(initialPanels.changes)
@@ -109,8 +109,8 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
     }
   }
   const search = useSearch({ root, setStatus, runActivity: activity.run, respectGitignore: initialConfig.search.respectGitignore, reportError: logs.report })
-  const explorer = useExplorer({ root, setStatus, openFile: openDocument, massiveFiles: search.massiveFiles, filteredFiles: () => search.fileQuery().trim() ? search.fileResults() : undefined, reportError: logs.report })
-  const git = useGit({ root, setStatus, runActivity: activity.run, autoRefresh: initialConfig.git.autoRefresh, fetchOnRefresh: initialConfig.git.fetchOnRefresh, reportFailure: logs.report })
+  const explorer = useExplorer({ root, enabled: initialFile ? explorerVisible : undefined, setStatus, openFile: openDocument, massiveFiles: search.massiveFiles, filteredFiles: () => search.fileQuery().trim() ? search.fileResults() : undefined, reportError: logs.report })
+  const git = useGit({ root, enabled: initialFile ? gitVisible : undefined, setStatus, runActivity: activity.run, autoRefresh: initialConfig.git.autoRefresh, fetchOnRefresh: initialConfig.git.fetchOnRefresh, reportFailure: logs.report })
   const updates = useUpdates(initialConfig.updates.checkOnStartup)
 
   createEffect(on(editor.content, documents.syncContent, { defer: true }))
@@ -624,6 +624,7 @@ export function useWorkbench(root: string, initialConfig: OecConfig, configPaths
   }
   onMount(() => { renderer.on("resize", syncSidePanelsToWidth); onCleanup(() => renderer.off("resize", syncSidePanelsToWidth)) })
   onMount(() => { renderer.on("frame", editor.metrics.syncScroll); onCleanup(() => renderer.off("frame", editor.metrics.syncScroll)) })
+  onMount(() => { if (initialFile) void openDocument(initialFile) })
 
   return {
     root, recovery, appVersion: APP_VERSION, rootName: () => basename(root) || root, active, explorerVisible, gitVisible, status, config, syntaxTheme, activity, logs, explorer, git, documents, editor, overlays, search, updates, toggleMassiveFiles,

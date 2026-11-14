@@ -8,9 +8,9 @@ Website: [openeditorcode.dev/en](https://openeditorcode.dev/en/)
 
 Security and privacy: [safeguards, recovery drafts and limitations](docs/security.md).
 
-Documentation for **0.2.43** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.43)). Publication checks Windows and Linux before advertising the npm update.
+Documentation for **0.2.44** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.44)). Publication checks Windows and Linux before advertising the npm update.
 
-New in **0.2.43**: file search respects nested `.gitignore` rules. Independently released plugin **0.3.7** adds Spanish/English localization, responsive Diff controls and repository/branch name wrapping, while preserving panel state and scrolling.
+New in **0.2.44**: `oec <file>` opens a file directly with both side panels hidden. Explorer scanning and Git discovery/watching start only when the corresponding panel is opened with `F7`/`F8`. Directory startup is unchanged. Transitive `glob` and `minimatch` dependencies include security fixes.
 
 Updates are offered only when the public npm metadata and downloads for both the launcher and your platform are available. Incomplete releases leave the current installation untouched. Publication verifies both platform packages before publishing the launcher.
 
@@ -140,7 +140,7 @@ The installer downloads the latest stable release, verifies SHA-256 and the repo
 To select a version or leave PATH unchanged:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.43 -NoModifyPath
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.44 -NoModifyPath
 & "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
 ```
 
@@ -148,16 +148,19 @@ Close OEC and repeat the installer to update. It refuses to overwrite unrelated 
 
 ### Launch and version
 
-Then launch the editor in the current directory or provide a project folder:
+Then launch the editor in the current directory, a project folder, or a specific existing file:
 
 ```bash
 oec
 oec /path/to/project
+oec "/path/to/project/my file.ts"
 openeditorcode
 openeditorcode /path/to/project
 ```
 
-`oec` and `openeditorcode` are equivalent commands. Use `--` before a project path that starts with a hyphen.
+`oec` and `openeditorcode` are equivalent commands. Use `--` before a path that starts with a hyphen.
+
+Opening a file directly uses its containing folder as the project root and focuses the file with both side panels hidden, regardless of startup settings. No explorer scan, Git discovery, or Git watcher starts until you open the corresponding panel: `F7` for Explorer, `F8` for Changes. Hiding Changes pauses its watcher; reopening a panel refreshes its contents. Directory startup is unchanged. Missing paths produce an error without creating a file.
 
 You can also inspect help and version information without starting the interface:
 

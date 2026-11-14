@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { spawn } from "node:child_process"
-import { parseCli } from "./cli"
+import { resolveCli } from "./cli"
 import { configureLanguage, t } from "../localization"
 
 async function runWorker(args: string[], recoveryAttempt = false): Promise<number> {
@@ -31,7 +31,8 @@ async function runWorker(args: string[], recoveryAttempt = false): Promise<numbe
 }
 
 configureLanguage("auto")
-const cli = parseCli(process.argv.slice(2))
+// Invalid paths must not enter the configuration crash-recovery supervisor.
+const cli = resolveCli(process.argv.slice(2))
 if ("output" in cli) {
   console.log(cli.output)
   process.exitCode = cli.exitCode

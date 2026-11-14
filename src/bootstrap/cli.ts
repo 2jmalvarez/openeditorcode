@@ -1,5 +1,6 @@
 import { APP_VERSION } from "./version"
 import { t } from "../localization"
+import { resolveLaunchTarget, type LaunchTarget } from "./resolve-root"
 
 export type CliResult = { project?: string } | { output: string; exitCode: number }
 
@@ -11,4 +12,14 @@ export function parseCli(args: string[]): CliResult {
   const operands = separator === -1 ? args : [...options, ...args.slice(separator + 1)]
   if (options.some((value) => value.startsWith("-")) || operands.length > 1) return { output: t("cli.usage"), exitCode: 2 }
   return { project: operands[0] }
+}
+
+export function resolveCli(args: string[]): LaunchTarget | { output: string; exitCode: number } {
+  const cli = parseCli(args)
+  if ("output" in cli) return cli
+  try {
+    return resolveLaunchTarget(cli.project)
+  } catch (error) {
+    return { output: error instanceof Error ? error.message : t("explorer.readFailed"), exitCode: 1 }
+  }
 }

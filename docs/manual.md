@@ -1,10 +1,12 @@
 # Manual de OpenEditorCode
 
-Referencia para la release **0.2.43**.
+Referencia para la release **0.2.44**.
 
 ## Propósito y uso
 
-OpenEditorCode (OEC) es un editor de proyectos para terminal. No necesita servidor ni OpenCode. Use `oec [PROYECTO]`; sin argumento abre el directorio actual. `openeditorcode` es un alias equivalente. `-h` y `--help` muestran ayuda; `-v`, `-V` y `--version` imprimen la version instalada sin iniciar la interfaz, con ambos aliases. En Unix también está disponible `man oec` tras instalar el paquete npm global.
+OpenEditorCode (OEC) es un editor de proyectos para terminal. No necesita servidor ni OpenCode. Use `oec [CARPETA|ARCHIVO]`; sin argumento abre el directorio actual. `openeditorcode` es un alias equivalente. `-h` y `--help` muestran ayuda; `-v`, `-V` y `--version` imprimen la version instalada sin iniciar la interfaz, con ambos aliases. En Unix también está disponible `man oec` tras instalar el paquete npm global.
+
+`oec "/ruta/mi archivo.ts"` abre un archivo existente directamente y usa su carpeta contenedora como raíz. Si es un enlace simbólico, se usa el archivo real y su carpeta física. El archivo recibe el foco y ambos paneles laterales empiezan cerrados, aunque la configuración indique mostrarlos. No se carga el árbol ni se descubren repositorios o inicia el observador Git hasta abrir cada panel: `F7` carga el Explorador; `F8` carga Cambios. Ocultar Cambios pausa el observador y reabrir un panel actualiza su contenido. Las búsquedas de proyecto siguen ejecutándose solo al solicitarlas. El inicio con carpetas conserva su comportamiento. Usa `--` antes de rutas que empiecen por guion. Una ruta inexistente o no legible muestra un error sin crear archivos ni activar la recuperación de configuración.
 
 La raíz del proyecto delimita el explorador, las búsquedas, Git y los accesos a archivos del proyecto. OEC rechaza rutas, enlaces simbólicos y junctions que salen físicamente de esa raíz.
 

@@ -36,9 +36,9 @@ Sitio web: [openeditorcode.dev/es](https://openeditorcode.dev/es/)
 
 ♥ [Apoya OEC en GitHub Sponsors](https://github.com/sponsors/2jmalvarez)
 
-Documentación para **0.2.43** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.43)). La publicación verifica Windows y Linux antes de anunciar la actualización npm.
+Documentación para **0.2.44** ([release](https://github.com/2jmalvarez/openeditorcode/releases/tag/v0.2.44)). La publicación verifica Windows y Linux antes de anunciar la actualización npm.
 
-Novedades de **0.2.43**: la búsqueda de archivos respeta reglas `.gitignore` anidadas. El plugin **0.3.7**, con publicación independiente, añade interfaz en español/inglés, controles Diff adaptables y ajuste de nombres de repositorios y ramas, conservando el estado y scroll de los paneles.
+Novedades de **0.2.44**: `oec <archivo>` abre un archivo directamente con ambos paneles laterales cerrados. El escaneo del Explorador y el descubrimiento/observación Git empiezan solo al abrir el panel correspondiente con `F7`/`F8`. El inicio con carpetas no cambia. Las dependencias transitivas `glob` y `minimatch` incluyen correcciones de seguridad.
 
 Las actualizaciones solo se ofrecen cuando están disponibles en npm los metadatos y las descargas del launcher y de tu plataforma. Una release incompleta conserva la instalación actual sin modificarla. La publicación verifica ambos paquetes de plataforma antes de publicar el launcher.
 
@@ -140,7 +140,7 @@ El instalador descarga la ultima release estable, verifica SHA-256 y la version,
 Para elegir una version o no modificar PATH:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.43 -NoModifyPath
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/2jmalvarez/openeditorcode/main/install.ps1').Content)) -Version 0.2.44 -NoModifyPath
 & "$env:LOCALAPPDATA\Programs\OpenEditorCode\bin\oec.exe" .
 ```
 
@@ -148,16 +148,19 @@ Cierra OEC y repite el instalador para actualizar. No sobrescribe ejecutables aj
 
 ### Inicio y version
 
-Despues, abre el editor en el directorio actual o indica la carpeta del proyecto:
+Despues, abre el editor en el directorio actual, una carpeta de proyecto o un archivo existente:
 
 ```bash
 oec
 oec /ruta/del/proyecto
+oec "/ruta/del/proyecto/mi archivo.ts"
 openeditorcode
 openeditorcode /ruta/del/proyecto
 ```
 
-`oec` y `openeditorcode` son comandos equivalentes. Usa `--` antes de una ruta de proyecto que empiece por guion.
+`oec` y `openeditorcode` son comandos equivalentes. Usa `--` antes de una ruta que empiece por guion.
+
+Abrir un archivo directamente usa su carpeta contenedora como raíz y enfoca el archivo con ambos paneles laterales cerrados, independientemente de la configuración de inicio. No se escanean archivos, descubren repositorios ni inicia el observador Git hasta abrir el panel correspondiente: `F7` para Explorador, `F8` para Cambios. Ocultar Cambios pausa su observador; reabrir un panel actualiza su contenido. El inicio con carpetas no cambia. Una ruta inexistente muestra un error sin crear archivos.
 
 Tambien puedes consultar la ayuda y la version sin iniciar la interfaz:
 

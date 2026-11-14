@@ -1,18 +1,17 @@
 /** @jsxImportSource @opentui/solid */
 import { writeFileSync } from "node:fs"
-import { resolveRoot } from "./bootstrap/resolve-root"
-import { parseCli } from "./bootstrap/cli"
+import { resolveCli } from "./bootstrap/cli"
 import { configureLanguage } from "./localization"
 
 configureLanguage("auto")
-const cli = parseCli(process.argv.slice(2))
+const cli = resolveCli(process.argv.slice(2))
 if ("output" in cli) {
   console.log(cli.output)
   process.exitCode = cli.exitCode
 } else {
   const { clearRecoveryNotice, loadConfig, loadProjectConfig, markConfigHealthy, resolveConfig } = await import("./config/storage")
   const loadedConfig = await loadConfig()
-  const root = resolveRoot(cli.project)
+  const { root, initialFile } = cli
   const loadedProject = await loadProjectConfig(root).catch(() => ({ config: undefined, path: "" }))
   const config = resolveConfig(loadedConfig.config, loadedProject.config)
   configureLanguage(config.appearance.language)
@@ -35,5 +34,5 @@ if ("output" in cli) {
     void markConfigHealthy(loadedConfig.paths, process.env.OEC_CONFIG_ATTEMPT_ID!)
     void clearRecoveryNotice(loadedConfig.paths)
   })
-  await render(() => <App root={root} config={config} globalConfig={loadedConfig.config} projectConfig={loadedProject.config} configPaths={loadedConfig.paths} projectConfigPath={loadedProject.path} recovery={loadedConfig.recovery} />, renderer)
+  await render(() => <App root={root} initialFile={initialFile} config={config} globalConfig={loadedConfig.config} projectConfig={loadedProject.config} configPaths={loadedConfig.paths} projectConfigPath={loadedProject.path} recovery={loadedConfig.recovery} />, renderer)
 }

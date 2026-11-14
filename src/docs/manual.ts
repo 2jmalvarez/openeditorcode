@@ -6,6 +6,8 @@ const manuals: Record<SupportedLanguage, string> = {
 ## Uso
 OEC abre el directorio actual o el proyecto indicado como argumento. La raíz del proyecto limita el explorador, Git, búsquedas y archivos editables.
 
+oec <archivo> abre un archivo existente usando su carpeta contenedora como raíz (el destino físico si es un enlace). Ambos paneles empiezan cerrados, sin escanear archivos ni consultar Git. F7 carga el Explorador y F8 carga Cambios solo al abrir cada panel. Ocultar Cambios pausa su observador; reabrir un panel actualiza su contenido. El inicio con carpetas no cambia. Usa -- antes de rutas que empiecen por guion; las rutas inexistentes muestran un error sin crear archivos.
+
 ## Paneles y editor
 F7 alterna el explorador; F8 alterna Cambios, igual que Files y Diff en el plugin. Si el terminal no tiene espacio para ambos paneles laterales, OEC muestra uno por vez. Ctrl+S guarda, Ctrl+W cierra y Ctrl+Q sale. El botón medio cierra desde cualquier parte de la pestaña, con confirmación si hay cambios sin guardar. Un asterisco indica cambios sin guardar.
 
@@ -50,6 +52,8 @@ Solo se editan archivos UTF-8 de hasta 2 MiB. Los binarios, enlaces que salen de
 
 ## Usage
 OEC opens the current directory or the project supplied as an argument. The project root limits the explorer, Git, searches, and editable files.
+
+oec <file> opens an existing file using its containing folder as the root (the physical target for a symlink). Both panels start hidden, without scanning files or querying Git. F7 loads Explorer and F8 loads Changes only when each panel is opened. Hiding Changes pauses its watcher; reopening a panel refreshes its contents. Directory startup is unchanged. Use -- before paths starting with a hyphen; missing paths report an error without creating files.
 
 ## Panels and editor
 F7 toggles the explorer; F8 toggles Changes, matching Files and Diff in the plugin. When the terminal does not have room for both side panels, OEC shows one at a time. Ctrl+S saves, Ctrl+W closes, and Ctrl+Q quits. Middle-click anywhere on a tab to close it, with confirmation for unsaved changes. An asterisk marks unsaved changes.

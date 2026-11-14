@@ -1,5 +1,5 @@
 import { watch } from "node:fs"
-import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, type Accessor } from "solid-js"
 import { commitGitChanges, fetchGit, pullGit, pushGit, readGitDiff, readGitState, restoreGitFiles, stageGitFiles, unstageGitFiles, type GitDiff, type GitFile, type GitFailure, type GitState } from "./status"
 import { createGitTree, type GitTreeItem } from "./tree"
 import { readGitBranches, readGitCommitFiles, readGitHistoricalDiff, readGitHistory } from "./history"
@@ -8,7 +8,7 @@ import { t } from "../localization"
 
 export type GitMode = "repositories" | "local" | "history" | "branches" | "files"
 type HistoryView = { mode: GitMode; title: string; rows: GitTreeItem[]; revision?: string; ref?: string }
-type Props = { root: string; setStatus: (message: string) => void; runActivity: <T>(message: string, operation: () => Promise<T>) => Promise<T>; autoRefresh?: boolean; fetchOnRefresh?: boolean; reportFailure?: (failure: { source: string; operation: string; summary: string; details: string }) => void }
+type Props = { root: string; enabled?: Accessor<boolean>; setStatus: (message: string) => void; runActivity: <T>(message: string, operation: () => Promise<T>) => Promise<T>; autoRefresh?: boolean; fetchOnRefresh?: boolean; reportFailure?: (failure: { source: string; operation: string; summary: string; details: string }) => void }
 
 export async function fetchAndRefreshGit(root: string, refresh: () => Promise<void>, setStatus: (message: string) => void, fetchRemote: (root: string) => Promise<boolean> = fetchGit) {
   setStatus(t("git.refreshActivity"))
@@ -64,11 +64,12 @@ export function useGit(props: Props) {
   const tree = createMemo(() => mode() === "repositories" ? repositoryRows() : mode() === "local" ? createGitTree(state().files, expanded()) : view().rows)
 
   async function readState() {
+    if (props.enabled?.() === false) return
     if (refreshing) { queued = true; return }
     refreshing = true
     try {
       const found = await discoverGitRepositories(props.root)
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || props.enabled?.() === false) return
       setRepositories(found)
       const current = repository()
       const nextRepository = current && found.find((item) => item.id === current.id)
@@ -97,6 +98,7 @@ export function useGit(props: Props) {
   }
   async function refresh() { await readState() }
   function scheduleRefresh(_event: string, fileName: string | Buffer | null) {
+    if (props.enabled?.() === false) return
     if (fileName?.toString().replace(/\\/g, "/").split("/").includes(".git")) return
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => void refresh(), 400)
@@ -156,6 +158,17 @@ export function useGit(props: Props) {
   async function pull() { const active = repository(); const done = Boolean(active) && await pullGit(active!.root, reportGitFailure); if (done) await refresh(); return done }
   async function push() { const active = repository(); const done = Boolean(active) && await pushGit(active!.root, reportGitFailure); if (done) await refresh(); return done }
   onCleanup(() => { controller.abort(); cancelNavigation(); if (timer) clearTimeout(timer) })
-  onMount(() => { let watcher: ReturnType<typeof watch> | undefined; void refresh(); if (props.autoRefresh !== false) { watcher = watch(props.root, { recursive: true }, scheduleRefresh); watcher.on("error", () => undefined) }; onCleanup(() => watcher?.close()) })
+  function startWatching() {
+    let watcher: ReturnType<typeof watch> | undefined
+    void refresh()
+    if (props.autoRefresh !== false) { watcher = watch(props.root, { recursive: true }, scheduleRefresh); watcher.on("error", () => undefined) }
+    onCleanup(() => {
+      watcher?.close()
+      if (timer) clearTimeout(timer)
+      timer = undefined
+    })
+  }
+  if (props.enabled) createEffect(on(props.enabled, (enabled) => { if (enabled) startWatching() }))
+  else onMount(startWatching)
   return { state, repositories, repository, tree, selected, commitMessage, setCommitMessage, commitFocused, setCommitFocused, refresh, fetch, moveSelection, select, toggleSelectedFolder, collapseAllFolders, selectedFile, selectedFiles, stageSelected, unstageSelected, restore, commit, pull, push, openSelected, mode, historyTitle, loading, showHistory, showBranches, goBack, loadMore, showCommitHashes, showCommitDates, toggleCommitHashes: () => setShowCommitHashes((value) => !value), toggleCommitDates: () => setShowCommitDates((value) => !value) }
 }

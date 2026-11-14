@@ -3,12 +3,14 @@
 oec \- OpenEditorCode terminal project editor
 .SH SYNOPSIS
 .B oec
-.RI [ PROJECT ]
+.RI [ FOLDER|FILE ]
 .br
 .B openeditorcode
-.RI [ PROJECT ]
+.RI [ FOLDER|FILE ]
 .SH DESCRIPTION
-OpenEditorCode edits UTF-8 project files in a terminal. Without PROJECT it opens the current directory.
+OpenEditorCode edits UTF-8 project files in a terminal. Without a path it opens the current directory.
+.PP
+A file path opens that existing file directly, using its containing folder as the project root (the physical target for symlinks). Both side panels start hidden, regardless of startup settings. Explorer scanning, Git discovery and Git watching are deferred until the corresponding panel is opened: F7 for Explorer, F8 for Changes. Hiding Changes pauses its watcher; reopening a panel refreshes its contents. Directory startup is unchanged. Missing or unreadable paths report an error without creating files. Use \-\- before paths starting with a hyphen.
 .PP
 The complete, versioned Spanish manual is installed as docs/manual.md with the npm package. It defines search, ignored paths, configuration, recovery, Git, updates, shortcuts, limits and security guarantees.
 .PP
